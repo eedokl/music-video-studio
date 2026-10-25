@@ -1,0 +1,18 @@
+node_modules/
+dist/
+.venv/
+__pycache__/
+*.pyc
+# project media and renders stay local
+projects/*/audio/
+projects/*/inputs/
+projects/*/analysis/
+projects/*/out/
+projects/*/.history/
+projects/*/chat/
+projects/*/AGENT.md
+projects/*/frames/
+projects/*one-signal-*
+projects/*cloud-engineering*
+projects/comfort-zone-v4*
+projects/europe-2031*

@@ -1,0 +1,1 @@
+"""Music video studio backend."""
