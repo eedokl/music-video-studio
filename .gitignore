@@ -5,16 +5,16 @@ __pycache__/
 *.pyc
 *.wav
 # project media and renders stay local
-projects/*/audio/
-projects/*/inputs/
-projects/*/analysis/
+# projects/*/audio/
+# projects/*/inputs/
+# projects/*/analysis/
 projects/*/out/
 projects/*/.history/
-projects/*/chat/
-projects/*/AGENT.md
-projects/*/frames/
+# projects/*/chat/
+# projects/*/AGENT.md
+# projects/*/frames/
 projects/*one-signal-*
 projects/*cloud-engineering*
 projects/comfort-zone-v4*
-projects/comfort-zone-v3-2*
+# projects/comfort-zone-v3-2*
 projects/europe-2031*

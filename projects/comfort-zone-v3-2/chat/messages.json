@@ -1,0 +1,28 @@
+[
+ {
+  "role": "user",
+  "text": "Wie viele Szenen hat das Projekt, und welche Liedzeile ist als nicht gesungen markiert? Ändere nichts.",
+  "context": "playhead: 0:00",
+  "t": 1792921840.606955
+ },
+ {
+  "role": "assistant",
+  "text": "Das Projekt hat **39 Szenen**. Als nicht gesungen markiert ist die Zeile **l54 \"Hey! Hey!\"** (Section „final\"). Es wurde nichts geändert.",
+  "ok": true,
+  "changed": false,
+  "t": 1792921864.5778646
+ },
+ {
+  "role": "user",
+  "text": "Ersetze die LED-Wand der ausgewählten Szene: links Silicon Valley mit \"LET'S GO!\" (erscheint beim Wort Let's), rechts Europa mit \"WIR PRÜFEN DAS NOCH\" und einem Stempel \"IN PRÜFUNG\" beim Wort prüfen.",
+  "context": "selected scene: s5 \"Silicon Valley sagt: \"Let's go!\"\", lines l4,l5",
+  "t": 1792921879.0796728
+ },
+ {
+  "role": "assistant",
+  "text": "Szene s5 nutzt jetzt eine `split`-Wand: links „SILICON VALLEY / LET'S GO!\" (erscheint bei „Let's\", l4 Wort 3), rechts „EUROPA / WIR PRÜFEN DAS NOCH\" plus Stempel „IN PRÜFUNG\" bei „prüfen\" (l5 Wort 3).",
+  "ok": true,
+  "changed": true,
+  "t": 1792921908.1282935
+ }
+]
