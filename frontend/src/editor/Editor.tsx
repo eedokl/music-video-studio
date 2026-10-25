@@ -41,7 +41,9 @@ function Analysis({ status }: { status: Status | null }) {
 
 export function Editor({ pid }: { pid: string }) {
   const st = useEditor();
-  const p = st.project;
+  // the store is shared: right after switching projects it still holds the previous one until
+  // load(pid) is done – never build the preview (concert vs imported engine) from that
+  const p = st.pid === pid ? st.project : null;
   const [status, setStatus] = useState<Status | null>(null);
   const [playing, setPlaying] = useState(false);
   const [now, setNow] = useState(0);
