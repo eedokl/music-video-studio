@@ -1,13 +1,15 @@
 """FastAPI server of the music-video studio.
 
-  uv run studio            → http://localhost:8000 (serves the built frontend + API)
+uv run studio            → http://localhost:8000 (serves the built frontend + API)
 """
+
 from __future__ import annotations
 
 import json
 import re
 import shutil
 import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import numpy as np
@@ -17,9 +19,19 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import chat, export, legacy, pipeline, store, storyboard
-from .config import FRONTEND_DIST, PORT
+from .config import FRONTEND_DIST, HOST, PORT
 
-app = FastAPI(title="Music Video Studio")
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    # startup: remove leftovers of exports interrupted by a previous shutdown
+    for d in store.PROJECTS.iterdir():
+        if (d / "out").is_dir():
+            export.cleanup(d / "out")
+    yield
+
+
+app = FastAPI(title="Music Video Studio", lifespan=_lifespan)
 
 
 def _404(pid: str):
@@ -71,7 +83,20 @@ async def create(
         stem_names.append(name)
     meta = {"title": title, "lyrics": lyrics, "storyline": storyline, "stylePrompt": stylePrompt, "song": song_name, "stems": stem_names}
     (inp / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")
-    store.save(pid, {"format": 1, "id": pid, "title": title, "storyline": storyline, "status": "analyzing", "audio": {"duration": 0}, "lyrics": {"lines": []}, "scenes": []}, keep_history=False)
+    store.save(
+        pid,
+        {
+            "format": 1,
+            "id": pid,
+            "title": title,
+            "storyline": storyline,
+            "status": "analyzing",
+            "audio": {"duration": 0},
+            "lyrics": {"lines": []},
+            "scenes": [],
+        },
+        keep_history=False,
+    )
     pipeline.start(pid)
     return {"id": pid}
 
@@ -129,7 +154,15 @@ def reanalyze(pid: str, step: str = "prepare", keep: bool = False):
     return {"ok": True}
 
 
-HEADERS = {"intro": "[Intro]", "verse1": "[Verse 1]", "chorus": "[Chorus]", "verse2": "[Verse 2]", "bridge": "[Bridge]", "final": "[Final Chorus]", "outro": "[Outro]"}
+HEADERS = {
+    "intro": "[Intro]",
+    "verse1": "[Verse 1]",
+    "chorus": "[Chorus]",
+    "verse2": "[Verse 2]",
+    "bridge": "[Bridge]",
+    "final": "[Final Chorus]",
+    "outro": "[Outro]",
+}
 
 
 def _current_lyrics(pid: str) -> str:
@@ -165,7 +198,11 @@ async def update_audio(pid: str, song: UploadFile = File(...), lyrics: str = For
     inp = d / "inputs"
     inp.mkdir(exist_ok=True)
     mf = inp / "meta.json"
-    meta = json.loads(mf.read_text(encoding="utf-8")) if mf.exists() else {"title": old.get("title", pid), "storyline": old.get("storyline", ""), "stylePrompt": old.get("stylePrompt", "")}
+    meta = (
+        json.loads(mf.read_text(encoding="utf-8"))
+        if mf.exists()
+        else {"title": old.get("title", pid), "storyline": old.get("storyline", ""), "stylePrompt": old.get("stylePrompt", "")}
+    )
     text = lyrics.strip() or _current_lyrics(pid)
     for f in inp.glob("song.*"):
         f.unlink()
@@ -200,14 +237,28 @@ async def update_audio(pid: str, song: UploadFile = File(...), lyrics: str = For
     rows = lyrics_text.parse(text)
     plan = update.plan(old, rows)
     ids = plan["ids"]
-    meta.update(song=song_name, stems=stem_names, lyrics=text, keepScenes=True, newAudio=True, idMap=ids, updatePlan=plan,
-                keepHeld=[{"name": h["name"], "row": ids.index(h["line"])} for h in old.get("held", []) if h["line"] in ids])
+    meta.update(
+        song=song_name,
+        stems=stem_names,
+        lyrics=text,
+        keepScenes=True,
+        newAudio=True,
+        idMap=ids,
+        updatePlan=plan,
+        keepHeld=[{"name": h["name"], "row": ids.index(h["line"])} for h in old.get("held", []) if h["line"] in ids],
+    )
     meta.pop("stemMap", None)
     meta.pop("stemCheck", None)
     mf.write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")
     store.save(pid, old)  # keep the pre-update version in the history
     pipeline.start(pid, "prepare")
-    return {"ok": True, "matched": sum(1 for s in plan["status"] if s != "new"), "new": plan["status"].count("new"), "changed": plan["status"].count("changed"), "removed": len(plan["removed"])}
+    return {
+        "ok": True,
+        "matched": sum(1 for s in plan["status"] if s != "new"),
+        "new": plan["status"].count("new"),
+        "changed": plan["status"].count("changed"),
+        "removed": len(plan["removed"]),
+    }
 
 
 @app.post("/api/projects/{pid}/duplicate")
@@ -243,7 +294,11 @@ def import_video(path: str = Body(..., embed=True), title: str = Body("", embed=
     if not old.is_dir():
         raise HTTPException(400, f"Ordner nicht gefunden: {old}")
     if missing or song is None:
-        raise HTTPException(400, f"Kein unterstütztes Video-Projekt (fehlt: {', '.join(missing + ([] if song else ['public/song.wav']))}). Ältere Engines wie Pop-up oder Rock werden noch nicht unterstützt.")
+        raise HTTPException(
+            400,
+            f"Kein unterstütztes Video-Projekt (fehlt: {', '.join(missing + ([] if song else ['public/song.wav']))}). Ältere Engines wie Pop-up "
+            "oder Rock werden noch nicht unterstützt.",
+        )
     src_scenes = (old / "src" / "scenes.ts").read_text(encoding="utf-8")
     if "export const SCENES" not in src_scenes:
         raise HTTPException(400, "Dieses Projekt nutzt eine ältere Engine ohne SCENES-Liste (z. B. Pop-up oder Rock) – noch nicht unterstützt.")
@@ -264,9 +319,30 @@ def import_video(path: str = Body(..., embed=True), title: str = Body("", embed=
     d = store.project_dir(pid)
     (d / "inputs" / "stems").mkdir(parents=True)
     shutil.copy(song, d / "inputs" / ("song" + song.suffix))
-    meta = {"title": title, "lyrics": "\n".join(out), "storyline": f"Imported from {old}", "stylePrompt": "", "song": "song" + song.suffix, "stems": [], "legacySource": str(old)}
+    meta = {
+        "title": title,
+        "lyrics": "\n".join(out),
+        "storyline": f"Imported from {old}",
+        "stylePrompt": "",
+        "song": "song" + song.suffix,
+        "stems": [],
+        "legacySource": str(old),
+    }
     (d / "inputs" / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")
-    store.save(pid, {"format": 1, "id": pid, "title": title, "storyline": meta["storyline"], "status": "analyzing", "audio": {"duration": 0}, "lyrics": {"lines": []}, "scenes": []}, keep_history=False)
+    store.save(
+        pid,
+        {
+            "format": 1,
+            "id": pid,
+            "title": title,
+            "storyline": meta["storyline"],
+            "status": "analyzing",
+            "audio": {"duration": 0},
+            "lyrics": {"lines": []},
+            "scenes": [],
+        },
+        keep_history=False,
+    )
     pipeline.start(pid)
     return {"id": pid}
 
@@ -377,7 +453,12 @@ def chat_reset(pid: str):
 
 
 @app.post("/api/projects/{pid}/export")
-def export_start(pid: str, variants: list[str] = Body(["full", "small", "mail"], embed=True), start: float | None = Body(None, embed=True), end: float | None = Body(None, embed=True)):
+def export_start(
+    pid: str,
+    variants: list[str] = Body(["full", "small", "mail"], embed=True),
+    start: float | None = Body(None, embed=True),
+    end: float | None = Body(None, embed=True),
+):
     """variants: any of full, compressed, small, mail, preview; start/end: only that range (seconds)."""
     _404(pid)
     if not (FRONTEND_DIST / "index.html").exists():
@@ -419,7 +500,7 @@ def exports_open(pid: str):
     out = store.project_dir(pid) / "out"
     out.mkdir(exist_ok=True)
     if os.name == "nt":
-        os.startfile(out)  # noqa: S606 – local desktop app
+        os.startfile(out)
     return {"folder": str(out)}
 
 
@@ -428,15 +509,6 @@ def export_cancel(pid: str):
     if not export.cancel(pid):
         raise HTTPException(409, "no export running")
     return {"ok": True}
-
-
-@app.on_event("startup")
-def _cleanup_interrupted_exports():
-    from .config import PROJECTS
-
-    for d in PROJECTS.iterdir():
-        if (d / "out").is_dir():
-            export.cleanup(d / "out")
 
 
 @app.get("/api/health")
@@ -450,7 +522,7 @@ if FRONTEND_DIST.exists():
 
 
 def run():
-    uvicorn.run("studio.main:app", host="127.0.0.1", port=PORT, reload=False)
+    uvicorn.run("studio.main:app", host=HOST, port=PORT, reload=False)
 
 
 if __name__ == "__main__":

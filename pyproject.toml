@@ -1,0 +1,51 @@
+[project]
+name = "music-video-studio"
+version = "0.1.0"
+description = "Lyric-synced three.js music videos: analysis pipeline, live preview, timeline editor, chat via Claude Code"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "python-multipart>=0.0.12",
+    "numpy>=2.0",
+    "imageio-ffmpeg>=0.5",
+]
+
+[project.scripts]
+studio = "studio.main:run"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/studio"]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+    "ruff>=0.17.2",
+]
+
+[tool.ruff]
+line-length = 160
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "BLE"]
+# typographic characters used on purpose in German/English UI texts and comments
+allowed-confusables = ["–", "×", "−"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI declares request parameters with calls in defaults
+extend-immutable-calls = ["fastapi.File", "fastapi.Form", "fastapi.Query", "fastapi.Body", "fastapi.Depends"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = [
+    # Starlette's TestClient nags about httpx; it works fine for these tests
+    "ignore:Using `httpx` with `starlette.testclient`",
+]

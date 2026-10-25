@@ -6,6 +6,7 @@ SCENES_JSON is the dumped TIMELINE of the old project (scene id, lines, start, s
 wall name, lyric style, held lines, camera label); WALL_MODULE_JS the old LED-wall functions bundled
 as a custom wall module (exports setApi + one function per visual).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -66,14 +67,24 @@ def main():
         dur = w.getnframes() / w.getframerate()
 
     lines = []
-    for i, ((sec, text), x) in enumerate(zip(rows, timing)):
+    for i, ((sec, text), x) in enumerate(zip(rows, timing, strict=False)):
         ws = text.split(" ")
         words = [{"w": w, "t": round(x["words"][k], 3), "e": round(x["ends"][k], 3)} for k, w in enumerate(ws)]
         lines.append({"id": f"l{i}", "section": sec, "text": text, "unsung": False, "singer": "lead", "words": words})
 
     period = 60 / bpm
     beats = [round(offset + k * period, 4) for k in range(int((dur - offset) / period) + 1)]
-    grid = {"mode": "fixed", "bpm": bpm, "offset": offset, "detected": beats, "fixed": beats, "beats": beats, "beatsPerBar": 4, "downbeatPhase": 0, "source": "legacy"}
+    grid = {
+        "mode": "fixed",
+        "bpm": bpm,
+        "offset": offset,
+        "detected": beats,
+        "fixed": beats,
+        "beats": beats,
+        "beatsPerBar": 4,
+        "downbeatPhase": 0,
+        "source": "legacy",
+    }
 
     held = []
     for li, name in dump["held"]:
@@ -149,7 +160,21 @@ def main():
             lyr.append(f"[{sec}]")
             last = sec
         lyr.append(text)
-    (inp / "meta.json").write_text(json.dumps({"title": a.title, "lyrics": "\n".join(lyr), "storyline": project["storyline"], "stylePrompt": project["stylePrompt"], "song": "song.wav", "stems": []}, ensure_ascii=False, indent=1), encoding="utf-8")
+    (inp / "meta.json").write_text(
+        json.dumps(
+            {
+                "title": a.title,
+                "lyrics": "\n".join(lyr),
+                "storyline": project["storyline"],
+                "stylePrompt": project["stylePrompt"],
+                "song": "song.wav",
+                "stems": [],
+            },
+            ensure_ascii=False,
+            indent=1,
+        ),
+        encoding="utf-8",
+    )
     print(f"imported {pid}: {len(lines)} lines, {len(scenes)} scenes, {len(events)} events, {len(held)} held notes, {dur:.1f} s")
 
 

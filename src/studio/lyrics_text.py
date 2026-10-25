@@ -1,4 +1,5 @@
 """Parse lyrics as the user pastes them: [Section] headers, one sung line per row."""
+
 from __future__ import annotations
 
 import re

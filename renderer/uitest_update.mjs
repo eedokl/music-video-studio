@@ -1,10 +1,8 @@
 // UI test of the "Audio aktualisieren" dialog: submit with a file; the upload request is intercepted.
 import { existsSync, readdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import puppeteer from 'puppeteer-core';
-const base = resolve(process.env.TEMP ?? '/tmp', 'mvchrome/chrome-headless-shell');
-const exe = readdirSync(base).map((v) => resolve(base, v, 'chrome-headless-shell-win64/chrome-headless-shell.exe')).find(existsSync);
-const b = await puppeteer.launch({ executablePath: exe, headless: 'shell', args: ['--use-angle=d3d11'] });
+import { launch } from './chrome.mjs';
+const b = await launch();
 const page = await b.newPage();
 await page.setViewport({ width: 1600, height: 900 });
 const errors = [];

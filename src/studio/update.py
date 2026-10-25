@@ -7,6 +7,7 @@ merge()  after the new analysis: keeps the storyboard, drops removed lines from 
          into the scene of the line before them, carries time anchors (intro/outro scenes, timed
          events) over to the new timing via the shift of the matched words, and records a summary.
 """
+
 from __future__ import annotations
 
 import copy
@@ -23,7 +24,7 @@ def _norm(s: str) -> str:
 def plan(old: dict, rows: list[dict]) -> dict:
     """→ {"ids": id per new row, "status": per new row (same|changed|new), "removed": [old ids], "matched": {new_i: old_id}}"""
     old_lines = old.get("lyrics", {}).get("lines", [])
-    a = [_norm(l["text"]) for l in old_lines]
+    a = [_norm(ln["text"]) for ln in old_lines]
     b = [_norm(r["text"]) for r in rows]
     ids: list[str | None] = [None] * len(rows)
     status = ["new"] * len(rows)
@@ -45,8 +46,8 @@ def plan(old: dict, rows: list[dict]) -> dict:
                 status[j] = "changed"
                 taken_i.add(i)
     used = {x for x in ids if x}
-    removed = [l["id"] for l in old_lines if l["id"] not in used]
-    nums = [int(m.group(1)) for l in old_lines if (m := re.fullmatch(r"l(\d+)", l["id"]))]
+    removed = [ln["id"] for ln in old_lines if ln["id"] not in used]
+    nums = [int(m.group(1)) for ln in old_lines if (m := re.fullmatch(r"l(\d+)", ln["id"]))]
     nxt = (max(nums) + 1) if nums else 0
     for j in range(len(rows)):
         if ids[j] is None:
@@ -57,13 +58,13 @@ def plan(old: dict, rows: list[dict]) -> dict:
 
 def _time_map(old: dict, new: dict):
     """old song time → new song time, from matched word starts (piecewise linear, monotone)."""
-    old_by = {l["id"]: l for l in old.get("lyrics", {}).get("lines", [])}
+    old_by = {ln["id"]: ln for ln in old.get("lyrics", {}).get("lines", [])}
     pts = []
-    for l in new["lyrics"]["lines"]:
-        o = old_by.get(l["id"])
-        if not o or l.get("unsung") or o.get("unsung") or _norm(o["text"]) != _norm(l["text"]):
+    for ln in new["lyrics"]["lines"]:
+        o = old_by.get(ln["id"])
+        if not o or ln.get("unsung") or o.get("unsung") or _norm(o["text"]) != _norm(ln["text"]):
             continue
-        for wo, wn in zip(o["words"], l["words"]):
+        for wo, wn in zip(o["words"], ln["words"], strict=False):
             pts.append((wo["t"], wn["t"]))
     pts.sort()
     # keep it monotone (drop crossing points)
@@ -89,8 +90,8 @@ def _time_map(old: dict, new: dict):
 
 def merge(old: dict, new: dict, info: dict) -> dict:
     """Carry the storyboard of `old` over to the freshly analysed `new` project (in place)."""
-    ids_new = {l["id"] for l in new["lyrics"]["lines"]}
-    order = [l["id"] for l in new["lyrics"]["lines"]]
+    ids_new = {ln["id"] for ln in new["lyrics"]["lines"]}
+    order = [ln["id"] for ln in new["lyrics"]["lines"]]
     tmap, shift = _time_map(old, new)
     for k in ("scenes", "events", "looks", "settings", "title", "storyline", "stylePrompt", "world", "legacy"):
         if k in old:
@@ -142,11 +143,11 @@ def merge(old: dict, new: dict, info: dict) -> dict:
             new["legacy"]["lineMap"] = word_map(new["legacy"]["origLines"], new["lyrics"]["lines"])
         else:
             new["legacy"]["lineMap"] = [x if (x if isinstance(x, str) else (x or {}).get("id")) in ids_new else None for x in new["legacy"]["lineMap"]]
-    texts = {l["id"]: l["text"] for l in new["lyrics"]["lines"]}
+    texts = {ln["id"]: ln["text"] for ln in new["lyrics"]["lines"]}
     new["lastUpdate"] = {
         "added": [{"id": x, "text": texts[x]} for x in added],
         "changed": [{"id": order[j], "text": texts[order[j]]} for j, s in enumerate(info["status"]) if s == "changed"],
-        "removed": [{"id": x, "text": t} for x, t in ((l["id"], l["text"]) for l in old.get("lyrics", {}).get("lines", [])) if x in info["removed"]],
+        "removed": [{"id": x, "text": t} for x, t in ((ln["id"], ln["text"]) for ln in old.get("lyrics", {}).get("lines", [])) if x in info["removed"]],
         "medianShift": round(shift, 3),
         "legacyNote": bool(new.get("world") == "legacy" and added),
     }

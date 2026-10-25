@@ -5,6 +5,7 @@ like "make it darker" know what was discussed. The agent works inside the projec
 only read/edit files there (project.json, walls/*.js). After every reply the project file is
 validated; if the agent broke it, the previous version is restored and the error is reported.
 """
+
 from __future__ import annotations
 
 import json
@@ -37,7 +38,7 @@ Rules:
   module in walls/<name>.js exporting a function (see AGENT.md "Custom walls") and reference it with
   {"type":"custom","module":"walls/<name>.js","fn":"<export>","params":{}}.
 - The user's message may start with a context block (selected scene/line, playhead time). Use it.
-- NEVER change anything outside this project folder: not the studio code (../../frontend, ../../backend,
+- NEVER change anything outside this project folder: not the studio code (../../frontend, ../../src,
   ../../legacy, ../../tools, ../../renderer), not other projects, not the original video folders. Those
   are central themes shared by everything. Every project has its OWN copy of its engine (legacy/src) –
   change that copy. If a wish can only be done centrally, say so instead of doing it.
@@ -100,7 +101,19 @@ def _work(pid: str, text: str, context: str):
     sess_f = d / "chat" / "session.json"
     sess = json.loads(sess_f.read_text()) if sess_f.exists() else {}
     prompt = (f"<context>\n{context}\n</context>\n\n" if context else "") + text
-    args = [CLAUDE_BIN, "-p", prompt, "--output-format", "json", "--permission-mode", "acceptEdits", "--allowedTools", "Read,Edit,Write,Glob,Grep,Bash(node ../../tools/legacy-build.mjs:*),Bash(node ../../renderer/frames.mjs:*)", "--append-system-prompt", AGENT_GUIDE]
+    args = [
+        CLAUDE_BIN,
+        "-p",
+        prompt,
+        "--output-format",
+        "json",
+        "--permission-mode",
+        "acceptEdits",
+        "--allowedTools",
+        "Read,Edit,Write,Glob,Grep,Bash(node ../../tools/legacy-build.mjs:*),Bash(node ../../renderer/frames.mjs:*)",
+        "--append-system-prompt",
+        AGENT_GUIDE,
+    ]
     if CLAUDE_MODEL:
         args += ["--model", CLAUDE_MODEL]
     if sess.get("id"):
@@ -124,8 +137,10 @@ def _work(pid: str, text: str, context: str):
     except Exception as e:  # noqa: BLE001
         reply, ok = f"Claude Code could not be started: {e}", False
     if "Not logged in" in reply or "/login" in reply:
-        reply = ("Claude Code ist auf diesem PC nicht angemeldet. Bitte einmal ein Terminal öffnen, `claude` starten "
-                 "und dort `/login` ausführen (dein Claude-Abo). Danach funktioniert der Assistent hier.")
+        reply = (
+            "Claude Code ist auf diesem PC nicht angemeldet. Bitte einmal ein Terminal öffnen, `claude` starten "
+            "und dort `/login` ausführen (dein Claude-Abo). Danach funktioniert der Assistent hier."
+        )
         ok = False
     sess_f.parent.mkdir(exist_ok=True)
     sess_f.write_text(json.dumps(sess))
@@ -154,7 +169,11 @@ def _work(pid: str, text: str, context: str):
         reply += f"\n\n(Neubau des Original-Codes fehlgeschlagen – bitte nochmal beschreiben, was sich ändern soll:\n{str(e)[-600:]})"
         ok = False
     # frames the assistant rendered to check its work – shown with its reply, so the user sees the truth
-    shots = sorted(str(f.relative_to(d)).replace("\\", "/") for f in (d / "frames").glob("*.png") if f.stat().st_mtime >= started - 1) if (d / "frames").exists() else []
+    shots = (
+        sorted(str(f.relative_to(d)).replace("\\", "/") for f in (d / "frames").glob("*.png") if f.stat().st_mtime >= started - 1)
+        if (d / "frames").exists()
+        else []
+    )
     _append(pid, {"role": "assistant", "text": reply.strip(), "ok": ok, "changed": after != before or code_changed, "images": shots[:8], "t": time.time()})
     with _lock:
         _running[pid] = {"status": "idle", "last": time.time()}

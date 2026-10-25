@@ -9,18 +9,21 @@ repeat the line – check the transcription for repeats before aligning.
 Output per line: {"t": start, "e": end, "words": [start per display word], "ends": [end per display word]}
 Printed "matched/total" per line shows how well it matched (0/n = estimated from neighbours).
 """
+
 import sys as _sys
-if hasattr(_sys.stdout, 'reconfigure'):
-    _sys.stdout.reconfigure(encoding='utf-8', errors='replace')  # Windows consoles
+
+if hasattr(_sys.stdout, "reconfigure"):
+    _sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # Windows consoles
 
 import difflib
 import json
 import re
 import sys
+from pathlib import Path
 
 
 def lyric_lines(path):
-    return [l.strip() for l in open(path, encoding="utf-8") if l.strip() and not re.match(r"^\s*[\[(]", l)]
+    return [ln.strip() for ln in Path(path).read_text(encoding="utf-8").splitlines() if ln.strip() and not re.match(r"^\s*[\[(]", ln)]
 
 
 def norm(x):
@@ -29,13 +32,13 @@ def norm(x):
 
 if __name__ == "__main__":
     words_json, lyrics_txt, out = sys.argv[1:4]
-    segs = json.load(open(words_json, encoding="utf-8"))
+    segs = json.loads(Path(words_json).read_text(encoding="utf-8"))
     ww = [w for s in segs for w in s["words"]]
     wt = [norm(w["w"]) for w in ww]
     lines = lyric_lines(lyrics_txt)
     lt, owner = [], []
-    for i, l in enumerate(lines):
-        for tok in l.replace("-", " ").replace("–", " ").replace("—", " ").split():
+    for i, ln in enumerate(lines):
+        for tok in ln.replace("-", " ").replace("–", " ").replace("—", " ").split():
             if norm(tok):
                 lt.append(norm(tok))
                 owner.append(i)
@@ -81,4 +84,4 @@ if __name__ == "__main__":
         matched = sum(1 for k in idx if any(a <= k < a + n for a, b, n in blocks))
         res.append({"t": starts[0], "e": round(max(ends[k] for k in idx), 2), "words": starts, "ends": wends, "matched": matched, "total": len(idx)})
         print(f"{starts[0]:7.2f} {res[-1]['e']:7.2f} {matched}/{len(idx)}  {text}")
-    json.dump(res, open(out, "w"), indent=0)
+    Path(out).write_text(json.dumps(res, indent=0))

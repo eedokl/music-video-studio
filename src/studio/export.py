@@ -8,8 +8,10 @@ Versions (any combination):
   mail        960×540, two-pass to ≈ 12 MB for the whole song (mail attachments grow ~33 %)
   preview     1280×720, CRF 26 – quick check (used by "Szene als MP4")
 """
+
 from __future__ import annotations
 
+import os
 import subprocess
 import threading
 import time
@@ -75,20 +77,46 @@ def cancel(pid: str) -> bool:
         proc = j.get("proc")
     if proc is not None:
         # stop the whole process tree (node renderer + headless Chrome + ffmpeg)
-        import os
-
         if os.name == "nt":
             subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"], capture_output=True)
         else:
-            proc.terminate()
+            import signal
+
+            os.killpg(proc.pid, signal.SIGTERM)  # own process group, see start_new_session below
     return True
 
 
 def _two_pass(src: Path, dst: Path, w: int, h: int, kb: int, ab: int, logbase: str):
     common = ["-vf", f"scale={w}:{h}", "-c:v", "libx264", "-preset", "slow", "-b:v", f"{kb}k"]
-    subprocess.run([ffmpeg(), "-v", "error", "-y", "-i", str(src), *common, "-pass", "1", "-passlogfile", logbase, "-an", "-f", "mp4", "NUL"], check=True)
+    subprocess.run([ffmpeg(), "-v", "error", "-y", "-i", str(src), *common, "-pass", "1", "-passlogfile", logbase, "-an", "-f", "mp4", os.devnull], check=True)
     tmp = _tmp(dst)
-    subprocess.run([ffmpeg(), "-v", "error", "-y", "-i", str(src), *common, "-pass", "2", "-passlogfile", logbase, "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", f"{ab}k", "-movflags", "+faststart", "-f", "mp4", str(tmp)], check=True)
+    subprocess.run(
+        [
+            ffmpeg(),
+            "-v",
+            "error",
+            "-y",
+            "-i",
+            str(src),
+            *common,
+            "-pass",
+            "2",
+            "-passlogfile",
+            logbase,
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-b:a",
+            f"{ab}k",
+            "-movflags",
+            "+faststart",
+            "-f",
+            "mp4",
+            str(tmp),
+        ],
+        check=True,
+    )
     tmp.replace(dst)
     for f in Path(logbase).parent.glob(Path(logbase).name + "*"):
         f.unlink(missing_ok=True)
@@ -109,10 +137,34 @@ def _work(pid: str, variants: list[str], t_from: float | None, t_to: float | Non
     master = _tmp(final_master) if final_master else out_dir / f".{pid}-master.mp4"
     files: list[str] = []
     try:
-        args = ["node", str(RENDERER / "render.mjs"), "--url", f"{RENDER_BASE}/?render=1&project={pid}", "--audio", str(d / p["audio"]["mix"]), "--out", str(master), "--width", str(w), "--height", str(h), "--crf", str(crf)]
+        args = [
+            "node",
+            str(RENDERER / "render.mjs"),
+            "--url",
+            f"{RENDER_BASE}/?render=1&project={pid}",
+            "--audio",
+            str(d / p["audio"]["mix"]),
+            "--out",
+            str(master),
+            "--width",
+            str(w),
+            "--height",
+            str(h),
+            "--crf",
+            str(crf),
+        ]
         if t_from is not None:
             args += ["--from", f"{max(0.0, t_from):.3f}", "--to", f"{t_to if t_to is not None else t_from + 10:.3f}"]
-        proc = subprocess.Popen(args, cwd=RENDERER, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace")
+        proc = subprocess.Popen(
+            args,
+            cwd=RENDERER,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            start_new_session=os.name != "nt",
+        )
         with _lock:
             _jobs[pid]["proc"] = proc
         assert proc.stdout
@@ -150,7 +202,32 @@ def _work(pid: str, variants: list[str], t_from: float | None, t_to: float | Non
                     raise RuntimeError("abgebrochen")
             if v == "compressed":
                 tmp = _tmp(dst)
-                subprocess.run([ffmpeg(), "-v", "error", "-y", "-i", str(master), "-c:v", "libx264", "-preset", "slow", "-crf", "28", "-pix_fmt", "yuv420p", "-c:a", "copy", "-movflags", "+faststart", "-f", "mp4", str(tmp)], check=True)
+                subprocess.run(
+                    [
+                        ffmpeg(),
+                        "-v",
+                        "error",
+                        "-y",
+                        "-i",
+                        str(master),
+                        "-c:v",
+                        "libx264",
+                        "-preset",
+                        "slow",
+                        "-crf",
+                        "28",
+                        "-pix_fmt",
+                        "yuv420p",
+                        "-c:a",
+                        "copy",
+                        "-movflags",
+                        "+faststart",
+                        "-f",
+                        "mp4",
+                        str(tmp),
+                    ],
+                    check=True,
+                )
                 tmp.replace(dst)
             elif v == "small":
                 _two_pass(master, dst, 1280, 720, int(29 * 8 * 1024 / dur) - 96, 96, str(out_dir / ".pass_small"))

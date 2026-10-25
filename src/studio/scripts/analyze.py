@@ -4,14 +4,16 @@ uv run --with numpy --with imageio-ffmpeg python scripts/analyze.py SONG [--timi
   → prints BPM + first beat offset, writes hits.json next to SONG (or --hits PATH),
     and (with --timing/--lyrics) lists words held longer than 1 s = candidates for the held-note effect.
 """
+
 import argparse
 import json
 import os
 import sys
+from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(__file__))
-import numpy as np  # noqa: E402
-from audio_io import mono  # noqa: E402
+import numpy as np
+from audio_io import mono
 
 
 def spectrum(x, sr, hop=512, n=2048):
@@ -25,7 +27,7 @@ def tempo(x, sr):
     mag = np.log1p(mag * 10)
     flux = np.maximum(0, np.diff(mag, axis=0)).sum(axis=1)
     flux = np.maximum(flux - np.convolve(flux, np.ones(16) / 16, mode="same"), 0)
-    ac = np.correlate(flux, flux, mode="full")[len(flux) - 1:]
+    ac = np.correlate(flux, flux, mode="full")[len(flux) - 1 :]
     best, best_bpm = -1, 0
     for bpm in np.arange(70, 181, 0.1):
         lag = fps * 60 / bpm
@@ -47,7 +49,7 @@ def hits(x, sr):
     e = np.log1p(low * 0.5 + mag.sum(axis=1) * 0.1)
     out, last = [], -10.0
     for i in range(int(fps * 0.4), len(e) - 3):
-        jump = e[i:i + 3].mean() - e[i - int(fps * 0.25):i].mean()
+        jump = e[i : i + 3].mean() - e[i - int(fps * 0.25) : i].mean()
         t = i / fps
         if jump > 0.9 and t - last > 0.35:
             out.append((round(t, 3), round(float(jump), 2)))
@@ -69,16 +71,16 @@ if __name__ == "__main__":
     print(json.dumps({"bpm": bpm, "offset": off, "duration": round(len(x) / sr, 2)}))
     h, big = hits(x, sr)
     path = a.hits or os.path.join(os.path.dirname(os.path.abspath(a.audio)), "hits.json")
-    json.dump({"hits": h, "big": big}, open(path, "w"))
+    Path(path).write_text(json.dumps({"hits": h, "big": big}))
     print(f"{len(h)} hits, {len(big)} big → {path}; big: {big[:16]}")
     if a.timing and a.lyrics:
         from align import lyric_lines
 
-        T = json.load(open(a.timing))
+        T = json.loads(Path(a.timing).read_text(encoding="utf-8"))
         L = lyric_lines(a.lyrics)
         print("\nheld-note candidates (word sung > 1 s):")
-        for i, (t, l) in enumerate(zip(T, L)):
-            ws = l.split(" ")
-            for j, (s, e) in enumerate(zip(t["words"], t["ends"])):
+        for i, (t, ln) in enumerate(zip(T, L, strict=False)):
+            ws = ln.split(" ")
+            for j, (s, e) in enumerate(zip(t["words"], t["ends"], strict=False)):
                 if e - s > 1.0:
                     print(f"  line {i:2d} word {j}: {ws[j]!r:22} {s:7.2f}–{e:7.2f} ({e - s:.2f} s){'  last word' if j == len(ws) - 1 else ''}")

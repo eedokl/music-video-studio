@@ -1,0 +1,17 @@
+# One service = one container (in Kubernetes: one pod with one container).
+# Don't run this and start-studio.cmd at the same time on the same projects folder.
+services:
+  studio:
+    build: .
+    image: music-video-studio
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./projects:/app/projects                 # your projects (shared with the Windows studio)
+      - ${VIDEOS_DIR:-..}:/videos:ro             # old video folders for "Import existing" → /videos/<folder>
+      - studio-data:/data                        # Claude Code login + uv cache (Whisper/Demucs models)
+    shm_size: 1gb                                # headless Chrome needs more than Docker's 64 MB default
+    restart: unless-stopped
+
+volumes:
+  studio-data:

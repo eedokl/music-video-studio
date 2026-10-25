@@ -3,6 +3,7 @@
 Saves are atomic (write temp file, then replace) and every save keeps the previous version in
 .history/ so nothing is lost when the editor or the chat agent changes something.
 """
+
 from __future__ import annotations
 
 import json
@@ -47,9 +48,17 @@ def list_projects() -> list[dict]:
             continue
         try:
             p = json.loads(f.read_text(encoding="utf-8"))
-        except Exception:
+        except (OSError, ValueError):
             continue
-        out.append({"id": d.name, "title": p.get("title", d.name), "duration": p.get("audio", {}).get("duration"), "updated": f.stat().st_mtime, "status": p.get("status", "ready")})
+        out.append(
+            {
+                "id": d.name,
+                "title": p.get("title", d.name),
+                "duration": p.get("audio", {}).get("duration"),
+                "updated": f.stat().st_mtime,
+                "status": p.get("status", "ready"),
+            }
+        )
     out.sort(key=lambda x: -x["updated"])
     return out
 

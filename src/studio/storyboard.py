@@ -5,6 +5,7 @@ by section, key words of the lines on the LED wall, CO2 at chorus starts, sparks
 confetti in the final chorus and a fireworks finale in the outro. The user refines it in the
 editor or via the chat.
 """
+
 from __future__ import annotations
 
 import re
@@ -35,9 +36,57 @@ SHOTS = {
     "intro": ["crowd", "wide"],
     "outro": ["wide", "drums", "crane"],
 }
-CAM = {"wide": "CAM 1 · WIDE", "wall": "CAM 2 · LED", "singer": "CAM 3 · CLOSE", "orbit": "CAM 4 · STEADY", "pit": "CAM 5 · PIT", "crane": "CAM 6 · CRANE", "crowd": "CAM 7 · CROWD", "drums": "CAM 8 · DRUMS", "guitar": "CAM 9 · GUITAR", "wing": "CAM 10 · WING", "top": "CAM 11 · SKY", "bass": "CAM 12 · BASS", "keys": "CAM 13 · KEYS"}
+CAM = {
+    "wide": "CAM 1 · WIDE",
+    "wall": "CAM 2 · LED",
+    "singer": "CAM 3 · CLOSE",
+    "orbit": "CAM 4 · STEADY",
+    "pit": "CAM 5 · PIT",
+    "crane": "CAM 6 · CRANE",
+    "crowd": "CAM 7 · CROWD",
+    "drums": "CAM 8 · DRUMS",
+    "guitar": "CAM 9 · GUITAR",
+    "wing": "CAM 10 · WING",
+    "top": "CAM 11 · SKY",
+    "bass": "CAM 12 · BASS",
+    "keys": "CAM 13 · KEYS",
+}
 
-STOP = set("the and und die der das ein eine to of in on we wir you ich is ist are with mit for für doch noch that this baby now out into".split())
+STOP = set(
+    [
+        "the",
+        "and",
+        "und",
+        "die",
+        "der",
+        "das",
+        "ein",
+        "eine",
+        "to",
+        "of",
+        "in",
+        "on",
+        "we",
+        "wir",
+        "you",
+        "ich",
+        "is",
+        "ist",
+        "are",
+        "with",
+        "mit",
+        "for",
+        "für",
+        "doch",
+        "noch",
+        "that",
+        "this",
+        "baby",
+        "now",
+        "out",
+        "into",
+    ]
+)
 
 
 def _is_chant(text: str) -> bool:
@@ -47,8 +96,8 @@ def _is_chant(text: str) -> bool:
 def _key_words(lines: list[dict], n: int = 3) -> list[tuple[str, int, int]]:
     """longest meaningful words of the lines → (text, line index in list, word index)"""
     cand = []
-    for li, l in enumerate(lines):
-        for wi, w in enumerate(l["words"]):
+    for li, lin in enumerate(lines):
+        for wi, w in enumerate(lin["words"]):
             t = re.sub(r"[^\wÄÖÜäöüß'-]", "", w["w"])
             if len(t) >= 4 and t.lower() not in STOP:
                 cand.append((len(t), t.upper(), li, wi))
@@ -58,7 +107,7 @@ def _key_words(lines: list[dict], n: int = 3) -> list[tuple[str, int, int]]:
 
 
 def build(project: dict) -> tuple[list[dict], list[dict], dict]:
-    lines = [l for l in project["lyrics"]["lines"] if not l.get("unsung")]
+    lines = [lin for lin in project["lyrics"]["lines"] if not lin.get("unsung")]
     dur = project["audio"]["duration"]
     held_by_line = {h["line"]: h["name"] for h in project.get("held", [])}
     scenes: list[dict] = []
@@ -77,19 +126,37 @@ def build(project: dict) -> tuple[list[dict], list[dict], dict]:
     first_t = lines[0]["words"][0]["t"] if lines else dur
     # ---- intro
     if first_t > 3:
-        add(name="Intro", start={"kind": "time", "t": 0}, lines=[], shot="crowd", seed=2, look="intro", wall={"type": "title", "params": {"title": title.upper(), "subtitle": "LIVE", "stars": True, "reveal": 0.6}}, lyr="none")
+        add(
+            name="Intro",
+            start={"kind": "time", "t": 0},
+            lines=[],
+            shot="crowd",
+            seed=2,
+            look="intro",
+            wall={"type": "title", "params": {"title": title.upper(), "subtitle": "LIVE", "stars": True, "reveal": 0.6}},
+            lyr="none",
+        )
         if first_t > 8:
-            add(name="Lights up", start={"kind": "time", "t": round(first_t * 0.45, 2)}, lines=[], shot="wide", seed=1, look="introUp", wall={"type": "title", "params": {"title": title.upper(), "subtitle": "LIVE", "stars": True}}, lyr="none")
+            add(
+                name="Lights up",
+                start={"kind": "time", "t": round(first_t * 0.45, 2)},
+                lines=[],
+                shot="wide",
+                seed=1,
+                look="introUp",
+                wall={"type": "title", "params": {"title": title.upper(), "subtitle": "LIVE", "stars": True}},
+                lyr="none",
+            )
 
     # ---- lyric scenes: group by section, pairs, chants alone
     groups: list[list[dict]] = []
     cur: list[dict] = []
-    for l in lines:
-        chant = _is_chant(l["text"])
-        if cur and (chant or _is_chant(cur[0]["text"]) or l["section"] != cur[0]["section"] or len(cur) >= 2):
+    for lin in lines:
+        chant = _is_chant(lin["text"])
+        if cur and (chant or _is_chant(cur[0]["text"]) or lin["section"] != cur[0]["section"] or len(cur) >= 2):
             groups.append(cur)
             cur = []
-        cur.append(l)
+        cur.append(lin)
     if cur:
         groups.append(cur)
 
@@ -101,7 +168,16 @@ def build(project: dict) -> tuple[list[dict], list[dict], dict]:
         start_t = g[0]["words"][0]["t"]
         # instrumental gap before this group → its own scene
         if start_t - prev_end > 6 and scenes:
-            add(name="Instrumental", start={"kind": "time", "t": round(prev_end + 0.6, 2)}, lines=[], shot="guitar", seed=sid, look="instrumental", wall={"type": "eq", "params": {"title": title.upper()}}, lyr="none")
+            add(
+                name="Instrumental",
+                start={"kind": "time", "t": round(prev_end + 0.6, 2)},
+                lines=[],
+                shot="guitar",
+                seed=sid,
+                look="instrumental",
+                wall={"type": "eq", "params": {"title": title.upper()}},
+                lyr="none",
+            )
         k = counters.get(sec, 0)
         counters[sec] = k + 1
         chant = _is_chant(g[0]["text"])
@@ -114,36 +190,81 @@ def build(project: dict) -> tuple[list[dict], list[dict], dict]:
             wall = {"type": "stars", "params": {"text": g[0]["text"].upper().rstrip(",.")[:28]}}
         else:
             kws = _key_words(g)
-            wall = {"type": "words", "params": {"items": [{"text": t, "at": {"kind": "word", "line": g[li]["id"], "word": wi, "edge": "start"}} for t, li, wi in kws]}}
-        sc = add(name=g[0]["text"][:40], start={"kind": "auto"}, lines=[l["id"] for l in g], shot=shot, seed=sid, look=look, wall=wall, lyr="big" if chant else "low")
-        held = {l["id"]: held_by_line[l["id"]] for l in g if l["id"] in held_by_line}
+            wall = {
+                "type": "words",
+                "params": {"items": [{"text": t, "at": {"kind": "word", "line": g[li]["id"], "word": wi, "edge": "start"}} for t, li, wi in kws]},
+            }
+        sc = add(
+            name=g[0]["text"][:40],
+            start={"kind": "auto"},
+            lines=[lin["id"] for lin in g],
+            shot=shot,
+            seed=sid,
+            look=look,
+            wall=wall,
+            lyr="big" if chant else "low",
+        )
+        held = {lin["id"]: held_by_line[lin["id"]] for lin in g if lin["id"] in held_by_line}
         if held:
             sc["held"] = held
             for lid in held:
-                ln = next(l for l in g if l["id"] == lid)
+                ln = next(lin for lin in g if lin["id"] == lid)
                 w = len(ln["words"]) - 1
-                events.append({"type": "sparks", "at": {"kind": "word", "line": lid, "word": w, "edge": "start"}, "until": {"kind": "word", "line": lid, "word": w, "edge": "end", "offset": 0.5}})
+                events.append(
+                    {
+                        "type": "sparks",
+                        "at": {"kind": "word", "line": lid, "word": w, "edge": "start"},
+                        "until": {"kind": "word", "line": lid, "word": w, "edge": "end", "offset": 0.5},
+                    }
+                )
         if sec in ("chorus", "final") and k == 0:
             chorus_starts.append(g[0])
         prev_end = g[-1]["words"][-1]["e"]
 
-    for l in chorus_starts:
-        events.append({"type": "co2", "at": {"kind": "word", "line": l["id"], "word": 0, "edge": "start"}})
-    finals = [l for l in lines if l["section"] == "final"] or [l for l in lines if l["section"] == "chorus"][-4:]
+    for lin in chorus_starts:
+        events.append({"type": "co2", "at": {"kind": "word", "line": lin["id"], "word": 0, "edge": "start"}})
+    finals = [lin for lin in lines if lin["section"] == "final"] or [lin for lin in lines if lin["section"] == "chorus"][-4:]
     if finals:
-        l = finals[min(3, len(finals) - 1)]
-        events.append({"type": "confetti", "at": {"kind": "word", "line": l["id"], "word": len(l["words"]) - 1, "edge": "start"}})
+        lin = finals[min(3, len(finals) - 1)]
+        events.append({"type": "confetti", "at": {"kind": "word", "line": lin["id"], "word": len(lin["words"]) - 1, "edge": "start"}})
 
     # ---- outro
     last_e = lines[-1]["words"][-1]["e"] if lines else 0
     out_len = dur - last_e
     if out_len > 4:
         t0 = last_e + 0.6
-        add(name="Finale", start={"kind": "time", "t": round(t0, 2)}, lines=[], shot="wide", seed=34, look="outro", wall={"type": "title", "params": {"title": title.upper(), "subtitle": "LIVE", "stars": True}}, lyr="none")
+        add(
+            name="Finale",
+            start={"kind": "time", "t": round(t0, 2)},
+            lines=[],
+            shot="wide",
+            seed=34,
+            look="outro",
+            wall={"type": "title", "params": {"title": title.upper(), "subtitle": "LIVE", "stars": True}},
+            lyr="none",
+        )
         n = max(2, int(out_len / 1.6))
         for i in range(min(10, n)):
             events.append({"type": "fireworks", "at": {"kind": "time", "t": round(t0 + 0.4 + i * min(1.6, out_len / (n + 1)), 2)}})
         if out_len > 12:
-            add(name="Star ring", start={"kind": "time", "t": round(dur - min(10, out_len * 0.4), 2)}, lines=[], shot="top", seed=37, look="ring", wall={"type": "title", "params": {"title": "DANKE", "subtitle": title.upper(), "stars": True}}, lyr="none")
-        add(name="Blackout", start={"kind": "time", "t": round(dur - 1.8, 2)}, lines=[], shot="wide", seed=39, look="blackout", wall={"type": "title", "params": {"title": "DANKE", "subtitle": title.upper()}}, lyr="none")
+            add(
+                name="Star ring",
+                start={"kind": "time", "t": round(dur - min(10, out_len * 0.4), 2)},
+                lines=[],
+                shot="top",
+                seed=37,
+                look="ring",
+                wall={"type": "title", "params": {"title": "DANKE", "subtitle": title.upper(), "stars": True}},
+                lyr="none",
+            )
+        add(
+            name="Blackout",
+            start={"kind": "time", "t": round(dur - 1.8, 2)},
+            lines=[],
+            shot="wide",
+            seed=39,
+            look="blackout",
+            wall={"type": "title", "params": {"title": "DANKE", "subtitle": title.upper()}},
+            lyr="none",
+        )
     return scenes, events, LOOKS

@@ -1,14 +1,17 @@
 """Paths and settings of the studio (override with environment variables)."""
+
 import os
 from pathlib import Path
 
+# repo root (src/studio/config.py → ../..): frontend/, renderer/, legacy/, tools/, docs/, projects/
 ROOT = Path(os.environ.get("STUDIO_ROOT", Path(__file__).resolve().parents[2]))
 PROJECTS = Path(os.environ.get("STUDIO_PROJECTS", ROOT / "projects"))
-PIPELINE = ROOT / "backend" / "pipeline"
+PIPELINE = Path(__file__).resolve().parent / "scripts"  # analysis scripts, run with uv as subprocesses
 FRONTEND_DIST = ROOT / "frontend" / "dist"
 RENDERER = ROOT / "renderer"
 DOCS = ROOT / "docs"
 PORT = int(os.environ.get("STUDIO_PORT", "8000"))
+HOST = os.environ.get("STUDIO_HOST", "127.0.0.1")  # 0.0.0.0 in Docker
 # the page the MP4 renderer opens (the backend serves the built frontend)
 RENDER_BASE = os.environ.get("STUDIO_RENDER_BASE", f"http://127.0.0.1:{PORT}")
 CLAUDE_BIN = os.environ.get("STUDIO_CLAUDE", "claude")

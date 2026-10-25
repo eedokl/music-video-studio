@@ -1,12 +1,10 @@
 // Render frames of a studio project's preview page at given times: node frames.mjs <projectId> <outPrefix> t1 t2 ...
 import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import puppeteer from 'puppeteer-core';
+import { launch } from './chrome.mjs';
 const [pid, prefix, ...ts] = process.argv.slice(2);
 mkdirSync(dirname(resolve(prefix)), { recursive: true });
-const base = resolve(process.env.TEMP ?? '/tmp', 'mvchrome/chrome-headless-shell');
-const exe = readdirSync(base).map((v) => resolve(base, v, 'chrome-headless-shell-win64/chrome-headless-shell.exe')).find(existsSync);
-const b = await puppeteer.launch({ executablePath: exe, headless: 'shell', args: ['--use-angle=d3d11', '--enable-gpu'] });
+const b = await launch();
 const pg = await b.newPage();
 await pg.setViewport({ width: 960, height: 540 });
 pg.on('pageerror', (e) => console.error('page error', e.message));

@@ -13,6 +13,7 @@ The studio project must exist and be analysed (song + lyrics as performed). The 
   4. builds the bundle, reads the original SCENES from the running page (headless) and creates one
      studio scene per original scene (start: auto, word anchor or time) → editable timeline.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -26,7 +27,7 @@ from pathlib import Path
 
 from . import store
 from .config import RENDERER, ROOT
-from .pipeline import UV_LIGHT, PIPELINE
+from .pipeline import PIPELINE, UV_LIGHT
 
 ADAPTER = ROOT / "legacy" / "adapter"
 
@@ -141,12 +142,8 @@ def src_changed_since_build(pid: str) -> bool:
 def _read_scenes(pid: str) -> list[dict]:
     """Open the built legacy page headless and ask the original code for its scene list."""
     script = r"""
-import puppeteer from 'puppeteer-core';
-import { existsSync, readdirSync } from 'node:fs';
-import { resolve } from 'node:path';
-const base = resolve(process.env.TEMP ?? '/tmp', 'mvchrome/chrome-headless-shell');
-const exe = existsSync(base) ? readdirSync(base).map((v) => resolve(base, v, 'chrome-headless-shell-win64/chrome-headless-shell.exe')).find(existsSync) : undefined;
-const b = await puppeteer.launch({ executablePath: exe, headless: 'shell', args: ['--use-angle=d3d11', '--enable-gpu'] });
+import { launch } from './chrome.mjs';
+const b = await launch();
 const pg = await b.newPage();
 await pg.setViewport({ width: 1280, height: 720 });
 const errs = [];
@@ -251,7 +248,9 @@ def import_legacy(pid: str, old: Path):
     if specs:
         out = d / "analysis" / "held_legacy.json"
         out.parent.mkdir(exist_ok=True)
-        subprocess.run(["uv", "run", "--no-project", *UV_LIGHT, "python", str(PIPELINE / "held.py"), str(d / "audio" / "vocals.wav"), str(out), *specs], check=True)
+        subprocess.run(
+            ["uv", "run", "--no-project", *UV_LIGHT, "python", str(PIPELINE / "held.py"), str(d / "audio" / "vocals.wav"), str(out), *specs], check=True
+        )
         hm = json.loads(out.read_text())
         held = [{"name": n, "line": held_lines[n][0], "word": held_lines[n][1], **hm[n]} for n in hm]
 
@@ -284,12 +283,17 @@ def import_legacy(pid: str, old: Path):
             start = {"kind": "time", "t": round(t, 3)} if t < first_sung or not lines else {"kind": "auto"}
         elif not lines:
             start = {"kind": "time", "t": 0}
-        scenes.append({"id": f"s{k + 1}", "name": sc["id"], "legacy": sc["id"], "start": start, "lines": lines, "theme": sc.get("theme"), "three": sc.get("three")})
+        scenes.append(
+            {"id": f"s{k + 1}", "name": sc["id"], "legacy": sc["id"], "start": start, "lines": lines, "theme": sc.get("theme"), "three": sc.get("three")}
+        )
     p = store.load(pid)
     p["scenes"] = scenes
     p["legacy"]["scenes"] = [{"id": sc["name"], "three": sc.get("three"), "theme": sc.get("theme")} for sc in scenes]
     store.save(pid, p)
-    print(f"imported {old.name} into {pid}: {len(scenes)} original scenes, {sum(1 for x in line_map if x)}/{len(line_map)} lines mapped, held: {[h['name'] for h in held]}")
+    print(
+        f"imported {old.name} into {pid}: {len(scenes)} original scenes, {sum(1 for x in line_map if x)}/{len(line_map)} lines mapped, held: "
+        f"{[h['name'] for h in held]}"
+    )
 
 
 def main():

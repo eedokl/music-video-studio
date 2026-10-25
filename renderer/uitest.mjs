@@ -1,10 +1,8 @@
 // UI interaction test: drag a word in the timeline, check autosave, undo with Ctrl+Z.
 import { existsSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
-import puppeteer from 'puppeteer-core';
-const base = resolve(process.env.TEMP ?? '/tmp', 'mvchrome/chrome-headless-shell');
-const exe = readdirSync(base).map((v) => resolve(base, v, 'chrome-headless-shell-win64/chrome-headless-shell.exe')).find(existsSync);
-const browser = await puppeteer.launch({ executablePath: exe, headless: 'shell', args: ['--use-angle=d3d11', '--enable-gpu'] });
+import { launch } from './chrome.mjs';
+const browser = await launch();
 const page = await browser.newPage();
 await page.setViewport({ width: 1600, height: 900 });
 page.on('pageerror', (e) => console.error('page error:', e.message));

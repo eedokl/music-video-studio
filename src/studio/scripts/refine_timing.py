@@ -8,14 +8,17 @@ rise of vocal energy in [start − before, start + after] and move the word star
 is clearly above the local noise. Word ends follow the next word / keep their duration. Prints the
 median correction and how many words were moved, plus per-line start changes > 0.15 s.
 """
+
 import argparse
+import itertools
 import json
 import os
 import sys
+from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(__file__))
-import numpy as np  # noqa: E402
-from audio_io import mono  # noqa: E402
+import numpy as np
+from audio_io import mono
 
 ap = argparse.ArgumentParser()
 ap.add_argument("vocals")
@@ -29,19 +32,19 @@ x, sr = mono(a.vocals)
 hop = int(sr * 0.005)  # 5 ms resolution
 n = int(sr * 0.03)
 frames = np.lib.stride_tricks.sliding_window_view(x, n)[::hop]
-rms = np.sqrt((frames ** 2).mean(axis=1)) + 1e-6
+rms = np.sqrt((frames**2).mean(axis=1)) + 1e-6
 db = 20 * np.log10(rms)
 # onset strength: rise of loudness over ~40 ms, only counting rises from quiet-ish levels
 rise = np.maximum(0, db[8:] - db[:-8])
 rise = np.concatenate([np.zeros(8), rise])
 fps = sr / hop
 
-T = json.load(open(a.timing))
+T = json.loads(Path(a.timing).read_text(encoding="utf-8"))
 moved, corr = 0, []
 for li, line in enumerate(T):
     old_t = line["words"][0]
     new_starts = []
-    for wi, s in enumerate(line["words"]):
+    for s in line["words"]:
         lo, hi = int((s - a.before) * fps), int((s + a.after) * fps)
         lo = max(lo, 0)
         seg = rise[lo:hi]
@@ -50,7 +53,7 @@ for li, line in enumerate(T):
             continue
         k = int(np.argmax(seg))
         peak = seg[k]
-        noise = np.median(rise[max(0, lo - int(fps)):hi + int(fps)]) + 1e-6
+        noise = np.median(rise[max(0, lo - int(fps)) : hi + int(fps)]) + 1e-6
         loud_after = db[min(len(db) - 1, lo + k + int(0.05 * fps))]
         if peak > max(6.0, 4 * noise) and loud_after > np.percentile(db, 40):
             t = (lo + k) / fps
@@ -80,14 +83,14 @@ for li, line in enumerate(T):
 # a line's last word never lasts into the next sung line (Whisper often over-extends it, which delays
 # the scene cut that waits for the line to finish)
 order = sorted(range(len(T)), key=lambda i: T[i]["t"])
-for i, j in zip(order, order[1:]):
+for i, j in itertools.pairwise(order):
     line = T[i]
     lim = T[j]["t"] - 0.05
     if line.get("ends") and line["ends"][-1] > lim:
         line["ends"][-1] = round(max(lim, line["words"][-1] + 0.12), 3)
         line["e"] = max(line["ends"])
 
-json.dump(T, open(a.out, "w"), indent=0)
+Path(a.out).write_text(json.dumps(T, indent=0))
 c = np.array(corr) if corr else np.zeros(1)
-total = sum(len(l["words"]) for l in T)
+total = sum(len(ln["words"]) for ln in T)
 print(f"moved {moved}/{total} words; median correction {np.median(c):+.3f} s, quartiles {np.percentile(c, [25, 75]).round(3)}")

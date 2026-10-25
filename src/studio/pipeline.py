@@ -1,6 +1,6 @@
 """Analysis pipeline as a background job: audio → measured timing → project.json.
 
-Steps (each runs one of the proven scripts in backend/pipeline as a subprocess with uv):
+Steps (each runs one of the proven scripts in studio/scripts as a subprocess with uv):
   prepare     convert the song (+ optional stems) to WAV, pick the lead vocal stem
   separate    Demucs vocal separation – skipped when a lead-vocal stem was uploaded
   transcribe  Whisper word timestamps (on the vocal stem if given, else on the mix) + head re-check
@@ -11,9 +11,11 @@ Steps (each runs one of the proven scripts in backend/pipeline as a subprocess w
   voice       lines nobody sings → unsung; backing-vocal lines; held-note candidates measured
   assemble    project.json with grid, lyrics, hits, held notes and a first storyboard
 """
+
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import threading
@@ -32,6 +34,9 @@ STEPS = ["prepare", "separate", "transcribe", "align", "refine", "beats", "hits"
 UV_LIGHT = ["--with", "numpy", "--with", "imageio-ffmpeg", "--with", "scipy"]
 UV_WHISPER = ["--with", "faster-whisper", "--with", "numpy", "--with", "imageio-ffmpeg"]
 UV_DEMUCS = ["--python", "3.11", "--with", "demucs", "--with", "torch==2.5.1", "--with", "torchaudio==2.5.1", "--with", "soundfile", "--with", "imageio-ffmpeg"]
+# Docker/Linux: plain PyPI torch is the 2.5 GB CUDA build – STUDIO_TORCH_INDEX points at the CPU wheels instead
+if os.environ.get("STUDIO_TORCH_INDEX"):
+    UV_DEMUCS += ["--index", os.environ["STUDIO_TORCH_INDEX"]]
 UV_LIBROSA = ["--with", "librosa", "--with", "numpy", "--with", "imageio-ffmpeg"]
 
 _jobs: dict[str, dict] = {}
@@ -126,7 +131,7 @@ def _work(pid: str, from_step: str):
     inp = d / "inputs"
     meta = json.loads((inp / "meta.json").read_text(encoding="utf-8"))
     try:
-        for step in STEPS[STEPS.index(from_step):]:
+        for step in STEPS[STEPS.index(from_step) :]:
             _set(pid, step=step)
             _log(pid, f"== {step}")
             globals()[f"_step_{step}"](pid, d, a, inp, meta)
@@ -139,8 +144,8 @@ def _work(pid: str, from_step: str):
             p = store.load(pid)
             p["status"] = "error"
             store.save(pid, p, keep_history=False)
-        except Exception:
-            pass
+        except (OSError, ValueError, KeyError):
+            pass  # project file itself broken: the job state above still shows the error
 
 
 # ---------------------------------------------------------------- steps
@@ -205,7 +210,7 @@ def _check_stems(pid, d, stems: dict) -> dict:
         cors.append(best[0])
         lags.append(best[1] / 100)
     # only windows that clearly correlate count (quiet intros / breaks give random lags)
-    good = [lg for lg, c in zip(lags, cors) if c >= 0.6] or lags
+    good = [lg for lg, c in zip(lags, cors, strict=False) if c >= 0.6] or lags
     lags_a = np.array(good)
     spread = float(lags_a.max() - lags_a.min()) if len(good) else 0
     med = float(np.median(lags_a)) if len(good) else 0
@@ -232,7 +237,12 @@ def _check_stems(pid, d, stems: dict) -> dict:
             w.setsampwidth(2)
             w.setframerate(sr)
             w.writeframes((m * 32767).astype(np.int16).tobytes())
-        _log(pid, f"WARNING: the stems are a different version than the uploaded song (offset {lags_a.min():+.2f}…{lags_a.max():+.2f} s, lengths {res['lenStems']:.1f} vs {res['lenMix']:.1f} s). Using the sum of the stems as the soundtrack so picture and sound match. Upload the WAV of the same Suno version to use the original mix.")
+        _log(
+            pid,
+            f"WARNING: the stems are a different version than the uploaded song (offset {lags_a.min():+.2f}…{lags_a.max():+.2f} s, lengths "
+            f"{res['lenStems']:.1f} vs {res['lenMix']:.1f} s). Using the sum of the stems as the soundtrack so picture and sound match. Upload the "
+            "WAV of the same Suno version to use the original mix.",
+        )
     return res
 
 
@@ -333,7 +343,7 @@ def _step_refine(pid, d, a, inp, meta):
     # refine_timing drops the matched counts – carry them over
     raw = json.loads((a / "timing_raw.json").read_text())
     ref = json.loads((a / "timing.json").read_text())
-    for r, x in zip(raw, ref):
+    for r, x in zip(raw, ref, strict=False):
         x["matched"], x["total"] = r.get("matched", 0), r.get("total", 1)
     (a / "timing.json").write_text(json.dumps(ref))
 
@@ -419,7 +429,10 @@ def _step_voice(pid, d, a, inp, meta):
             timing[i]["words"] = [round(t0 + q * step, 3) for q in range(m)]
             timing[i]["ends"] = [round(t0 + (q + 0.9) * step, 3) for q in range(m)]
             timing[i]["t"], timing[i]["e"] = timing[i]["words"][0], timing[i]["ends"][-1]
-            _log(pid, f"line {i} was not heard by Whisper – placed on the voice at {t0:.1f}–{t1:.1f} s ({'backing' if arr is bdb else 'lead'}): {rows[i]['text']}")
+            _log(
+                pid,
+                f"line {i} was not heard by Whisper – placed on the voice at {t0:.1f}–{t1:.1f} s ({'backing' if arr is bdb else 'lead'}): {rows[i]['text']}",
+            )
     # backing vocals: lines where the backing stem is clearly louder
     if bdb is not None:
         for i, x in enumerate(timing):
@@ -473,7 +486,7 @@ def _step_assemble(pid, d, a, inp, meta):
     timing = json.loads((a / "timing.json").read_text())
     voice = json.loads((a / "voice.json").read_text())
     lines = []
-    for i, (r, x, v) in enumerate(zip(rows, timing, voice)):
+    for i, (r, x, v) in enumerate(zip(rows, timing, voice, strict=False)):
         ws = r["text"].split(" ")
         words = [{"w": w, "t": round(x["words"][k], 3), "e": round(x["ends"][k], 3)} for k, w in enumerate(ws)]
         lid = (meta.get("idMap") or [])[i] if i < len(meta.get("idMap") or []) else f"l{i}"
@@ -503,7 +516,7 @@ def _step_assemble(pid, d, a, inp, meta):
     if meta.get("keepScenes"):
         try:
             old = store.load(pid)
-        except Exception:
+        except (OSError, ValueError):
             old = None
     if old and old.get("scenes") and meta.get("newAudio") and meta.get("updatePlan"):
         # updated song: carry the storyboard over (line identities, time anchors, new/removed lines)
@@ -511,7 +524,11 @@ def _step_assemble(pid, d, a, inp, meta):
 
         update.merge(old, project, meta["updatePlan"])
         u = project["lastUpdate"]
-        _log(pid, f"update: {len(u['added'])} new, {len(u['changed'])} changed, {len(u['removed'])} removed lines; words shifted by {u['medianShift']:+.2f} s (median)")
+        _log(
+            pid,
+            f"update: {len(u['added'])} new, {len(u['changed'])} changed, {len(u['removed'])} removed lines; words shifted by "
+            f"{u['medianShift']:+.2f} s (median)",
+        )
     elif old and old.get("scenes"):
         # timing re-analysis: keep the storyboard and settings the user built (anchors follow the new timing)
         for k in ("scenes", "events", "looks", "settings", "title", "storyline", "stylePrompt", "world", "legacy"):
@@ -522,7 +539,11 @@ def _step_assemble(pid, d, a, inp, meta):
         scenes, events, looks = storyboard.build(project)
         project.update(scenes=scenes, events=events, looks=looks)
     store.save(pid, project)
-    _log(pid, f"project ready: {len(lines)} lines ({sum(l['unsung'] for l in lines)} unsung), {len(project['scenes'])} scenes, {project['grid']['bpm']} BPM ({project['grid']['mode']})")
+    _log(
+        pid,
+        f"project ready: {len(lines)} lines ({sum(ln['unsung'] for ln in lines)} unsung), {len(project['scenes'])} scenes, {project['grid']['bpm']} "
+        f"BPM ({project['grid']['mode']})",
+    )
 
 
 def _step_engine(pid, d, a, inp, meta):

@@ -8,7 +8,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import ffmpegPath from 'ffmpeg-static';
-import puppeteer from 'puppeteer-core';
+import { launch } from './chrome.mjs';
 
 const args = Object.fromEntries(
   process.argv.slice(2).reduce((acc, a, i, all) => (a.startsWith('--') ? [...acc, [a.slice(2), all[i + 1]]] : acc), []),
@@ -20,30 +20,9 @@ const width = Number(args.width ?? 1920);
 const height = Number(args.height ?? 1080);
 const out = resolve(args.out);
 
-// Chrome for Testing headless shell in a SHORT path (Windows MAX_PATH):
-//   npx @puppeteer/browsers install chrome-headless-shell@stable --path %TEMP%/mvchrome
-const localShell = () => {
-  const base = resolve(process.env.TEMP ?? '/tmp', 'mvchrome/chrome-headless-shell');
-  if (!existsSync(base)) return [];
-  return readdirSync(base).map((v) => resolve(base, v, 'chrome-headless-shell-win64/chrome-headless-shell.exe'));
-};
-const browserPath =
-  args.browser ??
-  [
-    ...localShell(),
-    'C:/Program Files/Google/Chrome/Application/chrome.exe',
-    'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
-    '/usr/bin/google-chrome',
-    '/usr/bin/chromium',
-  ].find(existsSync);
-if (!browserPath) throw new Error('No Chrome found – install chrome-headless-shell (see comment) or pass --browser');
 mkdirSync(dirname(out), { recursive: true });
 
-const browser = await puppeteer.launch({
-  executablePath: browserPath,
-  headless: 'shell',
-  args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist', '--hide-scrollbars', `--window-size=${width},${height}`],
-});
+const browser = await launch(['--hide-scrollbars', `--window-size=${width},${height}`], args.browser);
 const page = await browser.newPage();
 await page.setViewport({ width, height, deviceScaleFactor: 1 });
 page.on('pageerror', (e) => console.error('page error:', e.message));

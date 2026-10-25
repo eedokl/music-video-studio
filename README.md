@@ -29,7 +29,7 @@ Each project has a **world** – how the preview and the export look:
 Import an existing video (the studio project must exist and be analysed first – song + lyrics as sung):
 
 ```bash
-uv run --directory backend python -m studio.legacy import <project-id> <path-to-old-video-project>
+uv run python -m studio.legacy import <project-id> <path-to-old-video-project>
 ```
 
 ## Start
@@ -47,13 +47,51 @@ start-studio.cmd
 
 opens http://localhost:8000 (builds the frontend if needed, then runs the backend).
 
-Development: `uv run --directory backend studio` (API on :8000) and `npm --prefix frontend run dev`
+Development: `uv run studio` (API on :8000) and `npm --prefix frontend run dev`
 (UI with hot reload on :5180).
+
+## Docker
+
+Everything runs in one container (the backend serves the built UI, so one pod with one container is
+enough in Kubernetes too):
+
+```bash
+docker compose up --build
+```
+
+→ http://localhost:8000. Your `projects/` folder is mounted into the container. The folder above this one
+is mounted read-only at `/videos`, for "Import existing": enter `/videos/<folder>` there. Change it with
+`VIDEOS_DIR`. The assistant needs a one-time login inside the container:
+
+```bash
+docker compose exec studio claude
+```
+
+then `/login`. The login and the downloaded Whisper/Demucs models are kept in the `studio-data`
+volume. Without a GPU in the container, the 3D preview renders in software (SwiftShader), so MP4
+exports are slower than on the desktop. Don't run the container and `start-studio.cmd` at the same
+time on the same `projects/` folder.
+
+## Checks
+
+```bash
+uv run ruff check src tests
+```
+
+```bash
+uv run ruff format src tests
+```
+
+```bash
+uv run pytest
+```
 
 ## Layout
 
-- `backend/studio/` – FastAPI app: projects, pipeline jobs, chat (Claude Code CLI), export
-- `backend/pipeline/` – analysis scripts (transcribe, align, refine, beats, hits, held, separate)
+- `pyproject.toml` – the Python package `studio` (src layout), ruff and pytest settings
+- `src/studio/` – FastAPI app: projects, pipeline jobs, chat (Claude Code CLI), export
+- `src/studio/scripts/` – analysis scripts run by the pipeline with uv (transcribe, align, refine, beats, hits, held, separate)
+- `tests/` – unit tests (pytest), run against a temporary projects folder
 - `frontend/src/engine/` – preview: timing model, concert world, LED wall visuals, lyrics
 - `frontend/src/editor/` – editor UI: timeline, inspector, chat
 - `renderer/` – headless MP4 renderer (puppeteer + ffmpeg)

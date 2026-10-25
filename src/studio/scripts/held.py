@@ -6,13 +6,15 @@ Take START/END from the held-note candidates of analyze.py (start a bit before, 
 The vocal is isolated roughly with mid-minus-side; pitch has octave errors on full mixes,
 src/vocal.ts folds and smooths it, so only use it for gentle motion.
 """
+
 import json
 import os
 import sys
+from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(__file__))
-import numpy as np  # noqa: E402
-from audio_io import load  # noqa: E402
+import numpy as np
+from audio_io import load
 
 FPS = 30
 
@@ -27,13 +29,13 @@ def analyse(x, sr, a, b):
     env, pitch = [], []
     for i in range(int((b - a) * FPS)):
         c = int((a + i / FPS) * sr)
-        M = np.abs(np.fft.rfft(mid[c - n // 2: c + n // 2] * win))
-        S = np.abs(np.fft.rfft(side[c - n // 2: c + n // 2] * win))
+        M = np.abs(np.fft.rfft(mid[c - n // 2 : c + n // 2] * win))
+        S = np.abs(np.fft.rfft(side[c - n // 2 : c + n // 2] * win))
         spec = np.maximum(M - S, 0)
         env.append(float(np.sqrt((spec[band] ** 2).sum())))
         best, bf = 0, 0
         for f0 in np.arange(90, 700, 2.0):
-            s = sum(spec[j] / (h + 1) for h, j in enumerate(int(round(f0 * hh * n / sr)) for hh in (1, 2, 3, 4)) if j < len(spec))
+            s = sum(spec[j] / (h + 1) for h, j in enumerate(int(np.rint(f0 * hh * n / sr)) for hh in (1, 2, 3, 4)) if j < len(spec))
             if s > best:
                 best, bf = s, f0
         pitch.append(float(bf))
@@ -53,4 +55,4 @@ if __name__ == "__main__":
         name, a, b = sp.split(":")
         res[name] = analyse(x, sr, float(a), float(b))
         print(f"{name}: {a}–{b}, peak loudness at {float(a) + int(np.argmax(res[name]['env'])) / FPS:.2f}s")
-    json.dump(res, open(out, "w"))
+    Path(out).write_text(json.dumps(res))

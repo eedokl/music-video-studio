@@ -1,12 +1,14 @@
 """Split a song into vocals / accompaniment with Demucs (htdemucs) – for precise lyric timing.
 
-uv run --no-project --python 3.11 --with demucs --with torch==2.5.1 --with torchaudio==2.5.1 --with soundfile --with imageio-ffmpeg python scripts/separate_vocals.py SONG OUTDIR
+uv run --no-project --python 3.11 --with demucs --with torch==2.5.1 --with torchaudio==2.5.1 --with soundfile --with imageio-ffmpeg \
+    python scripts/separate_vocals.py SONG OUTDIR
 → OUTDIR/vocals.wav (16-bit, 48 kHz). Takes a few minutes on CPU for a 4-minute song.
 
 Use the vocal track for transcribe.py (much more precise word times than on the full mix,
 fewer skipped lines) and for refine_timing.py (snaps word starts to real vocal onsets).
 The full mix stays the soundtrack of the video.
 """
+
 import glob
 import os
 import subprocess

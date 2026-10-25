@@ -6,15 +6,17 @@ AUDIO is ideally the drum stem (clean transients); the full mix works too.
 Output: {"detected": [...], "bpm": .., "offset": .., "fixed": [...], "residual_ms": .., "mode": "fixed"|"follow",
          "beatsPerBar": 4, "downbeatPhase": k, "duration": ..}
 """
+
 import argparse
 import json
 import os
 import sys
+from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(__file__))
-import librosa  # noqa: E402
-import numpy as np  # noqa: E402
-from audio_io import mono  # noqa: E402
+import librosa
+import numpy as np
+from audio_io import mono
 
 ap = argparse.ArgumentParser()
 ap.add_argument("audio")
@@ -55,7 +57,7 @@ mode = "fixed" if res_ms < 30 else "follow"
 # straight-line fit over ±8 neighbours → follows slow tempo drift, ignores detection jitter
 pos = np.round((beats - off) / period).astype(int)
 uniq = {}
-for k, b in zip(pos, beats):
+for k, b in zip(pos, beats, strict=False):
     if k not in uniq or abs(b - (off + k * period)) < abs(uniq[k] - (off + k * period)):
         uniq[k] = b
 ks = np.array(sorted(uniq))
@@ -100,5 +102,5 @@ out = {
     "downbeatPhase": phase,
     "duration": round(dur, 3),
 }
-json.dump(out, open(a.out, "w"))
+Path(a.out).write_text(json.dumps(out))
 print(f"{len(beats)} beats, {out['bpm']} BPM, residual {res_ms:.1f} ms → mode {mode}, downbeat phase {phase} (scores {np.round(scores, 3)})")
