@@ -79,6 +79,7 @@ On Windows, start the desktop version with `start-studio.cmd`.
 The Dockerfile is multistage: stage 1 builds the UI, and the final image has only runtime packages,
 `chrome-headless-shell`, uv and the Claude Code CLI. It uses one Python (3.11, required by the Demucs
 step) for the app and the analysis scripts, and `tini` as PID 1, so finished Chrome/ffmpeg processes
-are reaped. `compose.yaml` mounts `./projects` and the old
+are reaped. It has one ffmpeg (imageio-ffmpeg's; the renderer finds it via `FFMPEG_BIN`) and no download
+caches (`uv sync --no-cache`, `npm cache clean`). Keep it that way when adding packages. `compose.yaml` mounts `./projects` and the old
 video folders (read-only at `/videos`), and a `studio-data` volume holds the Claude login, the uv cache
 and models. Don't run the container and the desktop studio on the same `projects/` at the same time.

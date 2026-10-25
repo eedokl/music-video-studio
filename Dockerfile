@@ -17,7 +17,7 @@ FROM node:22-bookworm-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates git unzip tini fonts-liberation fonts-noto-color-emoji \
+ && apt-get install -y --no-install-recommends ca-certificates unzip tini fonts-liberation fonts-noto-color-emoji \
  && rm -rf /var/lib/apt/lists/*
 
 # uv + ONE Python for everything: 3.11, because the Demucs step needs it (torch 2.5.1) and the app
@@ -30,36 +30,44 @@ ENV UV_PYTHON_INSTALL_DIR=/opt/uv-python \
 RUN uv python install 3.11
 
 # Claude Code CLI for the assistant chat
-RUN npm install -g @anthropic-ai/claude-code
+RUN npm install -g @anthropic-ai/claude-code && npm cache clean --force
 
 WORKDIR /app
 RUN mkdir -p /data && chown node:node /app /data
 
-# JS runtime dependencies only: renderer (puppeteer, ffmpeg) and, for rebuilding imported video
-# engines, esbuild + three from the frontend (no vite/TypeScript here – the UI comes from stage 1)
+# JS runtime dependencies only: renderer (puppeteer) and, for rebuilding imported video engines,
+# esbuild + three from the frontend (no vite/TypeScript here – the UI comes from stage 1).
+# The renderer skips install scripts: ffmpeg-static would download a second ffmpeg; FFMPEG_BIN
+# (below) points it at the ffmpeg the Python side already ships.
 COPY --chown=node:node frontend/package.json frontend/package-lock.json frontend/
 COPY --chown=node:node renderer/package.json renderer/package-lock.json renderer/
 USER node
-RUN npm ci --omit=dev --prefix frontend && npm ci --omit=dev --prefix renderer
+RUN npm ci --omit=dev --prefix frontend \
+ && npm ci --omit=dev --ignore-scripts --prefix renderer \
+ && npm cache clean --force
 
 # Chrome headless shell for export/frames + its system libraries (needs root for apt)
 USER root
 RUN apt-get update && cd renderer && npx browsers install chrome-headless-shell@stable --path /opt/chrome --install-deps \
  && ln -s "$(find /opt/chrome -type f -name chrome-headless-shell)" /usr/local/bin/chrome-headless-shell \
- && rm -rf /var/lib/apt/lists/*
+ && rm -rf /var/lib/apt/lists/* /root/.npm /root/.cache
 USER node
 
-# Python dependencies first (cached layer), then the code and the built UI
+# Python dependencies first (cached layer), then the code and the built UI. --no-cache: the
+# download cache would stay in the image; one ffmpeg for everything (imageio-ffmpeg's binary)
 COPY --chown=node:node pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project
+RUN uv sync --frozen --no-dev --no-install-project --no-cache \
+ && ln -s "$(find /app/.venv -path '*imageio_ffmpeg/binaries/ffmpeg*' -type f)" /app/.venv/bin/ffmpeg \
+ && /app/.venv/bin/ffmpeg -hide_banner -version | head -1
 COPY --chown=node:node . .
 COPY --chown=node:node --from=frontend /build/frontend/dist frontend/dist
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen --no-dev --no-cache
 
 ENV STUDIO_ROOT=/app \
     STUDIO_HOST=0.0.0.0 \
     STUDIO_PORT=8000 \
     STUDIO_CHROME=/usr/local/bin/chrome-headless-shell \
+    FFMPEG_BIN=/app/.venv/bin/ffmpeg \
     STUDIO_TORCH_INDEX=https://download.pytorch.org/whl/cpu \
     CLAUDE_CONFIG_DIR=/data/claude \
     UV_CACHE_DIR=/data/uv-cache \
