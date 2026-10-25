@@ -17,15 +17,17 @@ FROM node:22-bookworm-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates git unzip fonts-liberation fonts-noto-color-emoji \
+ && apt-get install -y --no-install-recommends ca-certificates git unzip tini fonts-liberation fonts-noto-color-emoji \
  && rm -rf /var/lib/apt/lists/*
 
-# uv + the Python versions the studio uses (3.12 for the app, 3.11 for the Demucs step)
+# uv + ONE Python for everything: 3.11, because the Demucs step needs it (torch 2.5.1) and the app
+# runs on it too (requires-python >= 3.11)
 COPY --from=ghcr.io/astral-sh/uv:0.11.7 /uv /uvx /usr/local/bin/
 ENV UV_PYTHON_INSTALL_DIR=/opt/uv-python \
+    UV_PYTHON=3.11 \
     UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1
-RUN uv python install 3.12 3.11
+RUN uv python install 3.11
 
 # Claude Code CLI for the assistant chat
 RUN npm install -g @anthropic-ai/claude-code
@@ -42,17 +44,17 @@ RUN npm ci --omit=dev --prefix frontend && npm ci --omit=dev --prefix renderer
 
 # Chrome headless shell for export/frames + its system libraries (needs root for apt)
 USER root
-RUN cd renderer && npx browsers install chrome-headless-shell@stable --path /opt/chrome --install-deps \
+RUN apt-get update && cd renderer && npx browsers install chrome-headless-shell@stable --path /opt/chrome --install-deps \
  && ln -s "$(find /opt/chrome -type f -name chrome-headless-shell)" /usr/local/bin/chrome-headless-shell \
  && rm -rf /var/lib/apt/lists/*
 USER node
 
 # Python dependencies first (cached layer), then the code and the built UI
 COPY --chown=node:node pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project --python 3.12
+RUN uv sync --frozen --no-dev --no-install-project
 COPY --chown=node:node . .
 COPY --chown=node:node --from=frontend /build/frontend/dist frontend/dist
-RUN uv sync --frozen --no-dev --python 3.12
+RUN uv sync --frozen --no-dev
 
 ENV STUDIO_ROOT=/app \
     STUDIO_HOST=0.0.0.0 \
@@ -66,4 +68,6 @@ ENV STUDIO_ROOT=/app \
     PATH=/app/.venv/bin:$PATH
 
 EXPOSE 8000
+# tini as PID 1 reaps finished child processes (headless Chrome, ffmpeg, esbuild) – Python doesn't
+ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["studio"]
