@@ -1,0 +1,28 @@
+{
+ "title": "Comfort Zone – Live in Brüssel",
+ "lyrics": "[verse1]\nBrüssel City, Montag früh,\nanother meeting, same old view.\nPowerPoint und Strategien,\nwhile the future's on amphetamines.\nSilicon Valley sagt: \"Let's go!\"\nEuropa sagt: \"Wir prüfen das noch.\"\nFünf Ausschüsse und ein Bericht,\ndoch die Konkurrenz schläft heute nicht.\nUnd Caroline schaut aus dem Fenster raus,\nsieht den Himmel über'm Berlaymont-Haus.\nShe says:\n\"Maybe we're discussing 'yesterday'...\"\n[chorus]\nOut of the comfort zone, into the storm,\nwir wollten die Zukunft, now it's already born.\nOut of the comfort zone, can you survive?\nEurope twenty thirty one – are we still alive?\nHey! Hey! Wake up, Baby, wake up now!\nHey! Wake up, Baby, wake up now!\n[verse2]\nChristian sitzt in San Francisco Bay,\nAI schreibt seinen Code all day.\nAgent für Agent, token by token,\nalte Gewissheiten werden gebrochen.\n\"Bubble!\" rufen sie im Konferenzraum,\ndoch draußen wächst ein neuer Traum.\nCompute, Capital, Energy,\nthat's the new geopolitics, baby.\nNewsflash!\nLadies and Gentlemen...\nWillkommen zur europäischen Spezialität:\nZuerst regulieren. Dann analysieren.\nDann evaluieren. Dann diskutieren.\n...und dann wundern wir uns,\nwarum alle Gründer am Flughafen stehen.\n[chorus]\nOut of the comfort zone, into the storm,\nwir wollten die Zukunft, now it's already born.\nOut of the comfort zone, can you survive?\nEurope twenty thirty one – are we still alive?\nHey! Hey! Wake up, Baby, wake up now!\n[bridge]\nKein Drama, kein Weltuntergang.\nNur eine Frage:\nWenn die nächste industrielle Revolution stattfindet,\nund keiner von uns erscheint—\nwho gets to write the rules?\n[final]\nOut of the comfort zone, into the light,\nmaybe we're losing, maybe we still can fight.\nOut of the comfort zone, one last chance,\nEuropa, komm schon, start the dance.\nHey! Hey!\nNo more \"maybe\". No more \"later\".\nTwenty thirty one is coming,\nand time doesn't wait.",
+ "storyline": "Comfort Zone als Live-Konzert in Brüssel (TV-Übertragung): die Geschichte des Songs läuft auf der LED-Wand.",
+ "stylePrompt": "Falco meets Neue Deutsche Härte",
+ "song": "song.wav",
+ "stems": [],
+ "keepScenes": true,
+ "keepHeld": [
+  {
+   "name": "survive1",
+   "line": "l14"
+  },
+  {
+   "name": "survive2",
+   "line": "l35"
+  },
+  {
+   "name": "now",
+   "line": "l37"
+  },
+  {
+   "name": "wait",
+   "line": "l50"
+  }
+ ],
+ "stemMap": {}
+}

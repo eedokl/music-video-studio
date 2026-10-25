@@ -1,0 +1,49 @@
+[Verse 1]
+RBAC, Bastion host,
+WAF blocking what we hate most,
+App Gateway, NSG,
+Security review at quarter three.
+Key Vault secrets, certificates,
+Private Endpoints, network limits,
+Ingress here, egress there,
+Somebody changed the firewall pair.
+LeanIX, Self Check, BTIA,
+Another audit on the way,
+CERT ticket, CSC call,
+Who approved this app at all?
+[Chorus]
+We didn't build the paperwork,
+But we're keeping all the systems working.
+Every week a brand-new rule,
+Still we keep the platform cool.
+We didn't build the paperwork,
+Though sometimes it feels like all-day work.
+Cloud is fast and risk is real,
+So we automate the deal.
+[Verse 2]
+App Registration, secret expired,
+Service principal just got retired,
+Proxy, SASE, IDE,
+Someone needs connectivity.
+IBC review, architecture board,
+Another spreadsheet to be stored,
+Private Link and DNS,
+Troubleshooting never rests.
+SSH through BCN,
+Security says "not again",
+Operator Self Check green,
+Deploy the release and keep it clean.
+[Bridge]
+One more ticket, one more scan,
+One more dashboard, one more plan.
+Everybody wants AI,
+First we need the network right.
+[Final Chorus]
+RBAC, Bastion host,
+Application Gateway coast-to-coast,
+Key Vault, WAF, NSG,
+Running cloud securely.
+CERT, CSC, BTIA,
+LeanIX never goes away,
+Proxy, SASE, IDE,
+Welcome to cloud engineering.

@@ -1,0 +1,15 @@
+[
+ {
+  "role": "user",
+  "text": "Benenne die Szene mit dem Namen chorus1-hey in \"Hey-Chor 1\" um. Sonst nichts ändern.",
+  "context": "playhead: 1:03.3",
+  "t": 1792918304.813386
+ },
+ {
+  "role": "assistant",
+  "text": "Not logged in · Please run /login",
+  "ok": false,
+  "changed": false,
+  "t": 1792918310.3661418
+ }
+]

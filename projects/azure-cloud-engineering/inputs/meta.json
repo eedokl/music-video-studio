@@ -1,0 +1,9 @@
+{
+ "title": "Azure Cloud Engineering",
+ "lyrics": "[Verse 1]\nRBAC, Bastion host,\nWAF blocking what we hate most,\nApp Gateway, NSG,\nSecurity review at quarter three.\nKey Vault secrets, certificates,\nPrivate Endpoints, network limits,\nIngress here, egress there,\nSomebody changed the firewall pair.\nLeanIX, Self Check, BTIA,\nAnother audit on the way,\nCERT ticket, CSC call,\nWho approved this app at all?\n[Chorus]\nWe didn't build the paperwork,\nBut we're keeping all the systems working.\nEvery week a brand-new rule,\nStill we keep the platform cool.\nWe didn't build the paperwork,\nThough sometimes it feels like all-day work.\nCloud is fast and risk is real,\nSo we automate the deal.\n[Verse 2]\nApp Registration, secret expired,\nService principal just got retired,\nProxy, SASE, IDE,\nSomeone needs connectivity.\nIBC review, architecture board,\nAnother spreadsheet to be stored,\nPrivate Link and DNS,\nTroubleshooting never rests.\nSSH through BCN,\nSecurity says \"not again\",\nOperator Self Check green,\nDeploy the release and keep it clean.\n[Bridge]\nOne more ticket, one more scan,\nOne more dashboard, one more plan.\nEverybody wants AI,\nFirst we need the network right.\n[Final Chorus]\nRBAC, Bastion host,\nApplication Gateway coast-to-coast,\nKey Vault, WAF, NSG,\nRunning cloud securely.\nCERT, CSC, BTIA,\nLeanIX never goes away,\nProxy, SASE, IDE,\nWelcome to cloud engineering.",
+ "storyline": "Original video 'Azure Cloud Engineering' (imported engine).",
+ "stylePrompt": "",
+ "song": "song.wav",
+ "stems": [],
+ "stemMap": {}
+}

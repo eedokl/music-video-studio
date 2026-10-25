@@ -1,0 +1,404 @@
+{
+ "families": {
+  "product": {
+   "label": "Agile & Product",
+   "color": "#9e2896"
+  },
+  "dsp": {
+   "label": "Signal Processing",
+   "color": "#007bc0"
+  },
+  "ai": {
+   "label": "Embedded AI",
+   "color": "#18837e"
+  },
+  "sw": {
+   "label": "Software Engineering",
+   "color": "#004975"
+  },
+  "quality": {
+   "label": "Quality & Infrastructure",
+   "color": "#00884a"
+  }
+ },
+ "stages": [
+  {
+   "id": "data",
+   "label": "Sensor data",
+   "text": "Collect, curate and qualify raw sensor recordings."
+  },
+  {
+   "id": "dsp",
+   "label": "Signal processing",
+   "text": "Turn noisy signals into meaningful information."
+  },
+  {
+   "id": "ai",
+   "label": "Embedded AI",
+   "text": "Let tiny devices learn, classify and decide on-chip."
+  },
+  {
+   "id": "sw",
+   "label": "Software & architecture",
+   "text": "Shape robust, scalable product software."
+  },
+  {
+   "id": "qa",
+   "label": "Validation",
+   "text": "Prove it works, automatically and continuously."
+  },
+  {
+   "id": "product",
+   "label": "Product",
+   "text": "Deliver measurable customer value."
+  }
+ ],
+ "roles": [
+  {
+   "name": "Agile Master",
+   "summary": "The Agile Master enables agile ways of working by supporting teams, facilitating collaboration, and driving continuous improvement.",
+   "icon": "image-2026-7-14_12-26-43-1.png",
+   "illustration": "image-2026-7-14_12-24-32.png",
+   "family": "product",
+   "stages": [
+    "enabler"
+   ],
+   "quote": "I help teams work effectively by fostering agile practices, removing obstacles, and creating an environment for continuous learning and delivery.",
+   "tasks": [
+    "Facilitate agile ceremonies and team collaboration",
+    "Support teams in applying agile principles and practices",
+    "Remove impediments and foster continuous improvement",
+    "Promote transparency, communication, and stakeholder alignment"
+   ],
+   "competence": [
+    "Ensures effective application of agile methods and frameworks",
+    "Supports team performance and continuous improvement",
+    "Encourages collaboration and knowledge sharing across teams"
+   ]
+  },
+  {
+   "name": "Computer Science Engineer – Embedded AI",
+   "summary": "The Computer Science Engineer – Embedded AI develops software solutions that bring AI capabilities onto embedded systems and sensor platforms.",
+   "icon": "image-2026-7-14_12-33-47-1.png",
+   "illustration": "image-2026-7-14_12-34-14.png",
+   "family": "ai",
+   "stages": [
+    "ai"
+   ],
+   "quote": "I bring AI closer to the device by developing efficient embedded software solutions for intelligent sensor applications.",
+   "tasks": [
+    "Develop embedded software solutions for AI-enabled sensor applications",
+    "Implement and optimize algorithms for constrained embedded environments",
+    "Support integration of AI models into software and system architectures",
+    "Analyze performance, memory usage, and runtime behavior on target platforms"
+   ],
+   "competence": [
+    "Strong programming skills for embedded systems and software development",
+    "Knowledge of AI, machine learning, and model deployment concepts",
+    "Understanding of resource constraints such as memory, latency, and power consumption",
+    "Ability to work across software, AI, and system engineering topics"
+   ]
+  },
+  {
+   "name": "Computer Science Expert",
+   "summary": "The Computer Science Expert develops advanced software concepts and technical solutions that enable innovative digital products and intelligent sensor applications.",
+   "icon": "image-2026-7-14_12-54-31-1.png",
+   "illustration": "image-2026-7-14_12-53-17.png",
+   "family": "sw",
+   "stages": [
+    "sw"
+   ],
+   "quote": "I solve complex software challenges by combining computer science expertise, system thinking, and modern software engineering practices.",
+   "tasks": [
+    "Develop software concepts, architectures, and technical solutions",
+    "Analyze complex problems and derive scalable approaches",
+    "Support implementation of advanced algorithms and software components",
+    "Contribute to technical innovation and continuous improvement activities"
+   ],
+   "competence": [
+    "Strong expertise in computer science and software engineering",
+    "Knowledge of software architectures, algorithms, and design principles",
+    "Analytical problem-solving and system-level thinking capabilities",
+    "Ability to collaborate across disciplines and communicate technical concepts"
+   ]
+  },
+  {
+   "name": "Algorithm Technical Lead",
+   "summary": "The Algorithm Technical Lead drives technical progress and ensures the successful integration of algorithms into robust production software.",
+   "icon": "image-2026-9-16_10-33-59-1.png",
+   "illustration": "image-2026-9-16_10-56-9-1.png",
+   "family": "dsp",
+   "stages": [
+    "dsp",
+    "sw"
+   ],
+   "quote": "I connect algorithms, systems, and software teams by providing technical direction, resolving trade-offs, and driving engineering excellence.",
+   "tasks": [
+    "Connect System Engineering, Algorithm Development, and Software Framework teams",
+    "Translate stakeholder and system needs into clear software requirements",
+    "Guide algorithm design, implementation, integration, and optimization",
+    "Review technical concepts and code while promoting reuse and standardization"
+   ],
+   "competence": [
+    "Deep expertise in algorithm development and digital signal processing",
+    "Strong knowledge of software architecture and embedded development",
+    "Systems thinking across sensor data paths and hardware/software interfaces",
+    "Technical leadership, structured problem-solving, and clear communication"
+   ]
+  },
+  {
+   "name": "DSP Data Operations Engineer",
+   "summary": "The DSP Data Operations Engineer manages data pipelines, processing workflows, and analysis environments to support the development and validation of DSP solutions.",
+   "icon": "image-2026-7-14_13-18-52-1.png",
+   "illustration": "image-2026-7-14_13-19-19.png",
+   "family": "dsp",
+   "stages": [
+    "data"
+   ],
+   "quote": "I turn raw data into reliable insights by managing data workflows, ensuring data quality, and enabling efficient algorithm development.",
+   "tasks": [
+    "Manage data collection, processing, and storage workflows",
+    "Prepare and maintain datasets for algorithm development and validation",
+    "Support automation of data analysis and evaluation processes",
+    "Monitor data quality and improve operational efficiency"
+   ],
+   "competence": [
+    "Knowledge of data processing, analytics, and workflow automation",
+    "Experience with scripting, databases, and data management tools",
+    "Understanding of DSP algorithms and sensor data characteristics",
+    "Strong analytical and problem-solving skills"
+   ]
+  },
+  {
+   "name": "DSP Embedded Engineer",
+   "summary": "The DSP Embedded Engineer implements and optimizes signal processing solutions on embedded platforms to enable efficient and reliable sensor applications.",
+   "icon": "image-2026-7-14_13-51-13-1.png",
+   "illustration": "image-2026-7-14_13-51-35.png",
+   "family": "dsp",
+   "stages": [
+    "dsp"
+   ],
+   "quote": "I bring signal processing algorithms onto embedded hardware by optimizing software, performance, and resource usage for real-world products.",
+   "tasks": [
+    "Implement DSP algorithms on embedded platforms and target hardware",
+    "Optimize software for performance, memory usage, and power consumption",
+    "Integrate signal processing solutions into embedded systems",
+    "Support testing, debugging, and validation of embedded implementations"
+   ],
+   "competence": [
+    "Expertise in embedded software development and programming",
+    "Knowledge of digital signal processing and algorithm implementation",
+    "Understanding of microcontrollers, processors, and embedded architectures",
+    "Strong debugging, optimization, and problem-solving skills"
+   ]
+  },
+  {
+   "name": "DSP Engineer",
+   "summary": "The DSP Engineer develops, implements, and optimizes signal processing algorithms that transform sensor data into meaningful information.",
+   "icon": "image-2026-7-14_13-57-51-1.png",
+   "illustration": "image-2026-7-14_13-58-24.png",
+   "family": "dsp",
+   "stages": [
+    "data",
+    "dsp"
+   ],
+   "quote": "I develop signal processing solutions that enable accurate, efficient, and reliable interpretation of sensor data.",
+   "tasks": [
+    "Develop and optimize signal processing algorithms for sensor applications",
+    "Analyze sensor data and evaluate algorithm performance",
+    "Support integration, testing, and validation of DSP solutions",
+    "Improve robustness, efficiency, and accuracy of signal processing methods"
+   ],
+   "competence": [
+    "Expertise in digital signal processing and algorithm development",
+    "Strong analytical and mathematical problem-solving skills",
+    "Knowledge of sensor systems, data analysis, and filtering techniques",
+    "Experience with software implementation and validation of DSP concepts"
+   ]
+  },
+  {
+   "name": "Embedded AI Engineer",
+   "summary": "The Embedded AI Engineer develops and deploys AI solutions for embedded systems, enabling intelligent functionality directly on resource-constrained devices.",
+   "icon": "image-2026-7-14_14-1-56-1.png",
+   "illustration": "image-2026-7-14_14-2-34.png",
+   "family": "ai",
+   "stages": [
+    "ai"
+   ],
+   "quote": "I bring artificial intelligence onto embedded platforms by optimizing models, software, and performance for real-world sensor applications.",
+   "tasks": [
+    "Develop and integrate AI and machine learning solutions for embedded devices",
+    "Optimize models for performance, memory, and power consumption",
+    "Support deployment and validation of AI applications on target hardware",
+    "Collaborate with software, DSP, and system engineering teams"
+   ],
+   "competence": [
+    "Expertise in embedded software development and AI concepts",
+    "Knowledge of machine learning model optimization and deployment",
+    "Understanding of embedded hardware constraints and performance tuning",
+    "Strong analytical and cross-domain problem-solving capabilities"
+   ]
+  },
+  {
+   "name": "Embedded AI Software Architect",
+   "summary": "The Embedded AI Software Architect defines software architectures that enable AI models to run efficiently and reliably on embedded sensor platforms.",
+   "icon": "image-2026-7-14_14-11-8-1.png",
+   "illustration": "image-2026-7-14_14-11-43.png",
+   "family": "ai",
+   "stages": [
+    "ai",
+    "sw"
+   ],
+   "quote": "I shape embedded AI software concepts by connecting AI models, software architecture, and hardware constraints into scalable product solutions.",
+   "tasks": [
+    "Define software architectures for embedded AI solutions",
+    "Translate AI and product requirements into scalable software concepts",
+    "Align model deployment, runtime behavior, and system integration",
+    "Guide implementation teams on architecture, interfaces, and technical trade-offs"
+   ],
+   "competence": [
+    "Strong expertise in software architecture and embedded systems",
+    "Knowledge of AI model deployment and optimization concepts",
+    "Understanding of hardware constraints, runtime behavior, and interfaces",
+    "Ability to guide technical decisions across AI, software, and system teams"
+   ]
+  },
+  {
+   "name": "Product Owner",
+   "summary": "The Product Owner maximizes product value by defining priorities, managing the product backlog, and aligning stakeholder needs with development goals.",
+   "icon": "image-2026-7-14_14-16-47-1.png",
+   "illustration": "image-2026-7-14_14-17-18.png",
+   "family": "product",
+   "stages": [
+    "product"
+   ],
+   "quote": "I connect business needs and development teams by turning product visions into clear priorities and valuable software solutions.",
+   "tasks": [
+    "Define and prioritize product backlog items and development goals",
+    "Align stakeholder expectations with product and business objectives",
+    "Support planning and decision-making throughout the development lifecycle",
+    "Ensure delivered solutions create measurable customer and business value"
+   ],
+   "competence": [
+    "Strong understanding of agile product development and backlog management",
+    "Ability to balance customer, business, and technical requirements",
+    "Effective stakeholder communication and prioritization skills",
+    "Strategic thinking combined with decision-making capabilities"
+   ]
+  },
+  {
+   "name": "Software Architect",
+   "summary": "The Software Architect defines software architectures and technical concepts that enable scalable, maintainable, and reliable software solutions.",
+   "icon": "image-2026-7-14_14-22-23-1.png",
+   "illustration": "image-2026-7-14_14-23-33.png",
+   "family": "sw",
+   "stages": [
+    "sw"
+   ],
+   "quote": "I design software architectures by connecting requirements, technologies, and development teams into a robust technical solution.",
+   "tasks": [
+    "Define software architectures, interfaces, and technical concepts",
+    "Translate system and product requirements into software solutions",
+    "Guide architectural decisions and technical trade-offs",
+    "Support integration and alignment across software development teams"
+   ],
+   "competence": [
+    "Strong expertise in software architecture and design principles",
+    "Understanding of software development lifecycles and methodologies",
+    "Ability to balance technical requirements, quality, and complexity- Strong communication and cross-functional collaboration skills"
+   ]
+  },
+  {
+   "name": "Software IT Manager",
+   "summary": "The Software IT Manager ensures that software development teams have the tools, infrastructure, and IT services required to develop, test, and deliver software efficiently.",
+   "icon": "image-2026-7-14_14-28-21-1.png",
+   "illustration": "image-2026-7-14_14-27-34.png",
+   "family": "quality",
+   "stages": [
+    "enabler"
+   ],
+   "quote": "I enable software teams by providing reliable development environments, IT services, and tools that support efficient engineering workflows.",
+   "tasks": [
+    "Manage software development tools, platforms, and IT environments",
+    "Support deployment, maintenance, and operation of software infrastructure",
+    "Coordinate IT services and tool improvements with stakeholders",
+    "Ensure availability, reliability, and efficiency of development environments"
+   ],
+   "competence": [
+    "Knowledge of software development environments and IT infrastructure",
+    "Understanding of cloud services, DevOps, and tool ecosystems",
+    "Experience with system administration, automation, and operations",
+    "Strong coordination and stakeholder management skills"
+   ]
+  },
+  {
+   "name": "Software Test Automation Architect",
+   "summary": "The Software Test Automation Architect defines automation strategies, frameworks, and testing concepts to ensure efficient and scalable software quality assurance.",
+   "icon": "image-2026-7-20_9-44-23-1.png",
+   "illustration": "image-2026-7-20_9-34-19.png",
+   "family": "quality",
+   "stages": [
+    "qa"
+   ],
+   "quote": "I shape test automation ecosystems by connecting quality goals, testing frameworks, and development processes into a reliable validation strategy.",
+   "tasks": [
+    "Define test automation architectures, frameworks, and standards",
+    "Design scalable automated testing strategies across the software lifecycle",
+    "Guide teams in selecting and implementing automation solutions",
+    "Drive continuous improvement of testing efficiency and test coverage"
+   ],
+   "competence": [
+    "Expertise in software test automation and quality engineering",
+    "Knowledge of testing frameworks, CI/CD, and DevOps practices",
+    "Understanding of software architectures and development processes",
+    "Strong analytical, coaching, and stakeholder management skills"
+   ]
+  },
+  {
+   "name": "Software Test Automation Engineer",
+   "summary": "The Software Test Automation Engineer develops and maintains automated test solutions that ensure software quality throughout the development lifecycle.",
+   "icon": "image-2026-7-20_9-43-36-1.png",
+   "illustration": "image-2026-7-20_9-37-52.png",
+   "family": "quality",
+   "stages": [
+    "qa"
+   ],
+   "quote": "I increase software quality by designing, implementing, and running automated tests that provide fast and reliable feedback.",
+   "tasks": [
+    "Develop and maintain automated test cases and test scripts",
+    "Execute and analyze automated test runs across development stages",
+    "Integrate test automation into CI/CD and development workflows",
+    "Investigate defects and improve test coverage and reliability"
+   ],
+   "competence": [
+    "Experience in software testing and test automation",
+    "Knowledge of scripting, programming, and automation frameworks",
+    "Understanding of CI/CD pipelines and software quality processes",
+    "Strong analytical and debugging capabilities"
+   ]
+  },
+  {
+   "name": "Software Tool and Application Engineer",
+   "summary": "The Software Tool and Application Engineer develops and maintains software tools and applications that support engineering workflows and product development.",
+   "icon": "image-2026-7-20_9-47-41-1.png",
+   "illustration": "image-2026-7-20_9-38-22.png",
+   "family": "sw",
+   "stages": [
+    "enabler"
+   ],
+   "quote": "I simplify engineering processes by creating tools and applications that improve efficiency, automation, and usability.",
+   "tasks": [
+    "Develop and maintain software tools and engineering applications",
+    "Automate workflows and improve development efficiency",
+    "Support integration of tools into existing software environments",
+    "Analyze user needs and translate them into practical software solutions"
+   ],
+   "competence": [
+    "Strong software development and programming skills",
+    "Knowledge of tool development, automation, and scripting",
+    "Understanding of engineering processes and user requirements",
+    "Ability to design maintainable and user-friendly software solutions"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,74 @@
+{
+ "title": "Cloud Engineering – Scenes Edition (LGTM)",
+ "lyrics": "[Verse 1]\r\nRBAC, Bastion host,\r\nWAF blocking what we hate most,\r\nApp Gateway, NSG,\r\nSecurity review at quarter three.\r\nKey Vault secrets, certificates,\r\nPrivate Endpoints, network limits,\r\nIngress here, egress there,\r\nSomebody changed the firewall pair.\r\nLeanIX, Self Check, BTIA,\r\nAnother audit on the way,\r\nCERT ticket, CSC call,\r\nWho approved this app at all?\r\n[Chorus]\r\nWe didn't build the paperwork,\r\nBut we're keeping all the systems working.\r\nEvery week a brand-new rule,\r\nStill we keep the platform cool.\r\nWe didn't build the paperwork,\r\nThough sometimes it feels like all-day work.\r\nCloud is fast and risk is real,\r\nSo we automate the deal.\r\n[Verse 2]\r\nApp Registration, secret expired,\r\nService principal just got retired,\r\nProxy, SASE, IDE,\r\nSomeone needs connectivity.\r\nIBC review, architecture board,\r\nAnother spreadsheet to be stored,\r\nPrivate Link and DNS,\r\nTroubleshooting never rests.\r\nSSH through BCN,\r\nSecurity says \"not again\",\r\nOperator Self Check green,\r\nDeploy the release and keep it clean.\r\n[Bridge]\r\nOne more ticket, one more scan,\r\nOne more dashboard, one more plan.\r\nEverybody wants AI,\r\nFirst we need the network right.\r\n[Final Chorus]\r\nRBAC, Bastion host,\r\nApplication Gateway coast-to-coast,\r\nKey Vault, WAF, NSG,\r\nRunning cloud securely.\r\nCERT, CSC, BTIA,\r\nLeanIX never goes away,\r\nProxy, SASE, IDE,\r\nWelcome to cloud engineering.",
+ "storyline": "Original video 'Cloud Engineering – Scenes Edition (LGTM)' (imported engine).",
+ "stylePrompt": "",
+ "song": "song.wav",
+ "stems": [],
+ "keepScenes": true,
+ "idMap": [
+  "l0",
+  "l1",
+  "l2",
+  "l3",
+  "l4",
+  "l5",
+  "l6",
+  "l7",
+  "l8",
+  "l9",
+  "l10",
+  "l11",
+  "l12",
+  "l13",
+  "l14",
+  "l15",
+  "l16",
+  "l17",
+  "l18",
+  "l19",
+  "l20",
+  "l21",
+  "l22",
+  "l23",
+  "l24",
+  "l25",
+  "l26",
+  "l27",
+  "l28",
+  "l29",
+  "l30",
+  "l31",
+  "l32",
+  "l33",
+  "l34",
+  "l35",
+  "l36",
+  "l37",
+  "l38",
+  "l39",
+  "l40",
+  "l41",
+  "l42",
+  "l43"
+ ],
+ "keepHeld": [
+  {
+   "name": "host1",
+   "row": 0
+  },
+  {
+   "name": "nsg2",
+   "row": 2
+  },
+  {
+   "name": "three3",
+   "row": 3
+  },
+  {
+   "name": "nsg4",
+   "row": 38
+  }
+ ],
+ "stemMap": {}
+}

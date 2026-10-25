@@ -1,0 +1,4 @@
+RBAC, Bastion host,
+WAF blocking what we hate most,
+App Gateway, NSG,
+Security review in quarter three.
