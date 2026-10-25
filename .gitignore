@@ -3,6 +3,7 @@ dist/
 .venv/
 __pycache__/
 *.pyc
+*.wav
 # project media and renders stay local
 projects/*/audio/
 projects/*/inputs/
@@ -15,4 +16,5 @@ projects/*/frames/
 projects/*one-signal-*
 projects/*cloud-engineering*
 projects/comfort-zone-v4*
+projects/comfort-zone-v3-2*
 projects/europe-2031*
