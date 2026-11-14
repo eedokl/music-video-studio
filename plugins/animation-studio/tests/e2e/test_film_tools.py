@@ -49,8 +49,7 @@ def run_film_tools(ctx):
                                        f"{want[0]}x{want[1]} with square pixels")
     out = ctx.run(["python", MEDIA, "frame", src, "3.0", ctx.dir / "last.png"])   # 3.0 s = the container end
     expect((ctx.dir / "last.png").exists() and "1920x1080" in out.stdout,
-           f"media.py frame at the very end gave no picture:
-{out.stdout}")
+           f"media.py frame at the very end gave no picture:\n{out.stdout}")
     out = ctx.run(["python", MEDIA, "compare", src, look])
     expect("sound: bit-identical" in out.stdout and re.search(r"PSNR \d+\.\d dB, SSIM 0\.\d{3}", out.stdout),
            f"media.py compare (look vs input):\n{out.stdout}")
