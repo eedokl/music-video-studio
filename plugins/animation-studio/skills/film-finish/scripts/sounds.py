@@ -42,6 +42,9 @@ POP = ("ui_pop/blip", -20)
 
 
 def main():
+    if {"-h", "--help"} & set(sys.argv[1:]):
+        print(__doc__)
+        return
     args = [x for x in sys.argv[1:] if x != "--project"]           # `sounds.py <folder>` or `--project <folder>`
     P = Project(args[0] if args else ".")
     P.check("film-finish")                 # project.json validated before any long step

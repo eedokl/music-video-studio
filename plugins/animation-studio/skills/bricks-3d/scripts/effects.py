@@ -27,7 +27,7 @@ PIXEL = {   # 3x5 pixel font, rows top to bottom
     "S": [".XX", "X..", ".X.", "..X", "XX."], "T": ["XXX", ".X.", ".X.", ".X.", ".X."], "U": ["X.X", "X.X", "X.X", "X.X", "XXX"],
     "V": ["X.X", "X.X", "X.X", "X.X", ".X."], "W": ["X.X", "X.X", "X.X", "XXX", "X.X"], "X": ["X.X", "X.X", ".X.", "X.X", "X.X"],
     "Y": ["X.X", "X.X", ".X.", ".X.", ".X."], "Z": ["XXX", "..X", ".X.", "X..", "XXX"],
-    "0": ["XXX", "X.X", "X.X", "X.X", "XXX"], "1": [".X.", "XX.", ".X.", ".X.", "XXX"], "2": ["XX.", "..X", ".X.", "X..", "XXX"],
+    "0": ["XXX", "X.X", "X.X", "X.X", "XXX"], "1": [".X.", "XX.", ".X.", ".X.", "XXX"], "2": ["XXX", "..X", "XXX", "X..", "XXX"],
     "3": ["XX.", "..X", ".X.", "..X", "XX."], "4": ["X.X", "X.X", "XXX", "..X", "..X"], "5": ["XXX", "X..", "XX.", "..X", "XX."],
     "6": [".XX", "X..", "XXX", "X.X", "XXX"], "7": ["XXX", "..X", ".X.", ".X.", ".X."], "8": ["XXX", "X.X", "XXX", "X.X", "XXX"],
     "9": ["XXX", "X.X", "XXX", "..X", "XX."], "!": [".X.", ".X.", ".X.", "...", ".X."], "?": ["XX.", "..X", ".X.", "...", ".X."],
@@ -52,17 +52,21 @@ def rot(a):
     return L.RX(a[0]) @ L.RY(a[1]) @ L.RZ(a[2])
 
 
+ADVANCE = 5      # 3 bricks wide + 2 bricks gap: with one brick the letters ran together in perspective (user test:
+#                  "2UKUNFT"); the "2" has a flat middle so it is not read as "Z"
+
+
 def word_pixels(text, centre_x, top_y, z, pixel=20):
     """-> LDraw positions (x, y, z) of the bricks of a word (3x5 font, one brick per pixel, 24 LDU per row)"""
     text = text.upper()
-    width = len(text) * 4 * pixel - pixel
+    width = len(text) * ADVANCE * pixel - (ADVANCE - 3) * pixel
     x0 = centre_x - width / 2 + pixel / 2
     out = []
     for i, ch in enumerate(text):
         for r, line in enumerate(PIXEL.get(ch, PIXEL["?"])):
             for c, v in enumerate(line):
                 if v == "X":
-                    out.append((x0 + (i * 4 + c) * pixel, top_y + r * 24 * pixel / 20, z))
+                    out.append((x0 + (i * ADVANCE + c) * pixel, top_y + r * 24 * pixel / 20, z))
     return out
 
 

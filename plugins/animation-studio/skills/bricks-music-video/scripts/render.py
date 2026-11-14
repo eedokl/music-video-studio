@@ -7,6 +7,7 @@
 """Plan, texture and render brick-film sections, then hand over to film-finish.
 
   python render.py <section> --stills 0,120,300     plan + test frames -> stills/<section>/still_NNNN.png
+                                                    (frames from the SECTION start; 12.5s = song seconds)
   python render.py <section>                        plan + all frames  -> scenes/<section>/f.0000.png ...
   python render.py --all                            every section of project.json
   options: --project .  --keep-plan (render bricks/<section>.json as edited by hand)  --percent 50 --samples 16
@@ -55,7 +56,8 @@ def section(P, name, a):
             extra += [f"--{k}", str(getattr(a, k))]
     extra += [x for x, on in (("--remeasure", a.remeasure), ("--cycles", a.cycles)) if on]
     if a.stills:
-        run([sys.executable, B3D / "blender_run.py", "brickfilm.py", "--", plan_f, "--stills", a.stills, *extra])
+        run([sys.executable, B3D / "blender_run.py", "brickfilm.py", "--", plan_f, "--stills",
+             stills_frames(a.stills, plan, name), *extra])
         return
     out = Path(plan["out"])
     for old in out.glob("f.*.png"):                          # a re-render must not leave stale frames behind
@@ -67,6 +69,22 @@ def section(P, name, a):
     if a.preview:
         run(config.script_cmd(FF / "overlays.py") + [name, "--project", P.dir])
         run(config.script_cmd(FF / "build.py") + ["preview", name, "--project", P.dir])
+
+
+def stills_frames(spec, plan, name="?"):
+    """--stills: frame numbers counted from the SECTION start; "12.5s" = a song time in seconds. Frames outside the
+    section stop with the valid range (user test: song frames past the section end gave identical stills)."""
+    fps, n = plan["fps"], round((plan["to"] - plan["from"]) * plan["fps"])
+    out = []
+    for x in str(spec).split(","):
+        x = x.strip()
+        f = round((float(x[:-1]) - plan["from"]) * fps) if x.endswith("s") else int(x)
+        if not 0 <= f < n:
+            raise SystemExit(f"--stills {x}: section '{name}' has frames 0-{n - 1} "
+                             f"({plan['from']:.2f}-{plan['to']:.2f} s of the song); frames count from the section "
+                             "start - or give song seconds like 12.5s")
+        out.append(str(f))
+    return ",".join(out)
 
 
 def main():

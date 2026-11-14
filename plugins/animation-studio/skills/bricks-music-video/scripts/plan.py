@@ -465,12 +465,24 @@ class Planner:
             if tp:
                 ctx["target_yaw"] = yaw_to(self.pos(name) if not c.get("cameo") else self.target_point(name), tp)
             if g == "hair":
-                K += [(t, dict(hair=1.0)), (t + d, dict(hair=1.0)), (t + d + 0.25, dict(hair=0.0))]
+                K += [(t - 0.04, dict(hair=0.0)), (t, dict(hair=1.0)), (t + d, dict(hair=1.0)),
+                      (t + d + 0.25, dict(hair=0.0))]
                 continue
             if g == "head_pop":
-                K += [(t, dict(head_off=1.0)), (t + d * 0.5, dict(head_off=0.8)), (t + d, dict(head_off=0.0))]
+                K += [(t - 0.04, dict(head_off=0.0)), (t, dict(head_off=1.0)), (t + d * 0.5, dict(head_off=0.8)),
+                      (t + d, dict(head_off=0.0))]
                 continue
-            K += gesture_keys(g, t, d, ctx)
+            gk = gesture_keys(g, t, d, ctx)
+            if gk:
+                # hold the channels this gesture moves just before it starts: without it they blended from the
+                # previous key, often seconds earlier (user test: a "scare" lifted the arms slowly over 5 s)
+                t0 = min(k[0] for k in gk)
+                chans = {ch for k in gk for ch in k[1]}
+                last = max((k[0] for k in K if chans & set(k[1])), default=self.S)   # same channels only
+                hold = {ch: v for ch, v in dict(REST, yaw=base).items() if ch in chans}
+                if hold and t0 - last > 0.3:
+                    K.append((t0 - 0.08, hold))
+            K += gk
             if nxt - (t + d) > 0.5:
                 rest = dict(REST, yaw=base)
                 if g in ("slump",):
@@ -546,7 +558,7 @@ class Planner:
         """-> (cam_a, cam_b, aim_a, aim_b, lens, focus, fstop)"""
         if kind == "letters":                               # the whole brick word and the figures under it
             x0, ytop, z0 = target["at"]
-            width = len(target["text"]) * 4 * target.get("pixel", 20)
+            width = len(target["text"]) * 5 * target.get("pixel", 20)   # = bricks-3d effects.ADVANCE (3 wide + 2 gap)
             dist = max(420.0, width * 0.62 / math.tan(math.radians(24)))
             ym = ytop + 60
             cam = (x0 + r.uniform(-30, 30), ym + 70, z0 - dist)
@@ -701,11 +713,18 @@ class Planner:
             if steam and kind not in ("reveal", "detail", "letters", "monitor", "coins"):
                 subj = steam["figure"]                      # the steaming head stays in frame, with headroom
                 kind = "medium"
+            body = next((x for x in self.fx if x["kind"] in ("fall_apart", "assemble") and a - 0.2 <= x["t"] < b), None)
+            if body and kind not in ("letters", "wide"):    # a figure falls apart / builds itself: show all of it
+                subj, kind = body["figure"], "medium"       # (user test: it happened off screen in a close-up of Lia)
             other = others[0] if others else None
             if a >= self.E - 1.2 and i > 0 and kind not in ("reveal", "detail", "monitor", "letters"):
                 kind = "wide"
             cam, camb, aim, aimb, lens, focus, fstop = self.camera(
                 "two" if kind == "two" else kind, subj, r, other=other, target=target)
+            if kind == "letters" and target["t"] - a > 0.6:  # the word starts late in the shot: begin on the singer and
+                c0, _, a0, _, _, _, _ = self.camera("medium", subj, self.r(f"letters-start:{i}"), other=other)   # (own
+                #                                           rng: the other shots keep their take) move up to the word (user test:
+                cam, aim = c0, a0                           # 1.2 s of empty sky before the word)
             if steam and kind == "medium":                  # tilt up: the puffs rise ~80 LDU above the head
                 cam, camb, aim, aimb = [(q[0], q[1] - 28, q[2]) for q in (cam, camb, aim, aimb)]
             shake = round(r.uniform(0.0, 1.5), 2) if lively else 0.0

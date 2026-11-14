@@ -74,7 +74,7 @@ frames the screen face. Options in `"bricks"`: `flip`, `palette`, `camera: calm|
 ## 4 · Plan, look at stills, then render
 Every build script checks project.json first (studio-core `project_check.py`, details in song-analysis "Project check"): a wrong type, an impossible section (from >= to, duplicate name) or an unknown transition stop it in seconds with exit code 2 and the key named; unknown keys and overlapping sections (build.py cuts at the next start) only warn. `"size": [w, h]` = render size (default 1280x720).
 ```
-python $S/bricks-music-video/scripts/render.py <section> --project <proj> --stills 24,120,240,400
+python $S/bricks-music-video/scripts/render.py <section> --project <proj> --stills 24,120,240,400   # frames from the section start, or 12.5s = song time
 python $S/bricks-music-video/scripts/render.py <section> --project <proj> [--preview]
 ```
 `render.py` runs `plan.py` (→ `bricks/<section>.json`: shots with times/kinds/cameras, keys per figure, props),
