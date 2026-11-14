@@ -156,7 +156,8 @@ def main():
     ap = argparse.ArgumentParser(description="Song analysis for a lyric music video.")
     ap.add_argument("project", nargs="?", default=".")
     ap.add_argument("--best-words", choices=["auto", "always", "never"], default="auto",
-                    help="auto: when whole lines were not heard or < 70 %% of the words recognized")
+                    help="auto: when whole lines were not heard, < 70 %% of the words recognized or words crowd "
+                         "together (> 15 %% of them < 0.08 s after the previous one)")
     ap.add_argument("--passes", default="mix,vocals,vocals-vad")
     ap.add_argument("--no-refine", action="store_true")
     ap.add_argument("--redo", action="store_true")
@@ -167,10 +168,14 @@ def main():
     sheet = json.loads(sheet_file.read_text(encoding="utf-8"))
     missing = estimated_lines(sheet)
     rec_share = sum(w["source"] == "recognized" for w in sheet["words"]) / max(1, len(sheet["words"]))
-    weak = bool(missing) or rec_share < 0.7
+    ts = sorted(w["t"] for w in sheet["words"] if w.get("t") is not None)
+    crowded = sum(1 for x, y in zip(ts, ts[1:]) if y - x < 0.08) / max(1, len(ts) - 1)
+    # crowded: words stacked 0.05 s apart (user test: after lyrics.txt was corrected to what is sung, no line was
+    # missing any more, the passes did not run and two lines came out half heard with stacked word times)
+    weak = bool(missing) or rec_share < 0.7 or crowded > 0.15
     if a.best_words == "always" or (a.best_words == "auto" and weak and "word_passes" not in sheet):
-        print(f"{len(missing)} lines without a recognized word, {100 * rec_share:.0f} % of the words recognized "
-              f"-> song-analysis best_words.py ({a.passes})")
+        print(f"{len(missing)} lines without a recognized word, {100 * rec_share:.0f} % of the words recognized, "
+              f"{100 * crowded:.0f} % crowded -> song-analysis best_words.py ({a.passes})")
         best_words(P, a.passes)
         sheet = json.loads(sheet_file.read_text(encoding="utf-8"))
     lines = display_lines(P)
@@ -192,12 +197,20 @@ def main():
     P.file.write_text(json.dumps(P.p, ensure_ascii=False, indent=1), encoding="utf-8")
 
     print(f"\n{'start':>7} {'end':>7}  rec+al/n  line   ({sheet_file.name})")
+    song_end = float(sheet.get("duration") or 0)
+    late = 0
     for L, (rec, al, n), text in zip(timing, quality, lines):
         flag = "  <- estimated" if rec + al == 0 else ""
+        if song_end and L["t"] >= song_end - 0.3:     # placed after the end: not sung in this (excerpt of the) song
+            flag += "  <- AFTER THE SONG END: not sung here? remove it from lyrics.txt"
+            late += 1
         print(f"{L['t']:7.2f} {L['e']:7.2f}  {rec:>2}+{al}/{n:<2}  {text}{flag}")
     tot = sum(q[2] for q in quality)
     print(f"words recognized {sum(q[0] for q in quality)}/{tot}, aligned {sum(q[1] for q in quality)}, "
           f"lines without any recognized word: {sum(1 for q in quality if q[0] + q[1] == 0)}")
+    if late:
+        print(f"{late} line(s) after the song end ({song_end:.2f} s) - an excerpt often stops before the last lyric "
+              "line: delete such lines from lyrics.txt and run analyze_song.py --redo")
     print(f"tempo {h['bpm']} BPM (first beat {h['offset']} s; librosa {sheet.get('tempo_bpm')}), "
           f"{len(h['hits'])} hits, {len(h['big'])} big")
     words = [{"word": w, "t": s, "end": e, "line": li} for li, (L, text) in enumerate(zip(timing, lines))

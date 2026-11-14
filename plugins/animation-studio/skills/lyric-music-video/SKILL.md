@@ -69,7 +69,9 @@ Read `references/scene-catalog.md` (all past scenes, techniques, identities, lik
    (reference song A: 143 -> 271 of 300 words recognized).
    - Lines still marked `<- estimated` were not heard: often shouted chants (fine if the neighbours are good), but
      also repeats or ad-libs missing from `lyrics.txt`. Then **rewrite lyrics.txt as performed** (one sung line per
-     row, repeat repeated lines, keep the headers) and run `analyze_song.py PROJECT --redo`. What Whisper actually
+     row, repeat repeated lines, keep the headers; an excerpt: delete the lines after its end - the table marks them
+     `<- AFTER THE SONG END`) and run `analyze_song.py PROJECT --redo` (the extra Whisper passes also start when words
+     crowd together; `--best-words always` forces them). What Whisper actually
      heard is in `cache/rec_<pass>.json`; the aligned words in `analysis/song_sheet.json` ("source").
    - Optional check: `uv run "$SA/sync_check.py" PROJECT/analysis/vocals_lead.wav
      PROJECT/analysis/timing.json --lead 0.08` (share of words shown while the voice is still silent should be ~0).

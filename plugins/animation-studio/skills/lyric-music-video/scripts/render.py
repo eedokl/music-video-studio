@@ -12,6 +12,8 @@
   ... render.py PROJECT final [--crf 20] [--title "Song Title"] [--look none|standard] [--from S --to S]
   ... render.py PROJECT versions out/<title>.mp4                           only (re)make the smaller copies
   ... render.py PROJECT sheet VIDEO --times 4,12,20                        contact sheet of any video
+  --times are seconds of THAT file: for a clip made with --from 88, 2.5 = song time 90.5. preview --times takes the
+  nearest frame of the preview run (at --fps 1: whole seconds) - for exact song times render a clip around them.
 
 final writes to <project>/out/:
   <title>.mp4             full quality (CRF 20, 1080p30)
@@ -40,7 +42,7 @@ _studio.use("song-analysis", "film-finish")
 import config  # noqa: E402
 from encode import over_note, encode_target, place  # noqa: E402   film-finish: two-pass size target, locked-file handling
 from frames import sheet_at  # noqa: E402
-from media import check_video, duration, ffmpeg, has_audio  # noqa: E402
+from media import check_video, duration, ffmpeg, has_audio, video_size  # noqa: E402
 from song_project import Project  # noqa: E402
 
 FF_DIR = _studio.skill_dir("film-finish") / "scripts"
@@ -140,12 +142,18 @@ def versions(full, dur):
     subprocess.run([ffmpeg(), "-y", "-v", "error", "-i", str(full), "-c:v", "libx264", "-preset", "slow", "-crf", "28",
                     "-pix_fmt", "yuv420p", "-c:a", "copy", "-movflags", "+faststart", str(comp)], check=True)
     out.append(place(comp, full.with_name(full.stem + "_compressed.mp4")))
+    # the smaller of full / compressed is the reference: a version is copied only when that one is already under the
+    # size AND the side limit, and an encode never aims above it (user test: a 24 s clip got a _small identical to the
+    # 16 MB full film and a 960x540 _mail bigger than the 5 MB _compressed)
+    ref = min((full, out[-1]), key=lambda f: f.stat().st_size)
+    W, H = video_size(full)
     for suffix, mb, w, h, ak in (("_small", 29.0, 1280, 720, 96), ("_mail", 12.0, 960, 540, 64)):
         tmp = full.with_name(full.stem + suffix + "_tmp.mp4")
-        if full.stat().st_size < mb * 1e6:
-            shutil.copy(full, tmp)
+        if ref.stat().st_size < mb * 1e6 and W <= w:
+            shutil.copy(ref, tmp)
+            print(f"   {suffix}: a copy of {ref.name} (already under {mb:g} MB and {w} px)")
         else:
-            encode_target(full, tmp, mb, w, h, ak, dur)
+            encode_target(full, tmp, min(mb, ref.stat().st_size / 1.024e6), w, h, ak, dur)
         out.append(place(tmp, full.with_name(full.stem + suffix + ".mp4")))
         over = over_note(out[-1], mb)
         if over:
