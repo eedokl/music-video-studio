@@ -68,7 +68,7 @@ def _label(img, text):
     return img
 
 
-def sheet_at(video, out, times, cols=3, width=480):
+def sheet_at(video, out, times, cols=3, width=480, labels=None):
     from PIL import Image
     frames = [frame_at(video, t, width) for t in times]
     h = frames[0].height
@@ -77,7 +77,8 @@ def sheet_at(video, out, times, cols=3, width=480):
     for i, (t, f) in enumerate(zip(times, frames)):
         tile = Image.new("RGB", (width, h + LABEL_H))
         tile.paste(f, (0, LABEL_H))
-        sheet.paste(_label(tile, f"{float(t):.2f} s"), ((i % cols) * width, (i // cols) * (h + LABEL_H)))
+        lab = labels[i] if labels else f"{float(t):.2f} s"
+        sheet.paste(_label(tile, lab), ((i % cols) * width, (i // cols) * (h + LABEL_H)))
     sheet.save(out, quality=88)
     return out
 

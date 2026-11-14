@@ -132,6 +132,11 @@ def refine_lines(vocals, lines, before=0.30, after=0.20, verbose=True):
                 new.append(round(t, 3))
                 corr.append(t - s)
                 moved += 1
+        orig = line["words"]
+        for i in range(len(new) - 1):                          # two words that were apart must stay apart: snapping
+            if new[i + 1] - new[i] < 0.12 <= orig[i + 1] - orig[i]:   # both onto one onset stacked them 0.05 s apart
+                k = i if abs(new[i] - orig[i]) >= abs(new[i + 1] - orig[i + 1]) else i + 1   # (user test) - the one
+                new[k] = orig[k]                                                             # moved more goes back
         for i in range(1, len(new)):                           # keep the word order
             if new[i] <= new[i - 1] + 0.05:
                 new[i] = max(line["words"][i], new[i - 1] + 0.05)

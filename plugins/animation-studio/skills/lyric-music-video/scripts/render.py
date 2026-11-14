@@ -12,8 +12,8 @@
   ... render.py PROJECT final [--crf 20] [--title "Song Title"] [--look none|standard] [--from S --to S]
   ... render.py PROJECT versions out/<title>.mp4                           only (re)make the smaller copies
   ... render.py PROJECT sheet VIDEO --times 4,12,20                        contact sheet of any video
-  --times are seconds of THAT file: for a clip made with --from 88, 2.5 = song time 90.5. preview --times takes the
-  nearest frame of the preview run (at --fps 1: whole seconds) - for exact song times render a clip around them.
+  sheet --times are seconds of THAT file: for a clip made with --from 88, 2.5 = song time 90.5. preview --times are
+  song times, snapped to the preview's frames (at --fps 1: whole seconds) and labelled with the time shown.
 
 final writes to <project>/out/:
   <title>.mp4             full quality (CRF 20, 1080p30)
@@ -200,13 +200,18 @@ def main():
         t0 = a.t0 or 0
         times = [float(x) for x in a.times.split(",")] if a.times else \
             [round(t0 + 1 + i * a.every, 1) for i in range(int(((a.t1 or song) - t0 - 1) // a.every) + 1)]
+        pf = a.fps or 1                                  # the preview only has frames on its own grid: show and label
+        shown = [t0 + round((t - t0) * pf) / pf for t in times]   # the frame that is really there (user test:
+        if any(abs(x - t) > 0.01 for x, t in zip(shown, times)):  # 4.6 s was labelled 4.6 but showed 5.0)
+            print(f"   preview at {pf} fps: times snapped to its frames - for exact times render a clip around them")
         sheets = []
-        for k in range(0, len(times), 12):               # 12 frames per sheet (4 x 3)
+        for k in range(0, len(shown), 12):               # 12 frames per sheet (4 x 3)
             s = outdir / f"preview_sheet_{k // 12 + 1}.jpg"
-            # the preview starts at --from: its clock is song time - t0
-            sheet_at(f, s, [t - t0 for t in times[k:k + 12]], cols=4, width=400)
+            # the preview starts at --from: its clock is song time - t0; labels = song time
+            sheet_at(f, s, [t - t0 for t in shown[k:k + 12]], cols=4, width=400,
+                     labels=[f"{t:.2f} s" for t in shown[k:k + 12]])
             sheets.append(s.name)
-        print(f"-> {Path(f).name}; contact sheets (times relative to {t0} s): {', '.join(sheets)}")
+        print(f"-> {Path(f).name}; contact sheets (labels = song time): {', '.join(sheets)}")
     elif a.what == "clip":
         if a.t0 is None or a.t1 is None:
             raise SystemExit("clip needs --from and --to")

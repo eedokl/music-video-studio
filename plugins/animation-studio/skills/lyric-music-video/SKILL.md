@@ -141,6 +141,9 @@ Read `references/scene-catalog.md` (all past scenes, techniques, identities, lik
 - **LEAD**: words appear `LEAD` (0.08 s, `lyric.ts`) before their time. That is right for refined timing (default).
   With `--no-refine` (unrefined Whisper times) use ~0.2 s.
 - **Fonts**: wait for them in render mode (`document.fonts.load` in main.ts) - update the list with the fonts.
+  The template loads them from Google Fonts at EVERY render (a request to Google; offline: silent fallback
+  fonts). Tell the user; for offline / private renders put the .woff2 files into `video/public/fonts/` with an
+  `@font-face` in style.css instead of the link (downloading them = ask first).
 - **Windows paths**: deep folders exceed MAX_PATH - keep PROJECT and the headless Chrome short (`%TEMP%/mvchrome`).
 - **Browser**: render.py takes config `chrome` / env `ANIMATION_STUDIO_CHROME`, then an existing chrome-headless-shell (%TEMP%/mvchrome,
   ~/.cache/puppeteer), and only then the machine's general `browser` (Edge). A full Edge/Chrome runs in new headless
