@@ -271,8 +271,8 @@ mode = {"m": "ok"}
 
 
 class R:
-    def __init__(self, rc):
-        self.returncode, self.stdout, self.stderr = rc, "", ""
+    def __init__(self, rc, err=""):
+        self.returncode, self.stdout, self.stderr = rc, "", err
 
 
 def fake_run(cmd, **k):
@@ -281,6 +281,8 @@ def fake_run(cmd, **k):
         runs.append(cmd[cmd.index("render") + 1])
         if mode["m"] == "unknown":
             return R(2)
+        if mode["m"] == "knob":
+            return R(2, "earshot sfx: error: KnobError: ui_pop/step: G2 (98.0 Hz) is outside its f0 range 250-1200 Hz")
         out.write_bytes(b"RIFFdata")
         return R(1 if mode["m"] == "crash" else 0)
     return real_run(cmd, **k)
@@ -299,6 +301,8 @@ mode["m"] = "ok"
 d = mix._bank(wav2, "swish/soft", []); r_d = len(runs)
 mode["m"] = "unknown"
 e = mix._bank(bank / "nope.wav", "nope", [])
+mode["m"] = "knob"
+k = mix._bank(bank / "ui_pop__step_pitch_G2.wav", "ui_pop/step", ["--pitch", "G2"])
 import io, wave as _wave
 buf = io.BytesIO()
 with _wave.open(buf, "wb") as w_:                         # a complete bank file from before derived.py
@@ -311,11 +315,13 @@ mode["m"] = "ok"
 trunc = bank / "drip__bubble.wav"                         # one a killed render left half-written (no record)
 trunc.write_bytes(good_wav[:len(good_wav) // 2])
 g = mix._bank(trunc, "drip/bubble", []); r_g = len(runs)
-res["sfx_bank"] = {"rendered": a and r_a == 1, "reused": b and r_b == 1,
-                   "crash_not_kept": (not c) and not c_left, "rerendered_after_crash": d and r_d == 3,
-                   "unknown_id": (not e) and not (bank / "nope.wav").exists(),
-                   "legacy_adopted": f and r_f == 4 and legacy.read_bytes() == good_wav,
-                   "truncated_legacy_rerendered": g and r_g == 5 and trunc.read_bytes() == b"RIFFdata",
+res["sfx_bank"] = {"rendered": a is True and r_a == 1, "reused": b is True and r_b == 1,
+                   "crash_not_kept": c is not True and not c_left, "rerendered_after_crash": d is True and r_d == 3,
+                   "unknown_id": e is not True and not (bank / "nope.wav").exists(),
+                   "knob_reason_passed_on": isinstance(k, str) and "outside its f0 range" in k
+                                            and not k.startswith("earshot sfx"),
+                   "legacy_adopted": f is True and r_f == 5 and legacy.read_bytes() == good_wav,
+                   "truncated_legacy_rerendered": g is True and r_g == 6 and trunc.read_bytes() == b"RIFFdata",
                    "no_temp": not list(bank.glob(".tmp.*"))}
 print("RESULT " + json.dumps(res))
 '''

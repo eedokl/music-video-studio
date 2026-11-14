@@ -99,8 +99,9 @@ class SfxMix:
         else:
             tag = "".join("_" + x.replace(".", "").replace("-", "") for x in args)
         wav = self.cache / (sid.replace("/", "__") + tag + ".wav")
-        if not self._bank(wav, sid, args):
-            print(f"  sound '{sid}' not found - skipped (earshot sfx list)")
+        why = self._bank(wav, sid, args)
+        if why is not True:                            # earshot's own reason, e.g. "G2 is outside its f0 range ..."
+            print(f"  sound '{' '.join([sid, *args])}' skipped: {why}")
             self.missing.append(sid)
             self._mem[key] = None
             return None
@@ -118,7 +119,7 @@ class SfxMix:
         return y
 
     def _bank(self, wav, sid, args):
-        """The bank file of sid + args, rendered by earshot unless a complete render of exactly these is there
+        """True, or earshot's error line when it could not render. The bank file of sid + args, rendered by earshot unless a complete render of exactly these is there
         (studio-core derived.py: earshot writes a temp file, the record is written only after it finished - a killed
         render is never reused). Files of the bank from before derived.py (no record) are adopted: their name encodes
         id + args. earshot has no cheap version query (no --version; each call starts a ~10 s Python process), so an
@@ -136,9 +137,12 @@ class SfxMix:
                 r = subprocess.run(config.cmdline(self.ear + ["sfx", "render", sid, "-o", str(b.path), "--sr", str(SR)]
                                                   + list(args)), capture_output=True, text=True, errors="replace")
                 if r.returncode:                           # failed or killed: a half-written file is never kept
-                    raise RuntimeError(f"earshot exited {r.returncode}")
-        except RuntimeError:                               # unknown id (earshot wrote nothing) or a failed render
-            return False
+                    lines = [x.strip() for x in (r.stderr + r.stdout).splitlines() if x.strip()]
+                    err = next((x for x in reversed(lines) if "error" in x.lower()), lines[-1] if lines else "")
+                    raise RuntimeError(err.replace("earshot sfx: error: ", "")[:300]
+                                       or f"earshot exited {r.returncode} (see `earshot sfx list`)")
+        except RuntimeError as e:                          # unknown id, a knob out of range, or a failed render
+            return str(e)
         return True
 
     def place(self, y, t, db=-14.0, pan=0.0, align="start"):
