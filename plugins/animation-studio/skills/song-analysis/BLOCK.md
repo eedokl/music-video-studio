@@ -27,7 +27,7 @@ with `"sfx"` + `"word"`/`"at"`/`"every"`/`"marker"`; `"gags"`, `"screen"`, `"ste
 `"word"`; `"transitions"` objects with `"at"` and a known `"kind"`; `"look"` a string; `"fps"` a number; `"size"` two
 even whole numbers; `"sections"` objects with `"name"`, numeric `"from"` >= 0 and < `"to"`, unique names (order
 and overlaps only warn: build.py sorts and cuts a section at the next one's start). Figures in song projects sing by role (`"voice"`: male / female / announcer – anything else
-warns); in talking scenes without a `"recording"` `"voice"` must be a voice of the cast (voice skill `assets/cast.json` + project `"voices"`).
+warns); in talking scenes without a `"recording"` `"voice"` must be a voice of the cast (voice block `assets/cast.json` + project `"voices"`).
 Warnings: unknown keys (did-you-mean), rendered `scenes/<section>/` whose frame count or size no longer fits the
 section. A new project.json key goes into `SCHEMAS` of `project_check.py`.
 

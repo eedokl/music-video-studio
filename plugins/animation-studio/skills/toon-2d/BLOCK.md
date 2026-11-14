@@ -90,7 +90,7 @@ Characters (Tim, Lia, Computer, Pip, Fips, own SVG figures, rig convention) are 
 
 ## Lip sync (dialogue)
 
-1. Voice as WAV (recording or TTS from the `voice` skill).
+1. Voice as WAV (recording or TTS from the `voice` block).
 2. `rhubarb -r phonetic -f json --extendedShapes GHX -o mouth.json voice.wav` (`-r phonetic` is
    language-independent – needed for German; ~1 s for a 7 s line).
 3. In the scene: `mouth_layers(load_cues("mouth.json"), FPS, center=<mouth pos in the head group>, size=0.8,

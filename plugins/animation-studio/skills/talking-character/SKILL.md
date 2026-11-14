@@ -51,20 +51,20 @@ S="${CLAUDE_PLUGIN_ROOT}/skills/talking-character/scripts"
 python "$S/new_talk.py" <folder> --script dialogue.txt [--set room] [--recording take.wav] [--seed N]
 uv run "$S/make.py" --project <folder>
 ```
-`make.py` checks project.json first (studio-core `project_check.py`): every figure's `"voice"` must be a voice of the cast (voice skill `assets/cast.json` or project `"voices"`) – not a role like "male" – else it stops with exit code 2 before any voice is made. `"size": [w, h]` = frame size (default 1280x720).
+`make.py` checks project.json first (studio-core `project_check.py`): every figure's `"voice"` must be a voice of the cast (voice block `assets/cast.json` or project `"voices"`) – not a role like "male" – else it stops with exit code 2 before any voice is made. `"size": [w, h]` = frame size (default 1280x720).
 `make.py` runs: `speak.py` (voices, timeline, Rhubarb per line, word times) → `talk_scene.py --render`
 (scenes/dialogue.sif + frames) → film-finish `overlays.py dialogue` (subtitles) → `sounds.py` (gesture sounds,
 earshot) → `build.py film` (look, film.mp4 / film_small / film_mail, 0 decode errors) → `check_sync.py`.
 `--from scene` re-runs from a later step (voices are cached in `lines/` and only re-spoken when a text changes).
 
 project.json keys (besides the song-analysis ones): `script`, `recording`, `figures` {name: {svg | kind: screen,
-voice, place, size, mouth, follow, arms, hands}}, `voices` (overrides, see voice skill), `set`, `view`,
+voice, place, size, mouth, follow, arms, hands}}, `voices` (overrides, see the voice block), `set`, `view`,
 `camera` (`auto` | `static` | `cuts`), `close_zoom`, `direction` {lead_in, gap, jitter, quick, slow, interrupts,
 tail}, `subtitles` (true), `sounds` (optional: gesture sounds are on without it; `false` switches them off; a
 list of extra rules as in film-finish `sounds.py`, e.g. `"sounds": [{"sfx": "ui_pop/blip", "word": "hallo"}]`),
 `pronounce`, `look`.
 
-Own figure: Inkscape SVG with the rig convention of the characters skill (groups `kopf`, `auge_l/r`,
+Own figure: Inkscape SVG with the rig convention of the characters block (groups `kopf`, `auge_l/r`,
 `pupille_l/r`, optional `arm_l/r`, `brauen`; pivots `pivot_<part>`; `pivot_mund` where the mouth goes; feet at
 (200, 590); 72 px = 1 unit). Parts that should swing after the head (antenna, ears, a leaf) go into `"follow"`.
 A figure without arms (`"arms": false`) hops and leans instead of gesturing.

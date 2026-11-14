@@ -10,7 +10,7 @@ react. It is built as an editable Synfig scene from Python (keyframes, not baked
 then finished with sound effects and the standard look.
 
 Building blocks (sibling skills): `toon-2d` (Synfig scenes, rigs, render, multiplane, comic flight, Blender Grease
-Pencil – read its SKILL.md and `references/animation-craft.md`), `characters` (Tim, Lia, Computer, Pip, Fips, own SVG
+Pencil – read its BLOCK.md and `references/animation-craft.md`), `characters` (Tim, Lia, Computer, Pip, Fips, own SVG
 figures), `film-finish` (`apply_look.py`), `studio-core` (config, creative seed), `ai-video` (optional painted sets,
 depth maps; takes the GPU lock).
 Scripts here: `${CLAUDE_PLUGIN_ROOT}/skills/animated-short/scripts/` –
@@ -63,7 +63,7 @@ falling objects, contacts). Show the beat list to the user in one short block be
 - Sets: `sets.set_layers("park")` etc., `paint_clearing.py --seed <short seed>` for a painted forest, or code-drawn
   backgrounds (gradient sky clipped, hills as big circles, light and desaturated behind saturated characters).
 - Camera: zoom with `canvas(view=...)` so the characters fill about a third of the frame height.
-- Multiplane / comic / Grease Pencil variants: see `toon-2d` SKILL.md (render the character with transparent
+- Multiplane / comic / Grease Pencil variants: see the `toon-2d` BLOCK.md (render the character with transparent
   background and put it on the same depth as its ground layer).
 
 ## 5. Contact-sheet review (the checkpoint – always)

@@ -78,6 +78,9 @@ for p in ROOT.rglob("*"):
     if not p.is_file() or p.suffix.lower() not in TEXT or "node_modules" in p.parts or p.name == "smoke.py":
         continue
     t = p.read_text(encoding="utf-8", errors="replace")
+    cc = re.search(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", t)   # e.g. a backspace where "\b" was meant (an escaped heredoc)
+    if cc:
+        fail(f"control character {hex(ord(cc.group()))} in {p.relative_to(ROOT)}:{t[:cc.start()].count(chr(10)) + 1}")
     for m in abs_re.finditer(t):
         line = t[:m.start()].count("\n") + 1
         fail(f"absolute path in {p.relative_to(ROOT)}:{line}: {t[m.start():m.start() + 40].splitlines()[0]}")
@@ -320,6 +323,13 @@ for md in SKILLS.glob("*/SKILL.md"):
     t = md.read_text(encoding="utf-8")
     if "skills/<block>/BLOCK.md" not in t or any(f"`{b}`" not in t for b in BLOCK_NAMES):
         fail(f"{md.parent.name}/SKILL.md lacks the standard \"Building blocks\" paragraph naming every BLOCK.md")
+for md in list(SKILLS.glob("*/SKILL.md")) + list(SKILLS.glob("*/BLOCK.md")) + list(SKILLS.glob("*/references/*.md")) + [ROOT / "README.md", ROOT / "TOOLS.md"]:
+    for i, line in enumerate(md.read_text(encoding="utf-8").splitlines(), 1):
+        for b in BLOCK_NAMES:                         # a block is not a skill any more: "<block> skill" / "<block> SKILL.md"
+            if re.search(rf"`?{re.escape(b)}`?\s+(skill\b|SKILL\.md)", line):
+                fail(f"{md.relative_to(ROOT).as_posix()}:{i}: calls the building block {b} a skill - say block / BLOCK.md")
+for md in SKILLS.glob("*/SKILL.md"):
+    t = md.read_text(encoding="utf-8")
     if "user-invocable: false" in t:
         fail(f"{md.parent.name}/SKILL.md is marked user-invocable: false - a building block belongs in BLOCK.md")
 

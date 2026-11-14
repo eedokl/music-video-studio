@@ -88,7 +88,7 @@ twist, blink timing, ...): same seed → same film, new seed → a new take. Nev
 - Figures: `voice` male / female / announcer (announcements, robotic parts). `narrator`: narrated sections (lyrics
   talk *about* a figure and never say "I") go to this figure while the hero acts. Own figures:
   `{"svg": "figures/oma.svg", "voice": "female", "size": 0.9, "mouth": 0.5}` – Inkscape SVG with the rig convention
-  of the `characters` skill. `kind: "screen"` draws the figure as a face in the set's screen.
+  of the `characters` block (BLOCK.md). `kind: "screen"` draws the figure as a face in the set's screen.
 - Sections: `set` = `stage` (full figures, screen at the back), `room` (night room, desk hides legs, monitor),
   `color:#203040`, or an own set in `<project>/sets/<name>/set.json` (copy one from toon-2d `assets/sets/`;
   painted PNGs from Krita or FLUX, `places` = x of each figure's feet, `floor`, `scale`, `screen` rectangle,
@@ -105,7 +105,7 @@ twist, blink timing, ...): same seed → same film, new seed → a new take. Nev
   `"tint_for"` / `"duration"` s) – e.g. the screen turns red at "Quota".
   Screen badges: a label that stays in the screen's corner and changes on a word (tier FREE → PRO → MAX, a clock,
   a level, a battery); its state carries over from section to section.
-  Props: own images (draw them, paint with FLUX via the `ai-video` skill, or Krita) placed on the set, shown on a
+  Props: own images (draw them, paint with FLUX via the `ai-video` block, or Krita) placed on the set, shown on a
   word, bouncing on the beat.
 - Transitions (computed frame by frame on the finished cut – no handles, sections stay on their song frames):
   `zoom_through` (the last frame zooms into a window/door/screen while the new scene settles), `glow` (warm light

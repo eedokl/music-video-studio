@@ -26,7 +26,7 @@ uv run shaders_render.py gallery --image scenes/intro/f.0100.png --out gallery [
 uv run shaders_render.py catalog --out catalog                         # full catalogue of the installed version
 ```
 
-Run with `uv run "<plugin>/skills/film-finish/scripts/shaders_render.py" ...` (`<plugin>` = the plugin folder, as in the film-finish SKILL.md commands).
+Run with `uv run "<plugin>/skills/film-finish/scripts/shaders_render.py" ...` (`<plugin>` = the plugin folder, as in the film-finish BLOCK.md commands).
 
 - **look**: a preset in `look.json` format: `{"components": [...], "frames": 24, "description": "..."}`. The first
   component is normally a white `SolidColor`; everything else darkens/tints it, because the overlay is
