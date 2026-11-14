@@ -514,7 +514,9 @@ class Planner:
         for e in self.ev:                                   # big gestures get a cut on their word
             if e[3] in ("fist", "cheer", "jump", "head_pop", "hair") and e[5] != "listen":
                 cuts.append(snap(e[0] - 0.12, self.beats, 0.15))
-        cuts = sorted(set(round(c, 3) for c in cuts if self.S <= c < self.E - 0.6))
+        # the section start is always a cut (a section shorter than 0.6 s has no other), added cuts must leave
+        # 0.6 s before the end
+        cuts = sorted({round(self.S, 3)} | {round(c, 3) for c in cuts if self.S < c < self.E - 0.6})
         out = []
         for c in cuts:                                      # at least 1.0 s per shot
             if not out or c - out[-1] >= 1.0:
@@ -787,7 +789,7 @@ class Planner:
         lens = [s["t1"] - s["t0"] for s in shots]
         on_beat = sum(1 for s in shots[1:] if min([abs(s["t0"] - b) for b in self.beats] or [9]) < 0.06)
         print(f"-> bricks/{self.name}.json: set {self.kind} (palette {st['palette_index']}, flip {self.flip}), "
-              f"cast {[c['name'] for c in cast]}, {len(shots)} shots (mean {sum(lens) / len(lens):.2f} s, "
+              f"cast {[c['name'] for c in cast]}, {len(shots)} shots (mean {sum(lens) / max(len(lens), 1):.2f} s, "
               f"{on_beat}/{max(len(shots) - 1, 0)} cuts on a beat), kinds {[s['kind'] for s in shots]}, "
               f"gestures {sum(1 for e in self.ev if e[5] != 'listen')}, cameos {len(self.cameos)}, coins {len(self.coins)}, "
               f"screens {scr['tiles'] - 1}, seed {seed}")

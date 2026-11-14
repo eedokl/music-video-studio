@@ -128,4 +128,31 @@ shows exists, that the `_studio.py` copies are identical, that no new module nam
 machine path slipped in. Run it before every release and bump `version` in `.claude-plugin/plugin.json` - installed
 users only get an update when the version changes.
 
+`python tests/e2e/run.py` (from the plugin folder) runs the end-to-end tests: per film type a tiny build (a few seconds
+of synthetic input - ffmpeg tones and test pictures, small JSON files - one section or shot) from the first build script
+to the final film file, so a break anywhere in a build path shows up. Slow model steps are replaced by synthetic
+analysis files (song sheet, voice assignment, timing, clip metadata) or a fake job runner; everything after them runs
+the real scripts with `uv run --offline` (no downloads, no network, no AI job on the GPU). Covered: animated-music-video
+(one section through overlays, sounds with `"sounds": true` / `false` / a list, `build.py film`; two sections with
+fractional boundaries: frame count and cut frame against the sound), animated-short, talking-character (Windows
+system voice), animated-powerpoint (scene finishing path with a faked and with the real 2.5D stage render, sound cue
+positions), claudia-music-video (fake LTX clips + meta -> `render_shots.py` -> `make_film.py`), film-finish `cut.py`,
+video-review (per-frame provenance of the cut), lyric-music-video, bricks-music-video (Blender EEVEE draft, takes the
+GPU lock), the night-run kill-and-resume (`.part` outputs) and an interrupted caption pass.
+- `python tests/e2e/run.py --list` names the tests, `run.py animated-music-video claudia` runs a selection (name or
+  prefix), `--skip-slow` skips the ones marked slow, `-v` streams the build logs, `--profile` prints the slowest
+  commands per test (`log.txt` has every output line with its elapsed seconds), `--keep` keeps the temp folders.
+- Default is the fast mode: it only drops work a test does not check (the film look where the test protects frame
+  counts or sync - the look itself is tested in the one-section, short, powerpoint and cut tests; a 2 s instead of a
+  3 s section in the one-section music-video test). `--full` runs everything real (before a release).
+- Each test builds in its own temp folder and prints PASS / FAIL / SKIP with the reason and its runtime; the exit code
+  is 1 when a test fails. A failed test keeps its folder (`log.txt` holds every command and its output).
+- A test SKIPs when a program it needs is not configured (studio-core `config.py`: synfig, rhubarb, earshot, blender +
+  ldraw_dir, node + browser). The tests use a copy of `~/.animation-studio/config.json`, never the file itself.
+- lyric-music-video needs the engine's `node_modules` (`npm install` is a download): set
+  `ANIMATION_STUDIO_E2E_NODE_MODULES=<an existing lyric-video project>/video/node_modules` - its packages are linked
+  into the temp project and unlinked afterwards; without it the test SKIPs.
+- The whole suite takes about 2 minutes on the studio machine (1-21 s per test; the first run after a plugin update
+  builds the uv environments of the test drivers once, ~10 s each).
+
 See `CONVENTIONS.md` before adding or changing a skill.

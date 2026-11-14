@@ -113,7 +113,7 @@ def cmd_finish(a):
         shutil.copy(sheet, final / "contact.png")
     else:
         (final / "contact.png").unlink(missing_ok=True)
-    S.p["final"] = str(out.relative_to(S.dir))
+    S.p["final"] = out.relative_to(S.dir).as_posix()
     S.save()
     print("final:", out, "| gif:", final / f"{name}.gif",
           "| contact:", final / "contact.png" if sheet.exists() else f"none (--contact {contact})")
