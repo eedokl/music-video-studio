@@ -76,7 +76,9 @@ def video_fps(path):
 
 def contact_sheet(video_or_pattern, out, cols=3, rows=3, width=640, fps=None):
     """Contact sheet of cols x rows frames spread evenly over a video or an image sequence (f.%04d.png).
-    fps: of the image sequence (default 24); for a video the file's own frame rate is used (48 fps, 30 fps ...)."""
+    fps: of the image sequence (default 24); for a video the file's own frame rate is used (48 fps, 30 fps ...).
+    Prints which frame (and second) each tile shows, in reading order - the PNG itself carries no labels (the
+    ffmpeg of some installs has no drawtext)."""
     src = str(video_or_pattern)
     is_seq = "%" in src
     if is_seq:
@@ -90,13 +92,16 @@ def contact_sheet(video_or_pattern, out, cols=3, rows=3, width=640, fps=None):
     subprocess.run([ffmpeg(), "-y", "-v", "error", *inp, "-vf",
                     f"select='not(mod(n\\,{step}))',scale={width}:-1,tile={cols}x{rows}", "-frames:v", "1", str(out)],
                    check=True)
+    tiles = list(range(0, n, step))[: cols * rows]
+    print(f"{out}: tiles left->right, top->bottom = frames " +
+          ", ".join(f"{f} ({f / fps:.2f} s)" for f in tiles))
     return out
 
 
 if __name__ == "__main__":
     import sys
     if len(sys.argv) >= 3 and sys.argv[1] == "sheet":
-        print(contact_sheet(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else "contact_sheet.png"))
+        contact_sheet(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else "contact_sheet.png")
     elif len(sys.argv) >= 3 and sys.argv[1] == "check":
         bad = 0
         for v in sys.argv[2:]:

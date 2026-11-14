@@ -1,6 +1,6 @@
 ---
 name: film-tools
-description: "Quick finishing jobs on any existing video, no project needed: the standard film look (paper, grain, vignette), smaller versions for upload or e-mail (< 30 MB, ~12 MB), a contact sheet, a decode check, or cutting several clips/stills into one film with titles, transitions and music. Use for 'apply the look', 'make it smaller', 'check this video'."
+description: "Quick finishing jobs on any existing video, no project needed: the standard film look (paper, grain, vignette), smaller versions for upload or e-mail (< 30 MB, ~12 MB), a contact sheet, a decode check, listening through a film / comparing two versions, or cutting several clips/stills into one film with titles, transitions and music. Use for 'apply the look', 'make it smaller', 'check this video'."
 ---
 
 # Film tools
@@ -24,7 +24,9 @@ How the commands run:
 |---|---|---|
 | the standard film look (paper + grain + vignette) | `uv run "${CLAUDE_PLUGIN_ROOT}/skills/film-finish/scripts/apply_look.py" in.mp4 -o in_look.mp4 [--strength 0.6] [--look <folder>]` | `in_look.mp4`, picture and sound otherwise unchanged |
 | smaller versions (upload, e-mail) | `uv run "${CLAUDE_PLUGIN_ROOT}/skills/film-finish/scripts/encode.py" in.mp4 [--small] [--mail] [--mb 20 --suffix _web --side 1280]` | `in_small.mp4` (< 29 MB, long side ≤ 1280), `in_mail.mp4` (~12 MB, ≤ 960); aspect kept (phone clips stay upright), never upscaled, never bigger than the input (copied when already under both limits), "OVER the N MB target" if a very long video cannot fit |
-| a contact sheet (3x3 frames) | `python "${CLAUDE_PLUGIN_ROOT}/skills/studio-core/scripts/media.py" sheet in.mp4 sheet.png` | open the PNG with the Read tool and describe what you see |
+| a contact sheet (3x3 frames) | `python "${CLAUDE_PLUGIN_ROOT}/skills/studio-core/scripts/media.py" sheet in.mp4 sheet.png` | open the PNG with the Read tool and describe what you see; the command prints which frame / second each tile is |
+| listen through a film (you cannot hear: let earshot do it) | `earshot timeline in.mp4` (events, sections, loudness, silences, picture cuts, sync) and `earshot sheet in.mp4 -o in_ear.png` (frames + spectrogram + events in one PNG, open it) – earshot = the program from `check_tools.py` (`config.py get earshot`) | say what it heard (and that it is a machine's ear, not a listener) |
+| compare two versions (A/B) | decode check + `media.py sheet` of both, sizes; sound: `earshot ab a.mp4 b.mp4`; picture difference in numbers: `ffmpeg -i a.mp4 -i b.mp4 -lavfi psnr -f null -` | which one for what (upload, mail, archive) and why |
 | a decode check | `python "${CLAUDE_PLUGIN_ROOT}/skills/studio-core/scripts/media.py" check in.mp4 [...]` | size (e.g. 1920x1080, as displayed), length and "0 decode errors" per file, exit code 1 otherwise – no ffprobe needed |
 | several clips / stills / title cards into one film, with dissolves, music, title | write a `cut.json` (shot list) and run `uv run "${CLAUDE_PLUGIN_ROOT}/skills/film-finish/scripts/cut.py" cut.json` | `film.mp4` + small / mail versions, sheet, `.otio` for Kdenlive – the format is in film-finish BLOCK.md (`cut.py` row) |
 | a new look (other paper, softer grain …) | `uv run "${CLAUDE_PLUGIN_ROOT}/skills/film-finish/scripts/shaders_render.py" look --preset my_look.json --out <folder>`, then `apply_look.py in.mp4 --look <folder>` | needs node + a headless Chrome/Edge; see film-finish BLOCK.md and its `references/shaders.md` |
