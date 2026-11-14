@@ -103,12 +103,43 @@ def step_sheet(P):
     stuck = sum(1 for a, b in zip(starts, starts[1:]) if b <= a + 0.05)
     words = sheet.get("words", [])
     heard = sum(1 for w in words if w.get("source") == "recognized") / max(len(words), 1)
-    if words and (stuck or heard < 0.6):              # lines collapsed (repeated chorus) or too little heard
-        print(f"3c {stuck} lyric lines do not start after the previous one, {heard:.0%} of the words recognized "
-              "-> best_words.py (several Whisper passes, best pass per line, sung order kept)")
+    ts = sorted(w["t"] for w in words if w.get("t") is not None)
+    crowded = sum(1 for x, y in zip(ts, ts[1:]) if y - x < 0.08) / max(1, len(ts) - 1)
+    # < 85 % heard or words stacked together: the extra passes paid off in the user tests (was < 60 %)
+    if words and (stuck or heard < 0.85 or crowded > 0.15):
+        print(f"3c {stuck} lyric lines do not start after the previous one, {heard:.0%} of the words recognized, "
+              f"{crowded:.0%} crowded -> best_words.py (several Whisper passes, best pass per line, sung order kept)")
         if "--no-best" not in sys.argv:
             subprocess.run(runner(["librosa", "faster-whisper", "numpy", "soxr"]) + [str(HERE / "best_words.py"),
                                                                                 str(P.dir)], check=True)
+            sheet = json.loads((P.analysis / "song_sheet.json").read_text(encoding="utf-8"))
+    for msg in sheet_warnings(sheet):
+        print("   WARNING " + msg)
+
+
+def sheet_warnings(sheet):
+    """Plausibility notes on the word times of song_sheet.json (user tests): a lyric line placed after the song end
+    (an excerpt that stops before the last line), and a line whose first word sits far before a dense rest (a call
+    that is not in the lyrics, "Hey!", heard as that word)."""
+    out, end = [], float(sheet.get("duration") or 0)
+    by_line = {}
+    for w in sheet.get("words", []):
+        if w.get("t") is not None:
+            by_line.setdefault(w.get("line"), []).append(w)
+    for li, ws in sorted(by_line.items(), key=lambda kv: (kv[0] is None, kv[0] or 0)):
+        ws.sort(key=lambda w: w["t"])
+        if end and ws[0]["t"] >= end - 0.3:
+            out.append(f"lyric line {li} starts at {ws[0]['t']:.2f} s, after the song end ({end:.2f} s): not sung in "
+                       "this (excerpt of the) song? delete it from the lyrics and run with --redo")
+            continue
+        gaps = [b["t"] - a["t"] for a, b in zip(ws, ws[1:])]
+        if len(gaps) >= 3:
+            rest = sorted(gaps[1:])[len(gaps[1:]) // 2]
+            if gaps[0] > 1.0 and gaps[0] > 2.5 * rest:
+                out.append(f"lyric line {li}: its first word '{ws[0]['word']}' ({ws[0]['t']:.2f} s) is {gaps[0]:.1f} s "
+                           "before the second - a call that is not in the lyrics (\"Hey!\") heard as it? add the call "
+                           "to the lyrics, or fix the time")
+    return out
 
 
 def step_mouths(P):

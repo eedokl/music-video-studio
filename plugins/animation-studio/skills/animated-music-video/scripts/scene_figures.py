@@ -140,7 +140,9 @@ def figure(c, k, nr, x=None, scale=None, floor=None, actions=True, front_out=Non
     Kf = c.K if scale is None else scale
     FL = c.FLOOR if floor is None else floor
     style = (A.get("dance_style", {}).get(k) if isinstance(A.get("dance_style"), dict) else A.get("dance_style")) \
-        or cfg.get("dance_style") or creative.pick(P, f"dance:{k}:{c.section}", DANCE_STYLES)
+        or cfg.get("dance_style") or creative.pick(P, f"dance:{k}", DANCE_STYLES)   # one style per figure for the
+    #   whole film (SKILL: "dance style per figure"; per section it switched visibly at a cut - user test); a section's
+    #   own "dance_style" still changes it on purpose
     c.styles_used[k] = style
     spans = c.act_spans.get(k, []) if actions else []
     arm_l, arm_r, head, look, brow, sq, by, step, sway = _beat_keys(c, k, x0, style, spans)
@@ -207,7 +209,9 @@ def figure(c, k, nr, x=None, scale=None, floor=None, actions=True, front_out=Non
     ya = anim("real", [(f, FL + v * Kf) for f, v in keys(by)])
     amt = None
     first = next((t for t, s in cues if s != "X"), None)
-    if cfg.get("entrance") == "flicker" and first is not None and F(first + S) > 14:
+    song_first = next((t for t, s in c.ASG.get(k, []) if s != "X"), None)   # the first time in the WHOLE song: the
+    sang_before = song_first is not None and song_first < S                 # entrance is once per film, not per scene
+    if cfg.get("entrance") == "flicker" and first is not None and not sang_before and F(first + S) > 14:
         f0 = F(first + S) - 14
         amt = anim("real", [(0, 0.0, "constant")] + [(f0 + j, v, "constant") for j, v in
                                                     enumerate([0.6, 0, 0.8, 0.2, 1, 0.4, 1, 1])])

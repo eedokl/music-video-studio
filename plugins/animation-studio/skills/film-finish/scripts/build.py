@@ -293,10 +293,10 @@ def film(P):
         s = min(1.0, side / max(W, H))                     # long side <= 1280 / 960 (1280x720 -> 1280x720, 960x540)
         w, h = round(W * s / 2) * 2, round(H * s / 2) * 2
         target = P.cache / f"{name}_tmp.mp4"
-        if out.stat().st_size < mb * 1e6:
-            shutil.copy(out, target)                        # already small enough
-        else:
-            encode_target(out, target, mb, w, h, ak, dur)
+        if out.stat().st_size < mb * 1e6 and max(W, H) <= side:
+            shutil.copy(out, target)                        # already small enough (bytes and pixels)
+        else:                                               # never bigger than the film (user test: a 1280x720 film
+            encode_target(out, target, min(mb, out.stat().st_size / 1.024e6), w, h, ak, dur)   # got a _mail copy)
         results.append(place(target, P.dir / f"{name}.mp4"))
         targets[results[-1]] = mb
     for r in results:
