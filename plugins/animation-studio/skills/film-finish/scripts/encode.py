@@ -10,7 +10,8 @@ CLI for any finished video (no project needed):
   uv run encode.py film.mp4 [--small] [--mail] [--mb 20 --suffix _web]
   -> film_small.mp4 (< 29 MB, long side <= 1280) and/or film_mail.mp4 (~12 MB, long side <= 960); both by default.
   The aspect ratio is kept (also of phone clips with a rotation flag), nothing is upscaled; a video already
-  under the size and the side limit is copied; every output is
+  under the size and the side limit is copied, one only too large in pixels is scaled down at most at its own
+  size (never bigger than the input); every output is
   decode-checked and the size line says "OVER the N MB target" when the target could not be met.
 
     import _studio; _studio.use("film-finish")
@@ -133,8 +134,9 @@ def main():
         tmp = src.with_name(f".tmp.{final.name}")
         if src.stat().st_size < mb * 1e6 and max(W, H) <= side:
             shutil.copy(src, tmp)                       # already small enough (bytes and pixels)
-        else:
-            encode_target(src, tmp, mb, w, h, ak, dur)
+        else:                                           # never bigger than the source: a small file that only
+            target = min(mb, src.stat().st_size / 1.024e6)  # needs scaling down keeps (at most) its own size
+            encode_target(src, tmp, target, w, h, ak, dur)
         out = place(tmp, final)
         err = check_video(out)
         print(f"-> {out.name}: {out.stat().st_size / 1e6:.1f} MB{over_note(out, mb)}, "

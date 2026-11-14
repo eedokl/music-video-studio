@@ -102,7 +102,7 @@ if __name__ == "__main__":
         for v in sys.argv[2:]:
             err = check_video(v)
             bad += bool(err)
-            print(f"{v}: {duration(v):.2f} s, " + ("0 decode errors" if not err else "ERRORS: " + err[:300]))
+            print(f"{v}: {'x'.join(map(str, video_size(v)))}, {duration(v):.2f} s, " + ("0 decode errors" if not err else "ERRORS: " + err[:300]))
         sys.exit(1 if bad else 0)
     else:
         print("usage: python media.py sheet <video or frames/f.%04d.png> [out.png]\n"

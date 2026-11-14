@@ -28,6 +28,8 @@ def run_film_tools(ctx):
     for suffix in ("_small", "_mail"):
         f = ctx.dir / f"in{suffix}.mp4"
         expect(f.exists() and not check_video(f), f"encode.py: in{suffix}.mp4 missing or broken")
+        expect(f.stat().st_size <= src.stat().st_size * 1.03,       # user test: _mail of a 1.7 MB clip came out 5.7 MB
+               f"encode.py: in{suffix}.mp4 ({f.stat().st_size} B) is bigger than the input ({src.stat().st_size} B)")
     r = ctx.uv(ENCODE, src, "--mb", "0.25", "--suffix", "_tiny", "--side", "640")   # forces the two-pass encode
     tiny = ctx.dir / "in_tiny.mp4"
     expect(tiny.exists() and not check_video(tiny) and video_frames(tiny) == n, "encode.py --mb: broken output")
