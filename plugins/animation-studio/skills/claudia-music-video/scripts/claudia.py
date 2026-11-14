@@ -132,7 +132,9 @@ def lipsync_prompt(s, wardrobe, look_vid, line):
     words = re.sub(r"\s+", " ", (line or "").replace('"', "").replace("„", "").replace("“", "")).strip()
     if words and words[-1] not in ".!?":
         words = words.rstrip(",;:") + "."
-    sing = f' and sings {s.get("manner", "deadpan")}: "{words}"' if words else " and sings."
+    # "sings deadpan" kept the mouth shut in all 4 LTX takes of a shot (user test); "with conviction" opened it -
+    # the dry canon face stays in the wording
+    sing = f' and sings {s.get("manner", "with conviction and a dry, calm face")}: "{words}"' if words else " and sings."
     return (f"{s.get('framing', 'Medium shot').capitalize()} of {ID_VIDEO}, wearing {wardrobe}, "
             f"{s.get('action', 'she looks into the lens')}{sing} {MOUTH} {s.get('set_short') or s.get('set', '')}. "
             f"{s.get('camera', 'Static camera').capitalize()}, cinematic photographic 35mm film look, {look_vid}.")

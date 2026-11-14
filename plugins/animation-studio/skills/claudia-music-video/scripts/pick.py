@@ -223,6 +223,9 @@ def pick_clips(P, sel, log, rows, curve):
         score, c, lag, rl, closed, r = max(open_, key=lambda x: x[0])
         out[name] = {"file": relp(P, c), "lag": lag, "score": score, "r": rl, "r0": r["r0"], "range": r["range"]}
         log.append(f"clip {name}: {c.parent.name}/{c.name}  lag {lag:+d}  score {score}")
+        if all((x[3] or 0) < 0 for x in rated) and (curve or "rhubarb") == "rhubarb":
+            log.append(f"  WARNING {name}: every take correlates NEGATIVELY with the Rhubarb curve - the curve, not the "
+                       "clips, may be off (user test: -0.6 with rhubarb, +0.77 with the level): pick again with --curve level")
 
 
 def main():

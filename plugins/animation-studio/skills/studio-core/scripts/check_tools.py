@@ -65,7 +65,10 @@ TOOLS = {
     "face_landmarker": (False, "MediaPipe face_landmarker.task model for measuring mouths (claudia-music-video)",
                         "download face_landmarker.task from Google's MediaPipe model page (ask first)", ["*/mediapipe/face_landmarker.task"]),
     "comfy_start": (False, "script that starts ComfyUI when it is not running", "the ComfyUI start script of this machine", []),
-    "claudia_refs": (False, "reference images of Claudia (folder, or a.png;b.png)", "the user's Claudia reference sheet", []),
+    "claudia_refs": (False, "reference images of Claudia (folder, or a.png;b.png) - REQUIRED by claudia-music-video",
+                     "2 images: her face with mic and clip + a close-up with the one streak and the clip; from the "
+                     "user's claudia.gallery sheets (download only with the user's OK) or stills of an earlier Claudia "
+                     "film; per project also project.json \"character_refs\"", []),
     "realesrgan": (False, "Real-ESRGAN ncnn-vulkan upscaler (painted panels, slide figures)",
                    "https://github.com/xinntao/Real-ESRGAN/releases (ncnn-vulkan build; ask first)",
                    ["*/realesrgan-ncnn-vulkan*/realesrgan-ncnn-vulkan.exe", "*/*/realesrgan-ncnn-vulkan*/realesrgan-ncnn-vulkan.exe"]),

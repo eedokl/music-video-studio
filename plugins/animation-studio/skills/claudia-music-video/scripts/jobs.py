@@ -58,7 +58,10 @@ def character_refs(P):
     refs = [str(P.path(r)) for r in refs]
     if not refs or not all(Path(r).exists() for r in refs):
         raise SystemExit("Claudia reference images missing: set project.json \"character_refs\": [face.png, closeup.png] "
-                         "or config claudia_refs (check_tools.py --set claudia_refs=<folder or a.png;b.png>).")
+                         "or config claudia_refs (check_tools.py --set claudia_refs=<folder or a.png;b.png>). The plugin "
+                         "ships none: ask the user - two images (her face with mic and clip; a close-up with the one "
+                         "streak and the clip) from claudia.gallery (download only with the user's OK) or stills of an "
+                         "earlier Claudia film.")
     return refs
 
 

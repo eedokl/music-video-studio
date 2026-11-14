@@ -143,7 +143,9 @@ def main():
         lk = (brief.get("look_by_marker") or {}).get(mk, lk)
         name = f"s{i + 1:02d}"
         shots.append({"name": name, "from": round(t0, 3), "to": round(t1, 3),
-                      "line": (ln["text"] if sung and not ln.get("cont") else ("" if sung else "(instrumental)")),
+                      # a line over two shots: both carry its text (the lip-sync prompt sings it; empty gave the
+                      # model no words - user test); "cont" marks the continuation
+                      "line": (ln["text"] if sung else "(instrumental)"), "cont": bool(sung and ln.get("cont")),
                       "marker": mk, "technique": tech, "engine": engine, "framing": framing, "camera": cam, "look": lk,
                       "lyrics": sung, "idea": "", "action": "", "set": "", "set_short": "", "subject": "", "motion": ""})
         for idea in creative.ideas(P, name):                 # ideas already recorded for this shot (user ideas win)

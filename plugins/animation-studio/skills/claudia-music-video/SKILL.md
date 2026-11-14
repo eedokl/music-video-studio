@@ -25,6 +25,9 @@ Run every script with `uv run <script>.py`: each declares its own pinned package
   silhouettes, audience from behind, light show). See `references/versions.md`.
 - Whole song or an excerpt (pilot)? Night run tonight or a few shots now?
 - Anything fixed: places, wardrobe, people (anonymous, from behind), things that must not appear.
+- **Reference images of Claudia** (the plugin ships none, the start images need two): her face with mic and clip +
+  a close-up with the one streak and the clip - the user's own (claudia.gallery sheets, download only with their OK,
+  or stills of an earlier Claudia film). Put them into the project and set project.json `"character_refs"`.
 - Check the machine once: `python "${CLAUDE_PLUGIN_ROOT}/skills/studio-core/scripts/check_tools.py"`; this skill also
   needs config `face_landmarker`, `claudia_refs` (or project `character_refs`), optionally `comfy_start`.
 
@@ -70,6 +73,8 @@ Then **write the creative brief** (this is the film - do not skip it, do not cop
   `{name: [still sentence, short video sentence]}` for the places of this song.
 - Per shot, from the line's meaning: `idea` (one concrete picture), and
   - lipsync / claudia_moving: `action` (what she does - one thing), `set` (where), `set_short`, `manner`, `look`
+    (`manner` for singing: never just "deadpan" - LTX then keeps the mouth shut; default "with conviction and a dry,
+    calm face")
   - broll: `subject` (what we see, people only anonymous/from behind), `motion` (what moves), `look`
 - Record every idea: `creative.add_idea(P, "ai", idea, shot)`; user ideas (`by: "user"`) always win.
 Reference shots (Europe 2031: projector screens, paper stacks, storms, server halls) show *techniques*; each song gets
@@ -99,7 +104,8 @@ repaired automatically in the night-run hook (`pick.py start --repair-mic`, ai-v
 retouched + FLUX texture, else Qwen-Edit "change only the microphone"; result `ai/start/<shot>_v<k>m.png`,
 re-checked). **Look at the sheets**: mic (one, beige, her right cheek), one streak, adult face, no lettering, no scene
 jump, Christian/others not recognisable. Override in `selection.json["manual"]`; new start image -> run the night
-run again for that shot (`--only s05`), new clips get new names.
+run again for that shot (`--only s05`), new clips get new names. A re-made start image that the canon check scores
+LOWER than the old one is not taken automatically (nothing is re-rendered): put it into `manual.start` first.
 Weak shots (score < 0.2): 2 more seeds with a stronger mouth sentence (`variants.seeds` 4), another start image, or
 B-roll instead; loud choruses and shouted calls ("Hey! Hey!" live on the backing stem): `--curve mix`.
 S2V/InfiniteTalk clips are 832x480: `"$A/upscale.py" clip.mp4 clip_720p.mp4` (Real-ESRGAN) before the cut if they
@@ -117,7 +123,9 @@ uv run "$S/make_film.py" <proj>
 render_shots: every shot to `scenes/<shot>/` (clip placed on the song with lead-in, delay and lag; still + depth
 parallax as fallback; grain + vignette; AI label in the last 3 s - set `ai_label`, e.g. "Images and video
 AI-generated (...) - Claudia by anabology"). make_film: lyrics overlay, `film.mp4` / `film_small.mp4` / `film_mail.mp4`
-(0 decode errors), `film_sheet.png`, `film_shots.jpg`, `review.json`.
+(0 decode errors), `film_sheet.png`, `film_shots.jpg`, `review.json`. build.py says "look none" on purpose: plan.py
+sets `"look": "none"` because the photographic finish (grain + vignette) is already in the shots; `"look": "standard"`
+adds the paper texture on top.
 **Checkpoint:** the user watches V1.
 
 ## 7. Review and V2
