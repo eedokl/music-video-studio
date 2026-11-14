@@ -147,6 +147,13 @@ if __name__ == "__main__":
         ap.add_argument("--width", type=int, default=640, help="width of one tile")
         s = ap.parse_args(sys.argv[2:])
         contact_sheet(s.video, s.out, s.cols, s.rows, s.width, start=s.start, end=s.end)
+    elif len(sys.argv) in (4, 5) and sys.argv[1] == "frame":
+        out = sys.argv[4] if len(sys.argv) == 5 else "frame.png"
+        t = float(sys.argv[3])
+        subprocess.run([ffmpeg(), "-y", "-v", "error", "-ss", f"{t:.4f}", "-i", sys.argv[2], "-frames:v", "1", out],
+                       check=True)
+        fps = video_fps(sys.argv[2]) or FPS
+        print(f"{out}: frame {int(round(t * fps))} ({t:.2f} s), {'x'.join(map(str, video_size(out)))}")
     elif len(sys.argv) == 4 and sys.argv[1] == "compare":
         print(compare(sys.argv[2], sys.argv[3]))
     elif len(sys.argv) >= 3 and sys.argv[1] == "check":
@@ -159,4 +166,5 @@ if __name__ == "__main__":
     else:
         print("usage: python media.py sheet <video or frames/f.%04d.png> [out.png] [--from s --to s --cols 6 --rows 4]\n"
               "       python media.py check <video> [...]     (decode check, exit 1 on errors)\n"
-              "       python media.py compare <a> <b>         (A/B: size, length, PSNR/SSIM, sound identical?)")
+              "       python media.py compare <a> <b>         (A/B: size, length, PSNR/SSIM, sound identical?)\n"
+              "       python media.py frame <video> <second> [out.png]   (one full-size frame)")

@@ -21,13 +21,32 @@ import sys
 import config
 
 
+def _has_video(path):
+    try:
+        from encoding import video_size
+        video_size(path)
+        return True
+    except (SystemExit, Exception):
+        return False
+
+
 def main():
     e = config.get("earshot")
     if not e:
         print("earshot is not configured (optional). Run check_tools.py --setup or set ANIMATION_STUDIO_EARSHOT.")
         sys.exit(2)
     config.setup_env()                                 # our ffmpeg on PATH: earshot reads the video frames with it
-    r = subprocess.run(config.cmdline([e, *sys.argv[1:]]), capture_output=True, text=True, errors="replace")
+    args = sys.argv[1:]
+    run = lambda a: subprocess.run(config.cmdline([e, *a]), capture_output=True, text=True, errors="replace")
+    r = run(args)
+    if args[:1] == ["sheet"] and ", 0 frames," in r.stdout and len(args) > 1 and _has_video(args[1]):
+        # earshot cached a result from a run without ffmpeg/ffprobe on PATH (it then sees no picture): refresh it
+        print("(earshot had an old result without the picture - refreshing it once)")
+        tl = ["timeline", args[1], "--fresh"]
+        if "--detail" in args:                         # same model budget as the sheet asks for
+            tl += args[args.index("--detail"):args.index("--detail") + 2]
+        run(tl)
+        r = run(args)
     noise = ("AutoRun",)                               # cmd's AutoRun registry message, harmless
     for stream, text in ((sys.stdout, r.stdout), (sys.stderr, r.stderr)):
         stream.write("".join(l for l in text.splitlines(True) if not any(n in l for n in noise)))

@@ -132,14 +132,16 @@ def main():
         w, h = int(round(W * k / 2) * 2), int(round(H * k / 2) * 2)
         final = src.with_name(f"{src.stem}{suffix}{src.suffix}")
         tmp = src.with_name(f".tmp.{final.name}")
-        if src.stat().st_size < mb * 1e6 and max(W, H) <= side:
+        copied = src.stat().st_size < mb * 1e6 and max(W, H) <= side
+        if copied:
             shutil.copy(src, tmp)                       # already small enough (bytes and pixels)
         else:                                           # never bigger than the source: a small file that only
             target = min(mb, src.stat().st_size / 1.024e6)  # needs scaling down keeps (at most) its own size
             encode_target(src, tmp, target, w, h, ak, dur)
         out = place(tmp, final)
         err = check_video(out)
-        print(f"-> {out.name}: {out.stat().st_size / 1e6:.1f} MB{over_note(out, mb)}, "
+        print(f"-> {out.name}: {out.stat().st_size / 1e6:.1f} MB{over_note(out, mb)}"
+              f"{' (a copy: the input is already under ' + f'{mb:g} MB and {side} px)' if copied else ''}, "
               f"{'0 decode errors' if not err else 'ERRORS: ' + err[:300]}")
 
 
