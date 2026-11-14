@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = []
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Assemble painted layers (PNG) into a layered Krita file (.kra) and export PNG combinations - headless, no dialogs.
 

@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4", "pillow==13.0.0", "svgelements==1.9.6"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Build (and render) one section of the song as a Synfig scene: a set plus figures that sing, listen, dance and act.
 
@@ -78,7 +80,7 @@ import scene_fx as fx
 
 INK = hexc("#2b1d14")
 TL, BR = (-6.9, 4.25), (6.9, -3.51)
-VIEW = "-6.9 4.25 6.9 -3.51"
+VIEW = "-6.9 4.25 6.9 -3.51"            # 16:9 in Synfig units; the pixel size is project.json "size" (P.size)
 CHORUS = re.compile(r"chorus|refrain|hook|drop", re.I)
 GESTURES = ("scare", "cheer", "point", "scratch", "nod", "sad")
 ACTIONS = ("typing", "guitar")
@@ -124,6 +126,7 @@ def main():
     ap.add_argument("--jobs", type=int, default=8)
     a = ap.parse_args()
     P = Project(a.project)
+    P.check("animated-music-video")                 # project.json validated before any long step
     fps = P.fps
     A = P.section(a.section)
     S, E = float(A["from"]), float(A["to"])
@@ -1118,7 +1121,7 @@ def main():
         top = inset_layer() if A.get("inset") else []
         if top:                                           # the inset as a transparent track -> scenes/<section>_inset/
             sif = out_dir / f"{a.section}_inset.sif"
-            sif.write_text(canvas(top, end=N, name=f"{P['name']} - {a.section} inset", view=VIEW), encoding="utf-8")
+            sif.write_text(canvas(top, w=P.size[0], h=P.size[1], end=N, name=f"{P['name']} - {a.section} inset", view=VIEW), encoding="utf-8")
             print(f"-> {sif.relative_to(P.dir)}: narrator inset over the external frames ({N} frames)")
             if a.render:
                 ins = out_dir / f"{a.section}_inset"
@@ -1245,7 +1248,7 @@ def main():
         top = inset_layer()
         info = ""
     sif = out_dir / f"{a.section}.sif"
-    sif.write_text(canvas([scene] + top, end=N, name=f"{P['name']} - {a.section}", view=SET.get("view", VIEW) if kind != "panels" else VIEW),
+    sif.write_text(canvas([scene] + top, w=P.size[0], h=P.size[1], end=N, name=f"{P['name']} - {a.section}", view=SET.get("view", VIEW) if kind != "panels" else VIEW),
                    encoding="utf-8")
     (P.analysis / f"actions_{a.section}.json").write_text(
         json.dumps([{"t": round(t0 + 0.1, 3), "figure": k, "gesture": g} for t0, t1, k, g in gest] + action_log,

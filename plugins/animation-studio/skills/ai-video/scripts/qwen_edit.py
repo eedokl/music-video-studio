@@ -1,12 +1,15 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Start images that keep a character's identity: Qwen-Image-Edit 2511 (fp8, Lightning 4 steps) puts the person from
 one or two reference images into a new scene described by the prompt.
 
 Model files: diffusion_models/qwen_image_edit_2511_fp8_lightning_4steps.safetensors, text_encoders/
-qwen_2.5_vl_7b_fp8_scaled.safetensors, vae/qwen_image_vae.safetensors (optional loras/qwen-image-edit-2511-multiple-angles-lora).
+qwen_2.5_vl_7b_fp8_scaled.safetensors, vae/qwen_image_vae.safetensors (optional loras/qwen-image-edit-2511-multiple-angles-lora)
+- names from assets/models.json; override: config comfy_models.
 Usage:
   uv run qwen_edit.py --ref face.png --ref closeup.png "prompt" -o start.png [--seed 1]
          [--width 1280 --height 720] [--negative "..."] [--variants 3]
@@ -23,10 +26,10 @@ from pathlib import Path
 import _studio  # noqa: E402
 _studio.use()
 import comfy  # noqa: E402
+import comfy_models  # noqa: E402
 
-UNET = "qwen_image_edit_2511_fp8_lightning_4steps.safetensors"
-TE, VAE = "qwen_2.5_vl_7b_fp8_scaled.safetensors", "qwen_image_vae.safetensors"
-ANGLES_LORA = "qwen-image-edit-2511-multiple-angles-lora.safetensors"
+UNET, TE, VAE = "qwen_image_edit", "qwen_vl_te", "qwen_vae"   # model file roles in assets/models.json
+ANGLES_LORA = "qwen_edit_angles_lora"
 NEG = "illustration, drawing, anime, cartoon, 3d render, teenage, childlike, text, logo, watermark, deformed hands, blurry"
 _uploaded = {}
 
@@ -34,9 +37,9 @@ _uploaded = {}
 def workflow(refs, prompt, w, h, seed, neg=NEG, steps=4, lora=0.0):
     """refs = names in ComfyUI's input folder (comfy.upload)."""
     wf = {
-        "1": {"class_type": "UNETLoader", "inputs": {"unet_name": UNET, "weight_dtype": "default"}},
-        "2": {"class_type": "CLIPLoader", "inputs": {"clip_name": TE, "type": "qwen_image", "device": "default"}},
-        "3": {"class_type": "VAELoader", "inputs": {"vae_name": VAE}},
+        "1": {"class_type": "UNETLoader", "inputs": {"unet_name": comfy_models.file(UNET), "weight_dtype": "default"}},
+        "2": {"class_type": "CLIPLoader", "inputs": {"clip_name": comfy_models.file(TE), "type": "qwen_image", "device": "default"}},
+        "3": {"class_type": "VAELoader", "inputs": {"vae_name": comfy_models.file(VAE)}},
         "4": {"class_type": "ModelSamplingAuraFlow", "inputs": {"model": ["1", 0], "shift": 3.1}},
         "5": {"class_type": "CFGNorm", "inputs": {"model": ["4", 0], "strength": 1.0}},
         "20": {"class_type": "EmptySD3LatentImage", "inputs": {"width": w, "height": h, "batch_size": 1}},
@@ -59,7 +62,7 @@ def workflow(refs, prompt, w, h, seed, neg=NEG, steps=4, lora=0.0):
     model = ["5", 0]
     if lora:
         wf["30"] = {"class_type": "LoraLoaderModelOnly", "inputs": {"model": ["5", 0], "strength_model": lora,
-                                                                    "lora_name": ANGLES_LORA}}
+                                                                    "lora_name": comfy_models.file(ANGLES_LORA)}}
         model = ["30", 0]
     wf["21"] = {"class_type": "KSampler", "inputs": {"model": model, "positive": ["8", 0], "negative": ["9", 0],
                                                      "latent_image": ["20", 0], "seed": seed, "steps": steps, "cfg": 1.0,

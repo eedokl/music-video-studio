@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["faster-whisper==1.2.1", "numpy==2.5.4"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Narration / voice lines of a clip: length and word times, so tags, gestures and figures can land on a word.
 

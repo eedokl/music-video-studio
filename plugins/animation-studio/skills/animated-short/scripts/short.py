@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = []
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """A short classical 2D scene as a small project: brief + creative seed + ideas, scene folder, finished film.
 
@@ -28,6 +30,7 @@ import _studio  # noqa: E402
 _studio.use("toon-2d", "film-finish")
 import config  # noqa: E402
 import creative  # noqa: E402
+import project_check  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 TOON = _studio.skill_dir("toon-2d") / "scripts"
@@ -84,6 +87,8 @@ def cmd_variant(a):
 
 def cmd_finish(a):
     S = Short(a.folder)
+    if S.file.exists():                              # short.json validated before the render
+        project_check.require(S.file, skill="animated-short")
     sif = Path(a.sif) if a.sif else next(iter(sorted(S.dir.glob("*.sif"))), None)
     if sif is None:
         sys.exit("no .sif in the folder - run make_scene.py first")

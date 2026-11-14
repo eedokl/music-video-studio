@@ -85,11 +85,29 @@ These defaults come from the machine the plugin was built and measured on (Windo
 VRAM, 16 GB RAM, ComfyUI portable). They are not limits of the method - adjust them for your hardware:
 - `ai-video/scripts/night_run.py` load and time estimates per job kind, and `LTX_MAX_FRAMES` in `ltx.py`
 - `ai-video/scripts/humo.py` refuses the 17B model without `--allow-17b` (does not fit 16 GB)
-- checkpoint, LoRA and custom-node names inside every ComfyUI workflow (built in the ai-video wrapper scripts such as `comfy_image.py`, `comfy_video.py`, `ltx.py`, `humo.py`) -
-  they must match the files in your ComfyUI `models/` folders
-- 1280x720 as the working size of the song films (`film-finish` `build.py`, `fps48.py`, `overlays.py`,
-  `animated-music-video` scenes) - change all of them together
+- checkpoint, LoRA, VAE, text-encoder and audio-encoder file names and the node classes of every ComfyUI workflow:
+  one data file, `ai-video/assets/models.json` (read by all workflow builders). They must match the files in your
+  ComfyUI `models/` folders - on another machine do not edit it: put only the differing names into a JSON override
+  and set the config key `comfy_models` to it (`check_tools.py --set comfy_models=<file>`). `ai-video/scripts/preflight.py`
+  (`--all`, or a jobs.json) lists what your ComfyUI is missing; the night run checks it before the first job
+- 1280x720 as the default working size of the song films - set `"size": [w, h]` in project.json to change it for one
+  project (read through `song_project.Project.size` / studio-core `project_check.frame_size` by film-finish `build.py`,
+  `overlays.py`, `fps48.py`, `popup.py`, `credits.py` (composed at 1280x720, scaled), `edit_handoff.py`, the
+  animated-music-video and talking-character Synfig scenes, bricks-music-video renders and claudia-music-video
+  `render_shots.py`; lyric-music-video renders its own 1080p30)
 - the "16 GB VRAM / 16 GB RAM: one model at a time" rule in studio-core (the GPU lock is useful on any machine)
+
+## Windows-only parts (everything else runs on Linux / macOS too)
+
+| Tool / feature | Windows-only because | On other systems |
+|---|---|---|
+| Microsoft PowerPoint (COM) – animated-powerpoint `deck.py` | COM automation through PowerShell | PyMuPDF: export the deck as PDF/PNG; a .pptx is composed from its pictures without text |
+| Windows System.Speech – voice engine `system` | SAPI voices | Qwen3-TTS (`qwen`) or Piper (`piper`); cast entries fall back automatically |
+| `check_tools.py --setup` search | looks for `*.exe` under `Program Files` / drive roots | only PATH; set paths with `--set key=value` or `ANIMATION_STUDIO_<KEY>` |
+| `.cmd` / `.bat` launchers (earshot, `comfy_start`) | run through `cmd /d /s /c` / `start /min` | use a shell script or the executable |
+| browser clean-up (toon-2d `render_multiplane.py`) | PowerShell ends leftover `msedge.exe` / `chrome.exe` children; D3D11 ANGLE flags | plain kill; default GPU flags |
+| Edge | only the default browser found on Windows | any Chrome / Chromium / chrome-headless-shell (config `browser` / `chrome`) |
+| Windows fonts (Impact, Segoe Print, Consolas) | looked up under `C:/Windows/Fonts` first | macOS fonts or DejaVu are used instead (lettering looks different) |
 
 ## Installed on the reference machine but deliberately not used by the plugin
 

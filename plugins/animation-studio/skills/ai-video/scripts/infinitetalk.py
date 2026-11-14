@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """InfiniteTalk (Wan2.1-I2V-14B 480p fp8 + InfiniteTalk patch + LightX2V, 6 steps) through the local ComfyUI:
 start image + vocals -> singing face that stays closest to the start image (framing, light, face).
@@ -11,7 +13,7 @@ the last 9 frames of the one before (previous_frames, motion_frame_count 9; the 
 so one 12.7 s take replaces four cuts (claudia-live V3 bridge: parts 81+81+81+81+61). parts_for() splits.
 Model files: diffusion_models/Wan2_1-I2V-14B-480p_fp8_e4m3fn_scaled_KJ, loras/lightx2v_I2V_14B_480p_cfg_step_distill_
 rank64_bf16, model_patches/wan2.1_infiniteTalk_multi_fp16, audio_encoders/wav2vec2-chinese-base_fp16,
-text_encoders/umt5_xxl_fp8_e4m3fn_scaled, vae/Wan2_1_VAE_bf16.
+text_encoders/umt5_xxl_fp8_e4m3fn_scaled, vae/Wan2_1_VAE_bf16 (names from assets/models.json; override: config comfy_models).
 Usage:
   uv run infinitetalk.py start.png vocals.wav "prompt" -o clip.mp4 [--frames 97] [--seed 31]
 """
@@ -25,6 +27,7 @@ import _studio  # noqa: E402
 _studio.use()
 import clips  # noqa: E402
 import comfy  # noqa: E402
+import comfy_models  # noqa: E402
 
 FPS = 25
 W, H = 832, 480
@@ -92,15 +95,15 @@ def workflow(img, wav, prompt, frames, seed, prefix):
 
 def _single(img, wav, prompt, frames, seed, prefix):
     return {
-        "1": {"class_type": "UNETLoader", "inputs": {"unet_name": "Wan2_1-I2V-14B-480p_fp8_e4m3fn_scaled_KJ.safetensors",
+        "1": {"class_type": "UNETLoader", "inputs": {"unet_name": comfy_models.file("wan21_i2v_480p"),
                                                      "weight_dtype": "default"}},
         "2": {"class_type": "LoraLoaderModelOnly", "inputs": {"model": ["1", 0], "strength_model": 1.0,
-              "lora_name": "lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors"}},
-        "3": {"class_type": "CLIPLoader", "inputs": {"clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors", "type": "wan",
+              "lora_name": comfy_models.file("lightx2v_i2v_lora")}},
+        "3": {"class_type": "CLIPLoader", "inputs": {"clip_name": comfy_models.file("umt5_xxl"), "type": "wan",
                                                      "device": "default"}},
-        "4": {"class_type": "VAELoader", "inputs": {"vae_name": "Wan2_1_VAE_bf16.safetensors"}},
-        "5": {"class_type": "ModelPatchLoader", "inputs": {"name": "wan2.1_infiniteTalk_multi_fp16.safetensors"}},
-        "6": {"class_type": "AudioEncoderLoader", "inputs": {"audio_encoder_name": "wav2vec2-chinese-base_fp16.safetensors"}},
+        "4": {"class_type": "VAELoader", "inputs": {"vae_name": comfy_models.file("wan21_vae_bf16")}},
+        "5": {"class_type": "ModelPatchLoader", "inputs": {"name": comfy_models.file("infinitetalk_patch")}},
+        "6": {"class_type": "AudioEncoderLoader", "inputs": {"audio_encoder_name": comfy_models.file("wav2vec2_zh")}},
         "10": {"class_type": "LoadImage", "inputs": {"image": img}},
         "11": {"class_type": "ImageScale", "inputs": {"image": ["10", 0], "upscale_method": "lanczos", "width": W,
                                                      "height": H, "crop": "center"}},

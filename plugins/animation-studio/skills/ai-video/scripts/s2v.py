@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Wan2.2-S2V 14B (fp8) through the local ComfyUI: start image + vocals -> the most expressive singing (held notes,
 climaxes). 832x480 at 16 fps, length 4n+1 frames; ~11-18 min per 4 s shot with 20 steps (cfg 6). Upscale in the cut.
@@ -8,6 +10,7 @@ Use it only for single expressive moments under ~4.7 s: on longer runs it turns 
 hits the words worse than LTX-2.3; for long sung passages InfiniteTalk was better (see references/models.md).
 Model files: diffusion_models/wan2.2_s2v_14B_fp8_scaled, text_encoders/umt5_xxl_fp8_e4m3fn_scaled, vae/wan_2.1_vae,
 audio_encoders/wav2vec2_large_english_fp16 (light mode: loras/wan2.2_t2v_lightx2v_4steps_lora_v1.1_high_noise).
+(names from assets/models.json; override: config comfy_models)
 Usage:
   uv run s2v.py start.png vocals.wav "prompt" -o clip.mp4 [--frames 61] [--steps 20] [--seed 31] [--light]
 """
@@ -20,6 +23,7 @@ import _studio  # noqa: E402
 _studio.use()
 import clips  # noqa: E402
 import comfy  # noqa: E402
+import comfy_models  # noqa: E402
 
 W, H = 832, 480
 NEG = ("色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，"
@@ -29,10 +33,10 @@ NEG = ("色调艳丽，过曝，静态，细节模糊不清，字幕，风格，
 
 def workflow(img, wav, prompt, neg, frames, steps, cfg, seed, prefix, light=False):
     wf = {
-        "37": {"class_type": "UNETLoader", "inputs": {"unet_name": "wan2.2_s2v_14B_fp8_scaled.safetensors", "weight_dtype": "default"}},
-        "38": {"class_type": "CLIPLoader", "inputs": {"clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors", "type": "wan", "device": "default"}},
-        "39": {"class_type": "VAELoader", "inputs": {"vae_name": "wan_2.1_vae.safetensors"}},
-        "57": {"class_type": "AudioEncoderLoader", "inputs": {"audio_encoder_name": "wav2vec2_large_english_fp16.safetensors"}},
+        "37": {"class_type": "UNETLoader", "inputs": {"unet_name": comfy_models.file("wan_s2v_14b"), "weight_dtype": "default"}},
+        "38": {"class_type": "CLIPLoader", "inputs": {"clip_name": comfy_models.file("umt5_xxl"), "type": "wan", "device": "default"}},
+        "39": {"class_type": "VAELoader", "inputs": {"vae_name": comfy_models.file("wan21_vae")}},
+        "57": {"class_type": "AudioEncoderLoader", "inputs": {"audio_encoder_name": comfy_models.file("wav2vec2_large_en")}},
         "58": {"class_type": "LoadAudio", "inputs": {"audio": wav}},
         "52": {"class_type": "LoadImage", "inputs": {"image": img}},
         "56": {"class_type": "AudioEncoderEncode", "inputs": {"audio_encoder": ["57", 0], "audio": ["58", 0]}},
@@ -52,7 +56,7 @@ def workflow(img, wav, prompt, neg, frames, steps, cfg, seed, prefix, light=Fals
     }
     if light:
         wf["107"] = {"class_type": "LoraLoaderModelOnly", "inputs": {"model": ["37", 0], "strength_model": 1.0,
-                     "lora_name": "wan2.2_t2v_lightx2v_4steps_lora_v1.1_high_noise.safetensors"}}
+                     "lora_name": comfy_models.file("s2v_light_lora")}}
     return wf
 
 

@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """HuMo (ByteDance, Apache 2.0) through the local ComfyUI: reference image + text + vocals -> singing clip.
 Rescue engine for lines where LTX-2.3 fails (plosive-heavy lines: lip-sync comparison 2026-11-12, test B r 0.55 vs
@@ -13,6 +15,7 @@ Sizes:
   17B   diffusion_models/humo_17B_fp8_e4m3fn + loras/lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16, 6 steps,
         cfg 1 - does NOT fit 16 GB VRAM (81 min per step on the reference machine): refused unless --allow-17b
 Shared files: text_encoders/umt5_xxl_fp8_e4m3fn_scaled, vae/wan_2.1_vae, audio_encoders/whisper_large_v3_fp16.
+(names from assets/models.json; override: config comfy_models.)
 ComfyUI node: WanHuMoImageToVideo (core ComfyUI >= 0.3.6x).
 Usage:
   uv run humo.py start.png vocals.wav "prompt" -o clip.mp4 [--frames 97] [--seed 31]
@@ -30,13 +33,14 @@ from pathlib import Path
 import _studio  # noqa: E402
 _studio.use()
 import clips  # noqa: E402
+import comfy_models  # noqa: E402
 
 FPS = 25
 W, H = 832, 480
 LEAD_IN = 0.25
-SIZES = {   # size: (unet, lora or None, steps, cfg)
-    "1.7B": ("humo_1.7B_fp16.safetensors", None, 30, 5.0),
-    "17B": ("humo_17B_fp8_e4m3fn.safetensors", "lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors", 6, 1.0),
+SIZES = {   # size: (unet role, lora role or None, steps, cfg) - roles in assets/models.json
+    "1.7B": ("humo_1_7b", None, 30, 5.0),
+    "17B": ("humo_17b", "lightx2v_i2v_lora", 6, 1.0),
 }
 NEG = ("overexposed, static, blurry details, subtitles, still image, grey, worst quality, low quality, JPEG artifacts, "
        "ugly, deformed, extra fingers, bad hands, bad face, frozen, closed mouth, cartoon")
@@ -50,14 +54,15 @@ def frames_for(seconds, lead_in=LEAD_IN):
 
 def workflow(img, wav, prompt, frames, seed, prefix, size="1.7B", steps=None, neg=NEG):
     unet, lora, st, cfg = SIZES[size]
+    unet, lora = comfy_models.file(unet), lora and comfy_models.file(lora)
     model = ["2", 0] if lora else ["1", 0]
     wf = {
         "1": {"class_type": "UNETLoader", "inputs": {"unet_name": unet, "weight_dtype": "default"}},
         "3": {"class_type": "ModelSamplingSD3", "inputs": {"model": model, "shift": 8.0}},
-        "4": {"class_type": "CLIPLoader", "inputs": {"clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors", "type": "wan",
+        "4": {"class_type": "CLIPLoader", "inputs": {"clip_name": comfy_models.file("umt5_xxl"), "type": "wan",
                                                      "device": "default"}},
-        "5": {"class_type": "VAELoader", "inputs": {"vae_name": "wan_2.1_vae.safetensors"}},
-        "6": {"class_type": "AudioEncoderLoader", "inputs": {"audio_encoder_name": "whisper_large_v3_fp16.safetensors"}},
+        "5": {"class_type": "VAELoader", "inputs": {"vae_name": comfy_models.file("wan21_vae")}},
+        "6": {"class_type": "AudioEncoderLoader", "inputs": {"audio_encoder_name": comfy_models.file("whisper_large_v3")}},
         "10": {"class_type": "LoadImage", "inputs": {"image": img}},
         "11": {"class_type": "ImageScale", "inputs": {"image": ["10", 0], "upscale_method": "lanczos", "width": W,
                                                      "height": H, "crop": "center"}},

@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4", "pillow==13.0.0", "scipy==1.18.1", "svgelements==1.9.6"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """A 2D rig figure (SVG, characters convention) becomes a rounded 3D toon figure in Blender.
 

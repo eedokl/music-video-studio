@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4", "pillow==13.0.0"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Screen overlays on top of a section: text gags (keyword -> lettering pops up) and word-by-word lyrics.
 
@@ -9,7 +11,7 @@ applied after rendering it always stays readable, and new gags need no new scene
 project.json:
   "gags": [{"word": "token", "text": "TOKENS!", "color": "#ffd23f", "place": "top_right", "duration": 1.3}]
           word = start of a sung word (case-insensitive); place = top_left | top_right | top | middle | auto
-          (alternating); size = letter height in px (default 64, project-wide "gag_size": 110 for big shout words). Companies only as neutral lettering, never logos.
+          (alternating); size = letter height in px of a 720-high frame, scaled with project "size" (default 64, project-wide "gag_size": 110 for big shout words). Companies only as neutral lettering, never logos.
   section: "lyrics": true -> the sung line in a box at the bottom, words appear as they are sung, the current word
            highlighted. "lyrics_style" (project or per section): "script" (default, handwritten, yellow highlight) |
            "caps" (upper case, clay highlight #D97757 - the Claudia videos) | "pop" / "rock" / "whisper" (letter by
@@ -41,7 +43,7 @@ _studio.use("song-analysis")
 from media import ffmpeg  # noqa: E402
 from song_project import Project, allowed, word_matches  # noqa: E402
 
-W, H = 1280, 720
+W, H = 1280, 720                   # set from project.json "size" in main() (P.size); px values below are for 720p
 FONTS_BOLD = ["C:/Windows/Fonts/impact.ttf", "/System/Library/Fonts/Supplemental/Impact.ttf",
               "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"]
 FONTS_TEXT = ["C:/Windows/Fonts/segoeprb.ttf", "C:/Windows/Fonts/arialbd.ttf",
@@ -93,7 +95,7 @@ def gag_events(P, S, E, words, section=None):
                     out.append({"t": round(w["t"], 3), "text": r.get("text", ""), "color": r.get("color", "#ffd23f"),
                                 "icon": r.get("icon"), "image": str(P.path(r["image"])) if r.get("image") else None,
                                 "place": place, "duration": dur, "word": w["word"],
-                                "size": int(r.get("size", P.get("gag_size", 64)))})
+                                "size": int(r.get("size", P.get("gag_size", 64)) * P.scale)})
                     last[key] = w["t"]
                 break
     return out
@@ -225,6 +227,10 @@ def lyric_style(P, section=None):
     base = dict(LYRIC_STYLES.get(st if isinstance(st, str) else st.get("base", "script"), LYRIC_STYLES["script"]))
     if isinstance(st, dict):
         base.update({k: v for k, v in st.items() if k != "base"})
+    if P.scale != 1:                                  # "size" other than 1280x720: same look, scaled
+        for k in ("size", "y", "bounce", "shake"):
+            if isinstance(base.get(k), (int, float)):
+                base[k] = round(base[k] * P.scale) if k in ("size", "y") else base[k] * P.scale
     base["font"] = font(base["fonts"], base["size"])
     return base
 
@@ -304,7 +310,10 @@ def main():
     ap.add_argument("section")
     ap.add_argument("--project", default=".")
     a = ap.parse_args()
+    global W, H
     P = Project(a.project)
+    P.check("film-finish")                 # project.json validated before any long step
+    W, H = P.size
     A = P.section(a.section)
     S, E, fps = float(A["from"]), float(A["to"]), P.fps
     sheet = P.sheet()

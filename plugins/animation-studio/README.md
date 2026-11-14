@@ -86,7 +86,10 @@ used for and what we recommend.
    versions and cut the best of both.
 
 All times are song seconds, so any part can be rebuilt on its own and every layer (mouths, gags, lyrics, sounds)
-stays in sync.
+stays in sync. Every build script first validates the project file (studio-core `project_check.py`): a wrong type, an
+overlapping section or a voice that is not in the cast stops the build in seconds with a message naming the key
+(exit code 2); unknown keys only warn, with a did-you-mean. `"size": [w, h]` in project.json sets the frame size of
+the film (default 1280x720).
 
 ## Reference tests (summary)
 
@@ -120,6 +123,26 @@ side-by-side strips at every event). Each skill's `references/reference-tests.md
 - Not exercised on the GPU in the tests: Wan2.2-S2V jobs, the Claudia live-stage version, Cycles brick renders.
 - Large libraries and models (LDraw, model weights) are not bundled; `check_tools.py` says where to get them.
 
+## Platforms – what needs Windows
+
+The plugin was built and measured on Windows 11, but almost everything runs wherever uv, ffmpeg and the external
+programs run (Linux, macOS): the scripts are plain Python with forward-slash paths, fonts fall back to DejaVu /
+macOS fonts, and every program path can be set by hand (`check_tools.py --set key=value` or `ANIMATION_STUDIO_<KEY>`).
+Windows-only:
+
+| Feature | Why | Elsewhere |
+|---|---|---|
+| animated-powerpoint `deck.py` slide export from `.pptx` | Microsoft PowerPoint through COM (PowerShell, read-only) | slides are composed from their pictures (text missing) – export the slides as PDF/PNG and import those (PyMuPDF) |
+| voice engine `system` | Windows speech (System.Speech, SSML) | use `qwen` (Qwen3-TTS) or `piper`; a cast entry falls back to the next engine; the talking-character e2e test SKIPs |
+| `check_tools.py --setup` automatic search | globs for `*.exe` under `Program Files` / drive roots | only PATH is searched – set the paths with `--set` (or environment variables) |
+| `.cmd` / `.bat` launchers (earshot, ComfyUI start script) | started through `cmd /d /s /c` (studio-core `config.py`), ComfyUI with `start /min` | give a shell script / executable instead; ComfyUI is started as a detached process |
+| browser clean-up after headless renders | leftover `msedge.exe` / `chrome.exe` children are ended with PowerShell (toon-2d `render_multiplane.py`) | a plain `kill`; GPU flags without `--use-angle=d3d11` |
+| `ai-video/cvio.py` non-ASCII video paths | Windows short names for OpenCV | paths are used as they are |
+| e2e tests' directory links | `mklink /J` junctions | symlinks |
+
+Edge is only one choice for the headless browser (config key `browser`: Chrome, Chromium or chrome-headless-shell
+work the same). The reference timings in TOOLS.md and the "16 GB VRAM" rules are from the Windows machine.
+
 ## Checking the plugin
 
 `python tests/smoke.py` (from the plugin folder) compiles every script, runs `--help` on every CLI, checks that every
@@ -138,7 +161,10 @@ fractional boundaries: frame count and cut frame against the sound), animated-sh
 system voice), animated-powerpoint (scene finishing path with a faked and with the real 2.5D stage render, sound cue
 positions), claudia-music-video (fake LTX clips + meta -> `render_shots.py` -> `make_film.py`), film-finish `cut.py`,
 video-review (per-frame provenance of the cut), lyric-music-video, bricks-music-video (Blender EEVEE draft, takes the
-GPU lock), the night-run kill-and-resume (`.part` outputs) and an interrupted caption pass.
+GPU lock), the night-run kill-and-resume (`.part` outputs), an interrupted caption pass, the up-front project check
+(a bad project.json - "sounds" as a string, overlapping sections, a talking figure voiced "male" - is rejected with
+exit code 2 in under a second, before anything is rendered) and `"size": [640, 360]` (an animated-music-video film,
+its small/mail versions and frame count at that size).
 - `python tests/e2e/run.py --list` names the tests, `run.py animated-music-video claudia` runs a selection (name or
   prefix), `--skip-slow` skips the ones marked slow, `-v` streams the build logs, `--profile` prints the slowest
   commands per test (`log.txt` has every output line with its elapsed seconds), `--keep` keeps the temp folders.

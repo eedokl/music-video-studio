@@ -22,7 +22,7 @@ Settings (not programs):
   comfy_dir*  ComfyUI folder (optional: ai-video night_run.py --clean-comfy and the free-space check)
   animation_studio_root  the plugin folder (env ANIMATION_STUDIO_ROOT) - read by toon-2d scene shims; written by
               check_tools.py --setup and toon-2d new_scene.py
-  sfx_cache, comfy_start, font, rife_model, minimax_api_base, claudia_refs: see SETTINGS below.
+  sfx_cache, comfy_start, comfy_models, font, rife_model, minimax_api_base, claudia_refs: see SETTINGS below.
 """
 import json
 import os
@@ -60,6 +60,7 @@ SETTINGS = {
     "comfy_url": "ComfyUI server URL (default http://127.0.0.1:8188)",
     "comfy_dir": "ComfyUI folder (input/output folders of the workflows)",
     "comfy_start": "command or script that starts ComfyUI when it is not running",
+    "comfy_models": "JSON file overriding model file names of ai-video's assets/models.json (other ComfyUI file names)",
     "sfx_cache": "one earshot sound-effect bank folder shared by all projects",
     "font": "TTF font for labels and contact sheets",
     "rife_model": "RIFE model folder (default: rife-v4.6 next to the RIFE exe)",

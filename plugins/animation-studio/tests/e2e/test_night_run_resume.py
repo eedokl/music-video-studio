@@ -46,7 +46,7 @@ def fake_render(mode_, image, audio, prompt, out, frames=97, seed=31, strength=1
     return out
 
 ltx.render = fake_render
-sys.argv = ["night_run.py", jobs, "--min-free-gb", "0"]
+sys.argv = ["night_run.py", jobs, "--min-free-gb", "0", "--no-preflight"]   # no ComfyUI here (test_ai_preflight)
 night_run.main()
 '''
 

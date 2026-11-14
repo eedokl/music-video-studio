@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Listen to the song: exposure sheet, vocal tracks, mouth shapes, male/female track -> <project>/analysis/.
 
@@ -164,6 +166,7 @@ def main():
     only = {int(x) for x in args[args.index("--only") + 1].split(",")} if "--only" in args else None
     rest = [a for i, a in enumerate(args) if not a.startswith("--") and not (i > 0 and args[i - 1] == "--only")]
     P = Project(rest[0] if rest else ".")
+    P.check("song-analysis")                 # project.json validated before any long step
     for nr, fname, fn in STEPS:
         if only and nr not in only:
             continue

@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4", "pillow==13.0.0"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Type-check, preview, clip and final render of the lyric video (headless Chrome, frame-exact), plus the delivery versions.
 
@@ -168,6 +170,7 @@ def main():
     ap.add_argument("--out")
     a = ap.parse_args()
     P = Project(a.project)
+    P.check("lyric-music-video")                 # project.json validated before any long step
     outdir = P.dir / "out"
     outdir.mkdir(exist_ok=True)
     song = duration(P.song)

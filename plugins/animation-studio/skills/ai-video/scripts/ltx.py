@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """LTX-2.3 22B distilled (fp8) image+audio -> video through the local ComfyUI. Two uses:
 
@@ -10,7 +12,8 @@
 Workflow after ComfyUI's template video_ltx2_3_ia2v, one stage (no spatial upscaler):
   audio -> LTXVAudioVAEEncode -> SetLatentNoiseMask(mask 0: the audio is NOT denoised, it stays fixed)
   image -> LTXVPreprocess -> LTXVImgToVideoInplace (first frame, strength) -> LTXVConcatAVLatent -> 8 euler steps
-Model files: checkpoints/ltx-2.3-22b-distilled-fp8.safetensors, text_encoders/gemma_3_12B_it_fp8_scaled.safetensors.
+Model files: checkpoints/ltx-2.3-22b-distilled-fp8.safetensors, text_encoders/gemma_3_12B_it_fp8_scaled.safetensors
+(names from assets/models.json; override: config comfy_models: roles ltx23, gemma3_te).
 Cost (RTX 5060 Ti 16 GB): ~150 s per 97 frames warm, model load ~7 min cold, peaks ~45 GB system RAM.
 Licence: LTX-2 Community License (free under USD 10M revenue) - AI-generated content must be labelled.
 
@@ -37,9 +40,9 @@ import _studio  # noqa: E402
 _studio.use()
 import clips  # noqa: E402
 import comfy  # noqa: E402
+import comfy_models  # noqa: E402
 
-CKPT = "ltx-2.3-22b-distilled-fp8.safetensors"
-GEMMA = "gemma_3_12B_it_fp8_scaled.safetensors"
+CKPT, GEMMA = "ltx23", "gemma3_te"          # model file roles in assets/models.json (override: config comfy_models)
 SIGMAS = "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0"   # template, stage 1 (distilled)
 NEG_LIPSYNC = ("pc game, console game, video game, cartoon, childish, ugly, static, frozen face, blurry mouth, "
                "text, letters, subtitles, watermark, logo, scene cut")
@@ -66,10 +69,11 @@ def crowd_prompt(prompt, crowd="a rowdy, packed concert audience going wild"):
 
 def workflow(img, wav, prompt, neg, frames, seed, strength=1.0, prefix="animation-studio/ltx", w=W, h=H, compression=18):
     dur = frames / clips.LTX_FPS
+    ckpt, gemma = comfy_models.file(CKPT), comfy_models.file(GEMMA)
     return {
-        "1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": CKPT}},
-        "2": {"class_type": "LTXAVTextEncoderLoader", "inputs": {"text_encoder": GEMMA, "ckpt_name": CKPT, "device": "default"}},
-        "3": {"class_type": "LTXVAudioVAELoader", "inputs": {"ckpt_name": CKPT}},
+        "1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": ckpt}},
+        "2": {"class_type": "LTXAVTextEncoderLoader", "inputs": {"text_encoder": gemma, "ckpt_name": ckpt, "device": "default"}},
+        "3": {"class_type": "LTXVAudioVAELoader", "inputs": {"ckpt_name": ckpt}},
         "10": {"class_type": "LoadImage", "inputs": {"image": img}},
         "11": {"class_type": "ImageScale", "inputs": {"image": ["10", 0], "upscale_method": "lanczos", "width": w,
                                                      "height": h, "crop": "center"}},

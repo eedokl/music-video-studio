@@ -1,6 +1,8 @@
 # /// script
 # requires-python = "==3.12.*"
 # dependencies = ["mediapipe==1.2.3", "numpy==2.5.4", "opencv-python-headless==5.0.0.93"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Lip-sync measurement: how well does a singing clip's mouth follow the vocals? Used to pick seeds and offsets.
 

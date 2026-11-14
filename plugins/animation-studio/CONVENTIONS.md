@@ -41,6 +41,8 @@ Anything two user skills need goes into a building block – never copy code bet
 - Every script that is run with uv starts with PEP 723 inline metadata listing exactly the third-party packages it
   imports, including those of the plugin modules it imports through `_studio.use(...)`, with exact pins
   (`# /// script` / `# requires-python = ">=3.12"` / `# dependencies = ["numpy==2.5.4", ...]` / `# ///`);
+  plus `# [tool.uv]` / `# exclude-newer = "<date>"` - ONE date for all scripts, so the packages the pinned ones pull
+  in are fixed too (move every pin and the date together when re-pinning; smoke.py checks it);
   stdlib-only CLIs declare `dependencies = []`. Modules that are only imported need no header. Scripts run by
   another interpreter (Blender targets, `gpu_python` / `tts_python` workers, Krita) get no header but a one-line
   comment naming that interpreter. A script that starts another plugin script whose packages it does not declare
@@ -59,7 +61,19 @@ Anything two user skills need goes into a building block – never copy code bet
 - Picture: each section renders to `scenes/<section>/f.%04d.png` (any renderer); `film-finish/scripts/build.py`
   assembles preview and film (film.mp4, film_small.mp4 < 30 MB, film_mail.mp4 ~12 MB), applies the look once and
   checks every file (0 decode errors).
+- Caches and derived artefacts (stills rendered from a rig, normalized SVGs, spoken lines, sound-bank renders, composites over raw frames): `studio-core/scripts/derived.py`, never an ad-hoc stamp. `derived.fresh(target, inputs, spec)` / `with derived.build(target, inputs, spec) as b:` - freshness is a content hash of the input files plus a JSON spec of every setting that changes the result (text, size, scale, voice, engine, version when one is cheaply known), never mtimes (copy / zip / git checkout must not trigger or skip a rebuild); the record holds no absolute paths and is written only after the build succeeded (temp + rename), so an interrupted build never looks fresh. A pass that writes into a folder another program also writes uses `derived.Ledger` to recognise its own files. When replacing an older cache format, adopt or migrate its files (an existing project must not lose work or re-run an expensive step needlessly).
 - Media helpers: `studio-core/scripts/media.py` (decode, duration, voice activity, check_video, contact_sheet).
+- Project check: every entry script of a user skill (and every film-finish script that reads project.json) validates
+  the project file FIRST, before any long step: `P.check("<skill>")` on a `Project`, or
+  `project_check.require(path_or_dict, skill="<skill>")` (studio-core `project_check.py`; also a CLI). Errors (wrong
+  type of a shared key, overlapping / unordered / duplicate sections, a talking figure's voice not in the cast, a
+  speaking slide figure without a mouth block, an unknown transition kind ...) stop with exit code 2 and a message naming
+  the key and what is expected; warnings (unknown keys with did-you-mean, stale rendered frames) are printed. The
+  schema is plain Python data (`SCHEMAS` in `project_check.py`, one dict per project family: song, talk, short, deck):
+  **a new project.json key must be added there** (with its type), otherwise every build warns about it.
+- Frame size: project.json `"size": [w, h]` (default 1280x720). Read it with `P.size` (song_project) or
+  `project_check.frame_size(p)` - never hard-code 1280x720 in a film path; pixel values designed at 720p (fonts, title
+  y, card places) are multiplied by `P.scale` (= h / 720). Default output must stay identical without "size".
 
 ## Creative seed (keep films fresh)
 

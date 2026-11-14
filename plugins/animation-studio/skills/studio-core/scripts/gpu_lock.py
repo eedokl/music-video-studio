@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = []
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Only one AI job at a time on the graphics card and in RAM (16 GB RAM is not enough for two big models).
 

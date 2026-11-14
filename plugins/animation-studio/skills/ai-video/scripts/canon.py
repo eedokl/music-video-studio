@@ -1,6 +1,8 @@
 # /// script
 # requires-python = "==3.12.*"
 # dependencies = ["mediapipe==1.2.3", "numpy==2.5.4", "opencv-python-headless==5.0.0.93"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Check a character's colour accent on the correct side of the face (e.g. Claudia's ONE clay-orange streak on HER right
 = the image's left; her clay star clip on the other side must stay a small spot).

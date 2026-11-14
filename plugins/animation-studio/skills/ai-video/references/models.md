@@ -25,3 +25,6 @@ No model closes the lips reliably on short p/b/m sounds.
 
 Licences: LTX-2 Community License (free under USD 10M revenue, AI content must be labelled); Wan, Qwen, FLUX
 schnell, Depth Anything Small: Apache-2.0.
+
+Exact file names, models/ folders and node classes of every workflow: `assets/models.json` (machine override: config
+`comfy_models`); `scripts/preflight.py` checks a running ComfyUI against them.

@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["svgelements==1.9.6"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Scene template: an SVG figure from the characters skill animated in Synfig ("Fips chirps", 5 s, 24 fps).
 

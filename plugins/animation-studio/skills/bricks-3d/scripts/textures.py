@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["pillow==13.0.0"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Printed decals for brick films (Pillow, runs outside Blender): minifig faces with 9 mouth shapes (Rhubarb X A-H),
 blink tiles, torso prints, a hair clip, a night skyline and the monitor screens of a film.

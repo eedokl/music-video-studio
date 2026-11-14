@@ -7,9 +7,11 @@ animated-short sfx_track.py (frame cues) and animated-powerpoint sound.py (clips
     mix.voice("line01.wav", 3.2, db=-14)                        # a narration line, starting at 3.2 s
     mix.write("sounds.wav", lowpass=6000)                       # or loudnorm=-18 for speech
 
-- Each sound is rendered once per id + args into the cache (earshot `sfx render`), normalised to peak 1, given 10 ms
-  fades ("soft": hard unfiltered clicks over music read as a broken speaker) and placed with its START (align="start")
-  or its LOUDEST MOMENT (align="peak": a landing pop sits on the contact frame) on the given second, at `db` peak level.
+- Each sound is rendered once per id + args into the cache (earshot `sfx render`; studio-core derived.py records each
+  finished render, so a killed render is never reused; earshot has no cheap version query, see SfxMix._bank),
+  normalised to peak 1, given 10 ms fades ("soft": hard unfiltered clicks over music read as a broken speaker) and
+  placed with its START (align="start") or its LOUDEST MOMENT (align="peak": a landing pop sits on the contact frame)
+  on the given second, at `db` peak level.
 - pan -1..1; pan_law "linear" (each side min(1, 1 -/+ pan)) or "equal" (sqrt, +3 dB centre - the song films).
 - Cache: config key "sfx_cache" (check_tools.py --set sfx_cache=<dir>) = one shared bank for every project and clip;
   otherwise the caller's folder.
@@ -24,6 +26,7 @@ from pathlib import Path
 import numpy as np
 
 import config
+import derived
 from media import decode
 
 SR = 48000
@@ -78,10 +81,7 @@ class SfxMix:
         else:
             tag = "".join("_" + x.replace(".", "").replace("-", "") for x in args)
         wav = self.cache / (sid.replace("/", "__") + tag + ".wav")
-        if not wav.exists():
-            subprocess.run(config.cmdline(self.ear + ["sfx", "render", sid, "-o", str(wav), "--sr", str(SR)] + args),
-                           capture_output=True, text=True, errors="replace")
-        if not wav.exists():
+        if not self._bank(wav, sid, args):
             print(f"  sound '{sid}' not found - skipped (earshot sfx list)")
             self.missing.append(sid)
             self._mem[key] = None
@@ -98,6 +98,28 @@ class SfxMix:
         y /= (np.abs(y).max() + 1e-9)
         self._mem[key] = y
         return y
+
+    def _bank(self, wav, sid, args):
+        """The bank file of sid + args, rendered by earshot unless a complete render of exactly these is there
+        (studio-core derived.py: earshot writes a temp file, the record is written only after it finished - a killed
+        render is never reused). Files of the bank from before derived.py (no record) are adopted: their name encodes
+        id + args. earshot has no cheap version query (no --version; each call starts a ~10 s Python process), so an
+        earshot upgrade does not invalidate the bank - clear the bank folder (or the files of changed sounds) then."""
+        spec = {"earshot": sid, "args": list(args), "sr": SR}
+        if derived.fresh(wav, (), spec):
+            return True
+        if wav.exists() and derived.recorded(wav) is None:
+            derived.record(wav, (), spec)                  # bank file from before derived.py
+            return True
+        try:
+            with derived.build(wav, (), spec) as b:
+                r = subprocess.run(config.cmdline(self.ear + ["sfx", "render", sid, "-o", str(b.path), "--sr", str(SR)]
+                                                  + list(args)), capture_output=True, text=True, errors="replace")
+                if r.returncode:                           # failed or killed: a half-written file is never kept
+                    raise RuntimeError(f"earshot exited {r.returncode}")
+        except RuntimeError:                               # unknown id (earshot wrote nothing) or a failed render
+            return False
+        return True
 
     def place(self, y, t, db=-14.0, pan=0.0, align="start"):
         """Add a (n, 2) signal at second t with its peak at db; align 'start' or 'peak'. Returns the start sample."""

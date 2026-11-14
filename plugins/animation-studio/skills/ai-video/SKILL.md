@@ -21,18 +21,36 @@ From another skill: `import _studio; _studio.use("ai-video")`, then `import comf
 | `comfy_url` | ComfyUI server (default `http://127.0.0.1:8188`) | all ComfyUI scripts |
 | `comfy_start` | script that starts ComfyUI (e.g. a `comfyui.cmd`) - optional; without it the user is asked to start it | night_run, `comfy.ensure()` |
 | `comfy_dir` | ComfyUI's base folder (holds `input/` and `output/`) - optional | night_run `--clean-comfy`, free-space check of ComfyUI's drive |
+| `comfy_models` | JSON file that overrides model file names of `assets/models.json` (only the entries that differ) - optional | every workflow builder, preflight |
 | `face_landmarker` | MediaPipe `face_landmarker.task` | mouth.py, canon.py |
 | `realesrgan` | realesrgan-ncnn-vulkan executable | upscale.py (Lanczos fallback) |
 | `gpu_python` | CUDA venv with torch + transformers | estimate_depth.py (falls back to uv/CPU) |
 | `hf_home` | model cache | estimate_depth.py |
 | `gpu_lock_dir` | shared GPU lock folder | every AI run |
 
-Model files must be in ComfyUI's model folders (names in each script's docstring and in `references/models.md`).
+Model files must be in ComfyUI's model folders. Every file name and node class the workflows use lives in ONE data file,
+`assets/models.json` (`files`: role -> file, `models/` folder, loader inputs; `workflows`: node classes, file roles and
+option values per builder variant; `nodes`: where each node class comes from). The builders read the names from there.
+Another machine with other file names or sub-folders: never edit code or models.json - write a small override such as
+`{"files": {"ltx23": "video/ltx-2.3-22b-distilled-fp8.safetensors"}}` and store it once with
+`check_tools.py --set comfy_models=<file>` (env `ANIMATION_STUDIO_COMFY_MODELS`).
+
+**Preflight** before any long AI run - asks the running ComfyUI (`GET /object_info`, read-only, seconds) for every node
+class, model file and option the jobs need and prints exactly what is missing (exit 1):
+
+```
+uv run "${CLAUDE_PLUGIN_ROOT}/skills/ai-video/scripts/preflight.py" jobs.json            # or --kinds flux,ltx,s2v / --all
+uv run "${CLAUDE_PLUGIN_ROOT}/skills/ai-video/scripts/preflight.py" --list               # workflows, files and folders
+```
+
+`night_run.py` runs it automatically before the first job (`--no-preflight` skips it).
 
 ## Scripts
 
 | script | does |
 |---|---|
+| `comfy_models.py` | reads `assets/models.json` + the `comfy_models` override: `file(role)`, `workflow(name)`, `load()` |
+| `preflight.py` | checks a running ComfyUI against the planned jobs: missing node classes (+ node pack hint), model files (+ loader and `models/` folder), option values; `check(names, info)`, `workflows_for_jobs(jobs)`; exit 1 when anything is missing |
 | `comfy.py` | client: `ensure()` (starts ComfyUI via `comfy_start`), `lock(name, model)` (GPU lock + flush on a model change), `upload()` (images AND audio through `/upload`, no file-system paths), `run()`, `outputs()`, `fetch_frames()`, `free()` |
 | `comfy_image.py` | FLUX.1 schnell (default) / SDXL (+LoRA, repaint) / Qwen-Image (lettering) text-to-image; `generate(prompt, out, ...)` |
 | `qwen_edit.py` | Qwen-Image-Edit 2511: the person from 1-2 reference images in a new scene - start images; `edit(refs, prompt, out, ...)` |
@@ -49,7 +67,7 @@ Model files must be in ComfyUI's model folders (names in each script's docstring
 | `mic_repair.py` | repairs start images that fail the mic check (boom on both cheeks / wrong cheek): `retouch` = wrong boom + capsule masked, OpenCV fill + FLUX texture refine on the mask only (rest pixel-identical); `qwen` = Qwen-Edit "change only the microphone" (several seeds); every result re-checked with canon.py, before/after sheet |
 | `humo.py` | HuMo 1.7B (17B refused on 16 GB): start image + vocals -> singing clip, 832x480 @25 fps, ~130 s per second; rescue for plosive lines, face static (`--dry-run`) |
 | `minimax.py` | MiniMax: `comfy` = local H3 with audio anchor (>= 124 frames, 1024x576 @24 fps, ~42 s per second); `cloud` = hosted Hailuo image-to-video (no audio), opt-in via env `MINIMAX_API_KEY`, dry run unless `--send` (paid) |
-| `night_run.py` | unattended run of a jobs.json: phases = one model each, GPU lock per phase, resume, retry after `/free`, hooks between phases (picks), `milestones.log`, `--dry-run` estimate; outputs written under a temp name and renamed when complete; `--min-free-gb`, `--clean-comfy` |
+| `night_run.py` | unattended run of a jobs.json: phases = one model each, GPU lock per phase, resume, retry after `/free`, hooks between phases (picks), `milestones.log`, `--dry-run` estimate; outputs written under a temp name and renamed when complete; preflight before the first job (`--no-preflight`); `--min-free-gb`, `--clean-comfy` |
 | `sheets.py` | contact sheets: `sheet()` start/middle/end per clip with notes; `shot_sheet()` 20/50/80 % per shot of a film |
 
 ## Rules (learned the hard way)

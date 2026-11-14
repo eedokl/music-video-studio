@@ -8,6 +8,11 @@ user-invocable: false
 
 Input per section: `scenes/<section>/f.%04d.png` (any renderer – Synfig, Blender, three.js) and the song project
 (`song-analysis`). All times are song seconds.
+Every script here that reads project.json checks it first (studio-core `project_check.py`; errors stop with exit
+code 2 before anything is rendered, see song-analysis "Project folder"). Frame size: project.json `"size": [w, h]`
+(default `[1280, 720]`) – scenes, overlays, title, transitions, pop-up cards, 48 fps and the small/mail versions
+(long side ≤ 1280 / 960) follow it; credits are composed at 1280x720 and scaled; pixel values such as gag `"size"`
+or title `"y"` mean px of a 720-high frame and scale with it. With "size" set, scene frames of another size are scaled to it (with a note).
 
 | Script | Does |
 |---|---|

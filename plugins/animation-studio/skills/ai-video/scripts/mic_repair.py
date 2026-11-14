@@ -1,6 +1,8 @@
 # /// script
 # requires-python = "==3.12.*"
 # dependencies = ["mediapipe==1.2.3", "numpy==2.5.4", "opencv-python-headless==5.0.0.93", "pillow==13.0.0"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Repair start images whose headset microphone breaks the canon (a boom on BOTH cheeks, or on the wrong cheek only).
 
@@ -138,6 +140,7 @@ def _refine(bgr_filled, mask, seed, prompt=REFINE, denoise=0.8, n_seeds=4):
     """FLUX schnell masked img2img on a square crop around the mask -> repainted crop pasted back (feathered)."""
     import cv2
     import comfy
+    import comfy_models
     import tempfile
     ys, xs = np.nonzero(mask)
     H, W = mask.shape
@@ -155,7 +158,7 @@ def _refine(bgr_filled, mask, seed, prompt=REFINE, denoise=0.8, n_seeds=4):
     comfy.lock("mic_repair", "comfy:flux")
     img, msk = comfy.upload(tmp / "crop.png", f"mic_repair_{seed}_crop.png"), comfy.upload(tmp / "mask.png", f"mic_repair_{seed}_mask.png")
     wf = {
-        "1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": "flux1-schnell-fp8.safetensors"}},
+        "1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": comfy_models.file("flux_schnell")}},
         "2": {"class_type": "CLIPTextEncode", "inputs": {"text": prompt, "clip": ["1", 1]}},
         "3": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["1", 1]}},
         "9": {"class_type": "LoadImage", "inputs": {"image": img}},

@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["svgelements==1.9.6"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Inkscape SVG -> Synfig layers, keeping the group structure (= animatable parts).
 
@@ -30,6 +32,7 @@ from svgelements import (SVG, Arc, Close, CubicBezier, Group, Line, Move, Path a
 import _studio  # noqa: E402
 _studio.use()
 import config
+import derived
 from sif import B, R, V, C, group
 
 
@@ -38,7 +41,8 @@ def normalize(svg_path, out_dir=None):
 
     out_dir: folder for the plain file (default: next to the source). Use it for SVGs bundled with
     the skill so nothing is written into the skill folder. Inkscape is skipped if the plain file
-    already exists and is newer than the source.
+    was made from exactly this source content (studio-core derived.py - a content hash, not mtimes:
+    a restored older SVG or a different SVG of the same name is normalized again).
     """
     src = Path(svg_path).resolve()
     if out_dir is not None:
@@ -47,11 +51,13 @@ def normalize(svg_path, out_dir=None):
         dst = out / (src.stem + "_plain.svg")
     else:
         dst = src.with_name(src.stem + "_plain.svg")
-    if dst.exists() and dst.stat().st_mtime >= src.stat().st_mtime:
+    actions = "select-all:all;object-to-path;export-plain-svg"
+    if derived.fresh(dst, [src], {"inkscape": actions}):
         return dst
-    subprocess.run([config.need("inkscape"), str(src), "--actions=select-all:all;object-to-path;"
-                    f"export-filename:{dst.as_posix()};export-plain-svg;export-do"],
-                   check=True, capture_output=True)
+    with derived.build(dst, [src], {"inkscape": actions}) as b:
+        subprocess.run([config.need("inkscape"), str(src), "--actions=select-all:all;object-to-path;"
+                        f"export-filename:{b.path.as_posix()};export-plain-svg;export-do"],
+                       check=True, capture_output=True)
     return dst
 
 

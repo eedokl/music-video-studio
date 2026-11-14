@@ -75,6 +75,8 @@ Show the sheet to the user and ask for changes before finishing when they are ar
 
 ## 6. Finish
 
+`short.py finish` checks short.json first (studio-core `project_check.py`; exit code 2 on wrong types, unknown keys warn).
+
 1. Sound effects: write `sfx_cues.json` in the scene folder – one cue per action frame (landings → `ui_pop/soft`,
    jumps → `swish/*`, discoveries/magic → `mallet/celesta|glock`, big impacts → `whoosh_big/thump_airy`), see
    `scripts/sfx_track.py`. The peak of each sound lands exactly on its frame.

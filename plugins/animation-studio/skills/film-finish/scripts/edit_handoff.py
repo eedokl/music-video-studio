@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4", "opentimelineio==0.18.1", "pillow==13.0.0"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Hand the cut over for manual editing: film.otio (Kdenlive, DaVinci Resolve, ...) and film.mlt (MLT / melt).
 
@@ -26,7 +28,7 @@ from pathlib import Path
 import _studio  # noqa: E402
 _studio.use("song-analysis")
 import config  # noqa: E402
-from build import H, W, clip, frame_count, sound_track  # noqa: E402
+from build import clip, frame_count, sound_track  # noqa: E402
 from song_project import Project  # noqa: E402
 
 MELT_PROFILES = {Fraction(24000, 1001): "atsc_720p_2398", 24: "atsc_720p_24", 25: "atsc_720p_25",
@@ -38,16 +40,19 @@ def media_path(p):
     return str(Path(p).resolve()).replace("\\", "/")
 
 
-def melt_profile(fps, folder):
-    """MLT profile matching the project fps: a stock 720p profile, else a profile file written to `folder`
-    (e.g. 48 fps) - a wrong profile would play the frame-counted timeline at the wrong speed."""
+def melt_profile(fps, folder, size=(1280, 720)):
+    """MLT profile matching the project fps and frame size (P.size): a stock 720p profile, else a profile file written
+    to `folder` (e.g. 48 fps) - a wrong profile would play the frame-counted timeline at the wrong speed."""
+    W, H = size
+    da = Fraction(W, H)
     f = next((k for k in MELT_PROFILES if abs(float(k) - float(fps)) < 0.002), Fraction(fps).limit_denominator(1001))
     if f in MELT_PROFILES and (W, H) == (1280, 720):
         return MELT_PROFILES[f]
     p = Path(folder) / f"melt_profile_{W}x{H}_{f.numerator}_{f.denominator}.txt"
     p.write_text(f"description={W}x{H} {float(f):g} fps\nframe_rate_num={f.numerator}\nframe_rate_den={f.denominator}\n"
                  f"width={W}\nheight={H}\nprogressive=1\nsample_aspect_num=1\nsample_aspect_den=1\n"
-                 f"display_aspect_num=16\ndisplay_aspect_den=9\ncolorspace=709\n", encoding="utf-8")
+                 f"display_aspect_num={da.numerator}\ndisplay_aspect_den={da.denominator}\ncolorspace=709\n",
+                 encoding="utf-8")
     return str(p)
 
 
@@ -58,6 +63,7 @@ def main():
     ap.add_argument("--crossfade", type=int, default=0, help="frames of dissolve between sections (0 = hard cuts)")
     a = ap.parse_args()
     P = Project(a.project)
+    P.check("film-finish")                 # project.json validated before any long step
     fps, xf = P.fps, a.crossfade
     secs = sorted(P.sections(), key=lambda s: s["from"])
     if not secs:
@@ -104,7 +110,7 @@ def main():
 
     melt = config.get("melt")
     if melt and Path(melt).exists():
-        cmd = [melt, "-profile", melt_profile(fps, P.cache)]
+        cmd = [melt, "-profile", melt_profile(fps, P.cache, P.size)]
         cursor = 0
         for i, sh in enumerate(shots):
             if sh["start"] > cursor:

@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["faster-whisper==1.2.1", "numpy==2.5.4", "pillow==13.0.0", "scikit-image==0.26.0", "scipy==1.18.1"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Build and render one presentation clip: figures step out of the flat slide into a 2.5D room.
 
@@ -928,6 +930,8 @@ def main():
     ap.add_argument("--from", dest="start", choices=STEPS, default="plan")
     ap.add_argument("--jobs", type=int, default=max(2, (os.cpu_count() or 8) // 2))
     a = ap.parse_args()
+    import project_check
+    project_check.require(a.clip, skill="animated-powerpoint")   # clip.json validated before the first step
     C = Clip(a.clip)
     steps = STEPS
     todo = [a.only] if a.only else steps[steps.index(a.start):]

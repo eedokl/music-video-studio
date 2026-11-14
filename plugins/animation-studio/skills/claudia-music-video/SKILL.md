@@ -104,6 +104,8 @@ look soft (render_shots otherwise scales with Lanczos). The clip's json is copie
 
 ## 6. Cut
 
+Every build script checks project.json first (studio-core `project_check.py`, details in song-analysis "Project check"): a wrong type, overlapping sections or an unknown transition stop it in seconds with exit code 2 and the key named; unknown keys only warn. `"size": [w, h]` = shot size (default 1280x720).
+
 ```
 uv run "$S/render_shots.py" <proj>
 uv run "$S/make_film.py" <proj>

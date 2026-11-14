@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Night run: compute a whole list of AI jobs unattended - one model at a time, resumable, with milestones.
 
@@ -32,11 +34,14 @@ Rules:
     files THIS run created in ComfyUI's input/output folders after each job (needs config comfy_dir)
   - a failing job is logged (milestones.log + traceback) and retried ONCE after flushing ComfyUI; then the run goes on
   - ComfyUI is started with config comfy_start if it is not running; if it does not answer for 15 min the phase is skipped
+  - preflight (preflight.py): before the first job the running ComfyUI is asked (GET /object_info) for every node class,
+    model file and option the open jobs need (assets/models.json + config comfy_models override); anything missing is
+    listed and the run stops in seconds, before any job (--no-preflight skips the check)
 Audio args: "quiet_start": true moves the window start back into a silence (<= 0.5 s, lead-in grows),
 "prepare": true levels the vocal (clips.prepare_vocal). LTX args: "compression" (img_compression, crowds 42).
 Usage:
   uv run night_run.py jobs.json [--phases ltx,s2v] [--only s02,s05] [--dry-run] [--status]
-         [--min-free-gb 20] [--clean-comfy]
+         [--min-free-gb 20] [--clean-comfy] [--no-preflight]
 """
 import argparse
 import json
@@ -52,6 +57,7 @@ import _studio  # noqa: E402
 _studio.use()
 import clips  # noqa: E402
 import comfy  # noqa: E402
+import preflight  # noqa: E402
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[3]       # <plugin>/skills/ai-video/scripts/night_run.py (at run time)
 MODEL = {"flux": "comfy:flux", "qwen_edit": "comfy:qwen_edit", "depth": "depth:small", "ltx": "comfy:ltx23",
@@ -147,6 +153,31 @@ class Run:
         print(line, flush=True)
         with open(self.log_file, "a", encoding="utf-8") as f:
             f.write(line + "\n")
+
+    def preflight(self, jobs):
+        """Check the running ComfyUI for every node class / model file the OPEN jobs need (starts ComfyUI like a phase
+        does). Logs each missing item; False = stop the run before any job."""
+        try:
+            names = preflight.workflows_for_jobs([j for j in jobs if not self.out_of(j).exists()])
+        except ValueError as ex:
+            self.log(f"ERROR preflight: {ex} - run stopped")
+            return False
+        if not names:
+            return True
+        try:
+            comfy.ensure(900)
+            info = preflight.fetch_object_info(comfy.url())
+        except (SystemExit, ConnectionError) as ex:
+            self.log(f"ERROR preflight: ComfyUI not available ({ex}) - run stopped before any job "
+                     f"(--no-preflight runs the phases anyway)")
+            return False
+        probs = preflight.check(names, info)
+        for line in preflight.lines(probs):
+            self.log("preflight " + line)
+        self.log(preflight.summary(names, info, probs) + (" - run stopped before any job: add the files / node packs, or "
+                 "name your files in the comfy_models override (preflight.py --list); --no-preflight skips the check"
+                 if probs else ""))
+        return not probs
 
     # ------------------------------------------------------------- one job
     def execute(self, job, out, final=None):
@@ -349,6 +380,8 @@ def main():
                     help="stop before a phase when less is free on the project / ComfyUI drive (0 = no check)")
     ap.add_argument("--clean-comfy", action="store_true",
                     help="delete the files this run created in ComfyUI's input/output folders (config comfy_dir)")
+    ap.add_argument("--no-preflight", action="store_true",
+                    help="do not check ComfyUI's node classes and model files before the first job")
     a = ap.parse_args()
     R = Run(a.jobs)
     R.min_free_gb, R.clean_comfy = a.min_free_gb, a.clean_comfy
@@ -373,6 +406,8 @@ def main():
         R.log(f"===== night run start: phases {','.join(p for p in order if p in want)}" + (f", only {only}" if only else ""))
     t0, total = time.time(), 0
     if not a.dry_run and not R.disk_ok("night run start"):
+        return 1
+    if not a.dry_run and not a.no_preflight and not R.preflight([j for ph in order if ph in want for j in by.get(ph, [])]):
         return 1
     for ph in order:
         if ph in want and by.get(ph):

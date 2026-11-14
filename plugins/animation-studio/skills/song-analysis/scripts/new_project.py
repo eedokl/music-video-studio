@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Create a cartoon music-video project: folder with song.wav, lyrics.txt, (stems) and project.json.
 
@@ -30,6 +32,7 @@ from pathlib import Path
 import _studio  # noqa: E402
 _studio.use('song-analysis')
 from media import duration, ffmpeg
+import project_check  # noqa: E402
 
 
 def cut(src, dst, start, end):
@@ -143,6 +146,7 @@ def main():
     f.write_text(json.dumps(p, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"-> {d}  song.wav {length:.1f} s, stems: {', '.join(stems) or 'none (Demucs in analyze.py)'}, "
           f"lyrics: {'yes' if a.lyrics else 'no'}, language {a.language}{warn}")
+    project_check.require(d / "project.json", skill="song-analysis")    # an existing project.json is checked too
 
 
 if __name__ == "__main__":

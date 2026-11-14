@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Short video from a still with the local ComfyUI, WITHOUT sound: backgrounds with wind, light, clouds, water.
 
@@ -9,6 +11,7 @@ Models:
         24 fps, length 4n+1 frames, 1280x704 - best quality, ~400 s per 4 s
   ltx = LTX-Video 2B 0.9.8 distilled: checkpoints/ltxv-2b-0.9.8-distilled + text_encoders/t5xxl_fp8
         fast (8 steps), length 8n+1 frames, e.g. 1216x704 - for quick previews
+(names from assets/models.json; override: config comfy_models: roles wan22_ti2v_5b, umt5_xxl, wan22_vae, ltxv_2b, t5xxl)
 For photographic music videos prefer ltx.py (LTX-2.3 with the music as sound track: "moving stills", better motion).
 Usage:
   uv run comfy_video.py wan image.png "prompt" -o clip.mp4 [--seconds 4] [--width 1280 --height 704]
@@ -23,6 +26,7 @@ from pathlib import Path
 import _studio  # noqa: E402
 _studio.use()
 import comfy  # noqa: E402
+import comfy_models  # noqa: E402
 
 NEG = ("blurry, distorted, deformed, morphing, flickering, text, watermark, low quality, jpeg artifacts, "
        "extra limbs, melting, person, people, figure walking, smoke, camera movement")   # Wan invents figures/smoke otherwise
@@ -30,9 +34,9 @@ NEG = ("blurry, distorted, deformed, morphing, flickering, text, watermark, low 
 
 def wf_wan(img, prompt, neg, w, h, n, seed, steps):
     return {
-        "1": {"class_type": "UNETLoader", "inputs": {"unet_name": "wan2.2_ti2v_5B_fp16.safetensors", "weight_dtype": "default"}},
-        "2": {"class_type": "CLIPLoader", "inputs": {"clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors", "type": "wan"}},
-        "3": {"class_type": "VAELoader", "inputs": {"vae_name": "wan2.2_vae.safetensors"}},
+        "1": {"class_type": "UNETLoader", "inputs": {"unet_name": comfy_models.file("wan22_ti2v_5b"), "weight_dtype": "default"}},
+        "2": {"class_type": "CLIPLoader", "inputs": {"clip_name": comfy_models.file("umt5_xxl"), "type": "wan"}},
+        "3": {"class_type": "VAELoader", "inputs": {"vae_name": comfy_models.file("wan22_vae")}},
         "4": {"class_type": "LoadImage", "inputs": {"image": img}},
         "5": {"class_type": "CLIPTextEncode", "inputs": {"text": prompt, "clip": ["2", 0]}},
         "6": {"class_type": "CLIPTextEncode", "inputs": {"text": neg, "clip": ["2", 0]}},
@@ -49,8 +53,8 @@ def wf_wan(img, prompt, neg, w, h, n, seed, steps):
 
 def wf_ltx(img, prompt, neg, w, h, n, seed, steps):
     return {
-        "1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": "ltxv-2b-0.9.8-distilled.safetensors"}},
-        "2": {"class_type": "CLIPLoader", "inputs": {"clip_name": "t5xxl_fp8_e4m3fn.safetensors", "type": "ltxv"}},
+        "1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": comfy_models.file("ltxv_2b")}},
+        "2": {"class_type": "CLIPLoader", "inputs": {"clip_name": comfy_models.file("t5xxl"), "type": "ltxv"}},
         "4": {"class_type": "LoadImage", "inputs": {"image": img}},
         "5": {"class_type": "CLIPTextEncode", "inputs": {"text": prompt, "clip": ["2", 0]}},
         "6": {"class_type": "CLIPTextEncode", "inputs": {"text": neg, "clip": ["2", 0]}},

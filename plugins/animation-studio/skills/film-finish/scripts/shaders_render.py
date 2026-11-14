@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4", "pillow==13.0.0"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Make new film looks, iris transition masks and effect galleries with Shaders (WebGPU effect library, npm
 `shaders` 4.0.6, MIT) - rendered frame-exact in headless Edge/Chrome.

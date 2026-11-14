@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4", "opencv-python-headless==5.0.0.93", "pillow==13.0.0"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Cut the film with film-finish: lyrics overlay per shot (overlays.py), the whole film on the song (build.py film:
 film.mp4, film_small.mp4 < 30 MB, film_mail.mp4, 0 decode errors), then review sheets:
@@ -30,6 +32,7 @@ def main():
     ap.add_argument("--no-lyrics", action="store_true")
     a = ap.parse_args()
     P = Project(a.project)
+    P.check("claudia-music-video")                 # project.json validated before any long step
     if "lyrics_style" not in P.p:                         # Claudia look: caps with the clay highlight #D97757
         P.p["lyrics_style"] = "caps"
         P.file.write_text(json.dumps(P.p, ensure_ascii=False, indent=1), encoding="utf-8")

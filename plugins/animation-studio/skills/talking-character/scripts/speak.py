@@ -1,13 +1,16 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Step 1 of a talking scene: script -> voices (or a recording) -> dialogue timeline, mouths per figure, word times.
 
   uv run speak.py [--project .] [--redo] [--engine qwen|piper|system]
 Reads project.json ("script", "figures", "voices", "direction", "language", "seed") and the script file.
-Voices: voice building block (fixed voice per character, Whisper check, retakes). Cached in lines/ - a line is only
-spoken again when its text or voice changes (or --redo).
+Voices: voice building block (fixed voice per character, Whisper check, retakes). Cached in lines/ (studio-core
+derived.py) - a line is only spoken again when its text, voice settings, reference recording or engine change
+(or --redo).
 With "recording": "<file>" in project.json (a real recording of the whole dialogue) no TTS runs: Whisper aligns the
 script to the recording, each line belongs to its speaker, Rhubarb runs once on the recording.
 Timeline ("direction" in project.json, seconds): lead_in 0.4, gap 0.35 (+-0.08 from the creative seed), quick 0.12,
@@ -34,6 +37,7 @@ import _studio  # noqa: E402
 _studio.use("song-analysis", "voice")
 import config  # noqa: E402
 import creative  # noqa: E402
+import derived  # noqa: E402
 import voice  # noqa: E402
 from dialogue import parse  # noqa: E402
 from media import decode, ffmpeg  # noqa: E402
@@ -72,40 +76,83 @@ def write_wav(path, y):
     voice.write_wav(path, y, SR)
 
 
+def _engine(entry, force):
+    """The engine voice.speak will use for this voice entry now (first available, or the forced one), or None when
+    no engine is available on this machine (then cached lines are used as they are)."""
+    try:
+        return voice.choose(entry, force).get("engine", "qwen")
+    except SystemExit:
+        return None
+
+
+def _legacy_sig(vname, text, voices, P, a):
+    """The cache signature of lines.json before derived.py (to adopt those lines without speaking them again)."""
+    return hashlib.sha1(json.dumps([vname, text, voices.get(vname), P.get("pronounce"), a.engine, creative.seed(P)],
+                                   ensure_ascii=False).encode()).hexdigest()[:12]
+
+
 def spoken_lines(P, entries, a):
-    """TTS for every chunk (cached) -> {(line_idx, chunk_idx): result}."""
+    """TTS for every chunk (cached) -> {(line_idx, chunk_idx): result}.
+    Line cache (studio-core derived.py): lines/<li>_<ci>_<who>.wav + its record in lines/.derived/ with the TTS result
+    (words, duration, Whisper score) as "extra". A line is reused only when its text, the voice entry, the voice's
+    reference recording (content), pronunciation, seed and the engine that would speak it now are unchanged; the
+    record is written only after the wav is complete, and holds no paths (the project folder can move).
+    lines/lines.json is a readable summary (and the old cache format, adopted once without speaking again)."""
     figs = P["figures"]
     lines_dir = P.dir / "lines"
     lines_dir.mkdir(exist_ok=True)
     cache_f = lines_dir / "lines.json"
-    cache = json.loads(cache_f.read_text(encoding="utf-8")) if cache_f.exists() and not a.redo else {}
+    try:
+        old = json.loads(cache_f.read_text(encoding="utf-8")) if cache_f.exists() and not a.redo else {}
+    except ValueError:
+        old = {}
     voices = voice.cast(P.dir)
-    todo, keys, results = [], [], {}
+    todo, jobs, results, summary = [], [], {}, {}
     for li, e in enumerate(entries):
         if e["kind"] != "line":
             continue
         vname = figs.get(e["who"], {}).get("voice", e["who"])
+        entry = voices.get(vname) or {}
+        engine = _engine(entry, a.engine) if entry else a.engine
+        # the voice's reference recording (qwen clones it; missing = designed on first use, inside voice.speak)
+        ref = voice.reference_path(vname, entry, P.dir)
+        inputs = [ref or P.dir / (entry.get("reference") or f"voices/{vname}.wav")]
         for ci, c in enumerate(e["chunks"]):
             if not c["text"].strip():
                 continue
-            sig = hashlib.sha1(json.dumps([vname, c["text"], voices.get(vname), P.get("pronounce"), a.engine,
-                                           creative.seed(P)], ensure_ascii=False).encode()).hexdigest()[:12]
+            spec = {"voice": vname, "text": c["text"], "entry": entry, "pronounce": P.get("pronounce"),
+                    "seed": creative.seed(P), "language": P.get("language", "de")}
             out = lines_dir / f"{li:02d}_{ci}_{e['who']}.wav"
             k = f"{li}:{ci}"
-            if k in cache and cache[k].get("sig") == sig and out.exists():
-                results[(li, ci)] = {**cache[k], "out": str(out)}      # this folder, even if the project moved
+            rec = None if a.redo else derived.recorded(out)
+            legacy = old.get(k) if rec is None and out.exists() else None
+            if legacy and legacy.get("sig") == _legacy_sig(vname, c["text"], voices, P, a) and "words" in legacy:
+                # an entry of the old lines.json format (spoken before derived.py): adopt it once, no TTS
+                extra = {x: v for x, v in legacy.items() if x not in ("sig", "out")}
+                derived.record(out, inputs, spec, extra=extra)
+                rec = derived.recorded(out)
+            ok = (rec is not None and derived.fresh(out, inputs, spec) and isinstance(rec.get("extra"), dict)
+                  and (engine is None or rec["extra"].get("engine") == engine))
+            if ok:
+                results[(li, ci)] = {**rec["extra"], "out": str(out)}      # this folder, even if the project moved
+                summary[k] = {**rec["extra"], "out": out.relative_to(P.dir).as_posix()}
                 continue
-            todo.append({"who": vname, "text": c["text"], "out": str(out)})
-            keys.append((li, ci, sig))
+            derived.clean_temps(out)                                   # temps of a killed earlier run
+            tmp = derived.temp_path(out)
+            todo.append({"who": vname, "text": c["text"], "out": str(tmp)})
+            jobs.append((li, ci, out, tmp, inputs, spec))
     if todo:
         print(f"speaking {len(todo)} chunk(s) ...", flush=True)
         res = voice.speak(todo, P.dir, seed=creative.seed(P), language=P.get("language", "de"), engine=a.engine,
                           pronounce=P.get("pronounce"))
-        for (li, ci, sig), r in zip(keys, res):
-            r["sig"] = sig
-            results[(li, ci)] = r
-            cache[f"{li}:{ci}"] = {**r, "out": Path(r["out"]).relative_to(P.dir).as_posix()}
-    cache_f.write_text(json.dumps(cache, ensure_ascii=False, indent=1), encoding="utf-8")
+        for (li, ci, out, tmp, inputs, spec), r in zip(jobs, res):
+            extra = {x: v for x, v in r.items() if x != "out"}
+            # wav complete -> then its record; the reference is hashed now: a reference designed during this run is
+            # the one the line was spoken with
+            derived.commit(tmp, out, inputs, spec, extra=extra)
+            results[(li, ci)] = {**extra, "out": str(out)}
+            summary[f"{li}:{ci}"] = {**extra, "out": out.relative_to(P.dir).as_posix()}
+    derived.write_text(cache_f, json.dumps(summary, ensure_ascii=False, indent=1))
     return results
 
 

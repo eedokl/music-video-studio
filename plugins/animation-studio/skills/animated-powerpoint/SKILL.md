@@ -19,6 +19,8 @@ Work in a project folder outside the plugin: `deck/`, `figures/`, `clips/<name>/
 
 ## Workflow
 
+`clip.py` and `scene.py` check their clip.json / scene.json first (studio-core `project_check.py`): wrong types, and a narration `"speaker"` (or figure `"talk"`) whose figure has no `"mouth"` block in its `parts.json`, stop them with exit code 2 before any render.
+
 1. **Interview + creative brief.** Which deck and slide(s)? Which figures step out, who just watches? Where will
    the clip play (after the slide = start on the slide; as a loop on the slide = `"ending": "return"`)? Text on the
    tags (name + role from the slide)? Read the slide text and notes (`deck.json`) and invent ideas from *this* deck

@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4", "opencv-python-headless==5.0.0.93", "pillow==13.0.0"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Contact sheets for choosing and reviewing AI material: one row per image or clip (clips: start / middle / end frame),
 labelled with the file name and an optional note (e.g. the lip score or the canon check).

@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Who sings when? Assign the mouth shapes to the figures -> analysis/assignment.json (scenes only read this file).
 
@@ -40,6 +42,7 @@ FIRST_PERSON = re.compile(r"\b(ich|mein|meine|meinen|meinem|mir|mich|i|me|my|min
 
 def main():
     P = Project(sys.argv[1] if len(sys.argv) > 1 else ".")
+    P.check("song-analysis")                 # project.json validated before any long step
     fps = P.fps
     figs = P["figures"]
     role = lambda v: next((k for k, f in figs.items() if f.get("voice") == v), None)

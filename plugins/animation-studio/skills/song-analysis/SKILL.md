@@ -19,7 +19,18 @@ replaces different audio/lyrics silently: it stops, and `--force` replaces them 
 Word triggers of all skills go through `song_project.word_matches(word, trigger)`: prefix (default, case-insensitive,
 edge punctuation stripped), `"=pro"` exact word, `"re:^verkauf(t)?$"` regex; `"(word"` only calls in brackets.
 `song_project.allowed(rule, section)` is the shared `"sections"` / `"not_sections"` filter, `Project.section_at(t)`
-the section of a song second.
+the section of a song second, `Project.size` the film frame size (`"size": [w, h]`, default 1280x720).
+
+**Project check** – every build script of the plugin validates project.json first (`P.check("<skill>")`, studio-core
+`project_check.py`; by hand: `uv run "${CLAUDE_PLUGIN_ROOT}/skills/studio-core/scripts/project_check.py" <folder>`).
+Errors stop the build with exit code 2 and name the key: `"sounds"` must be true/false, one rule or a list of rules
+with `"sfx"` + `"word"`/`"at"`/`"every"`/`"marker"`; `"gags"`, `"screen"`, `"steam"`, `"gestures"` lists of objects with
+`"word"`; `"transitions"` objects with `"at"` and a known `"kind"`; `"look"` a string; `"fps"` a number; `"size"` two
+even whole numbers; `"sections"` objects with `"name"`, numeric `"from"` < `"to"`, in ascending order, not
+overlapping, unique names. Figures in song projects sing by role (`"voice"`: male / female / announcer – anything else
+warns); in talking scenes `"voice"` must be a voice of the cast (voice skill `assets/cast.json` + project `"voices"`).
+Warnings: unknown keys (did-you-mean), rendered `scenes/<section>/` whose frame count or size no longer fits the
+section. A new project.json key goes into `SCHEMAS` of `project_check.py`.
 
 ## Steps (`scripts/analyze.py <folder> [--redo] [--only 3,5]`)
 

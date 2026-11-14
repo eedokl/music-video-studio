@@ -34,6 +34,13 @@ A user skill writes `<project>/jobs.json`; `night_run.py` computes it. Paths are
   `<name>.part.<ext>` (+ `.part.json`) and renamed when complete, so a killed job is redone, never taken as done.
   `--only s02,s05` and `--phases ltx` recompute parts; `--status` shows done/open per phase; `--dry-run` lists
   jobs with a time estimate.
+- **Preflight:** before the first job night_run starts ComfyUI if needed (as a phase does) and runs `preflight.py`
+  for the open jobs of the selected phases: every node class, model file and option value their workflows need
+  (`assets/models.json` + the `comfy_models` override) must be offered by ComfyUI's `/object_info`. Anything missing is
+  written to `milestones.log` (`preflight MISSING ...`: node class + node pack hint, or model file + loader +
+  `models/` folder) and the run stops in seconds with exit code 1 - before any job, no `.part` files - instead of
+  failing hours in. Fix the files / node packs or name your files in the override, then start again.
+  `--no-preflight` skips the check (e.g. ComfyUI not reachable but only the depth phase should run).
 - **GPU lock:** a phase whose lock stays taken too long (another session's long job) is skipped with a message;
   the run goes on with the next phase.
 - **Disk:** before the run and before every phase `--min-free-gb` (default 20) must be free on the project drive

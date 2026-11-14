@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = []
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Plan, texture and render brick-film sections, then hand over to film-finish.
 
@@ -81,6 +83,7 @@ def main():
     ap.add_argument("--preview", action="store_true")
     a = ap.parse_args()
     P = Project(a.project)
+    P.check("bricks-music-video")                 # project.json validated before any long step
     names = [s["name"] for s in P.sections()] if a.all or not a.section else [a.section]
     for n in names:
         section(P, n, a)

@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4", "pillow==13.0.0", "scipy==1.18.1"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Cut a figure (figures/<name>/original.png) into movable parts – every pixel comes from the original drawing.
 

@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """MiniMax video models, two backends:
 
@@ -13,7 +15,7 @@
          weights unchecked: check it before a published film.
          Files: diffusion_models/minimax_h3_fl2va_pruned_int8_convrot, loras/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16,
          text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq, vae/minimax_h3_video_vae_int8_convrot,
-         vae/minimax_h3_audio_vae_fp32.
+         vae/minimax_h3_audio_vae_fp32 (names from assets/models.json; override: config comfy_models).
   cloud  (opt-in, PAID) MiniMax's hosted video API (Hailuo image-to-video). It takes a first frame + prompt but NO audio,
          so it is a B-roll / moving-still engine, not lip sync. Strictly opt-in:
            - the key is read ONLY from the environment variable MINIMAX_API_KEY (never from files, never printed,
@@ -46,6 +48,7 @@ from pathlib import Path
 import _studio  # noqa: E402
 _studio.use()
 import clips  # noqa: E402
+import comfy_models  # noqa: E402
 import config  # noqa: E402
 
 FPS = 24
@@ -66,14 +69,14 @@ def frames_for(seconds, lead_in=0.25):
 
 def workflow(img, wav, prompt, frames, seed, prefix, w=W, h=H, steps=8):
     return {
-        "1": {"class_type": "UNETLoader", "inputs": {"unet_name": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+        "1": {"class_type": "UNETLoader", "inputs": {"unet_name": comfy_models.file("minimax_h3"),
                                                      "weight_dtype": "default"}},
         "2": {"class_type": "LoraLoaderModelOnly", "inputs": {"model": ["1", 0], "strength_model": 1.0,
-              "lora_name": "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors"}},
-        "3": {"class_type": "CLIPLoader", "inputs": {"clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+              "lora_name": comfy_models.file("minimax_h3_turbo_lora")}},
+        "3": {"class_type": "CLIPLoader", "inputs": {"clip_name": comfy_models.file("minimax_h3_te"),
                                                      "type": "minimax", "device": "default"}},
-        "4": {"class_type": "VAELoader", "inputs": {"vae_name": "minimax_h3_video_vae_int8_convrot.safetensors"}},
-        "5": {"class_type": "VAELoader", "inputs": {"vae_name": "minimax_h3_audio_vae_fp32.safetensors"}},
+        "4": {"class_type": "VAELoader", "inputs": {"vae_name": comfy_models.file("minimax_h3_video_vae")}},
+        "5": {"class_type": "VAELoader", "inputs": {"vae_name": comfy_models.file("minimax_h3_audio_vae")}},
         "10": {"class_type": "LoadImage", "inputs": {"image": img}},
         "12": {"class_type": "LoadAudio", "inputs": {"audio": wav}},
         "20": {"class_type": "MiniMaxH3ImageToVideo", "inputs": {"clip": ["3", 0], "vae": ["4", 0], "width": w, "height": h,

@@ -47,6 +47,7 @@ S="${CLAUDE_PLUGIN_ROOT}/skills/talking-character/scripts"
 python "$S/new_talk.py" <folder> --script dialogue.txt [--set room] [--recording take.wav] [--seed N]
 uv run "$S/make.py" --project <folder>
 ```
+`make.py` checks project.json first (studio-core `project_check.py`): every figure's `"voice"` must be a voice of the cast (voice skill `assets/cast.json` or project `"voices"`) – not a role like "male" – else it stops with exit code 2 before any voice is made. `"size": [w, h]` = frame size (default 1280x720).
 `make.py` runs: `speak.py` (voices, timeline, Rhubarb per line, word times) → `talk_scene.py --render`
 (scenes/dialogue.sif + frames) → film-finish `overlays.py dialogue` (subtitles) → `sounds.py` (gesture sounds,
 earshot) → `build.py film` (look, film.mp4 / film_small / film_mail, 0 decode errors) → `check_sync.py`.

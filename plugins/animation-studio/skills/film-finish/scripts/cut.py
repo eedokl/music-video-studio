@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4", "opentimelineio==0.18.1", "pillow==13.0.0"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Film cut for films WITHOUT a song timeline (shorts, slide clips, dialogue scenes, explainers): a shot list ->
 film.mp4 / film_small.mp4 / film_mail.mp4 (+ film.otio for Kdenlive, contact sheet, level report).

@@ -2,8 +2,9 @@
 
 Layout: <project>/project.json, song.wav, lyrics.txt, stems/, analysis/ (song-analysis output), cache/.
 project.json common keys (each user skill adds its own, e.g. "sections"):
-  name, fps, source, lyrics, stems {lead, backing}, language, figures {name: {voice: male|female|announcer, ...}},
-  narrator, announcements
+  name, fps, size [w, h] (film frame size, default [1280, 720] - read it as P.size), source, lyrics,
+  stems {lead, backing}, language, figures {name: {voice: male|female|announcer, ...}}, narrator, announcements
+Every key is validated up front by studio-core project_check.py (its SCHEMAS list every key; add new ones there).
 """
 import json
 import re
@@ -12,6 +13,7 @@ from pathlib import Path
 import _studio  # noqa: E402
 _studio.use("song-analysis")
 import config  # noqa: E402
+import project_check  # noqa: E402
 
 FPS = 24
 CLEAN = "„“\"'().,!?…—-:;"
@@ -75,6 +77,20 @@ class Project:
             return _studio.skill_dir(name) / sub
         p = Path(rel)
         return p if p.is_absolute() else self.dir / p
+
+    @property
+    def size(self):
+        """(width, height) of the film frames: project.json "size" [w, h], default (1280, 720)."""
+        return project_check.frame_size(self.p)
+
+    @property
+    def scale(self):
+        """Pixel sizes designed for 1280x720 (fonts, title y, card places) times this keep their look at P.size."""
+        return project_check.frame_scale(self.p)
+
+    def check(self, skill=None):
+        """Validate project.json (studio-core project_check.require): warnings printed, exit code 2 on errors."""
+        return project_check.require(self, skill=skill)
 
     @property
     def song(self):

@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = []
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Dialogue scripts: parse "Name: text (direction) text" into lines, spoken chunks and stage directions.
 

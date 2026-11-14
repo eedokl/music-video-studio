@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = []
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Scene "Pip and the Flower" (6 s, 24 fps) as a Synfig file - the complete reference example of toon-2d.
 

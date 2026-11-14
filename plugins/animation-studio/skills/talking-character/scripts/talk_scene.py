@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4", "pillow==13.0.0", "svgelements==1.9.6"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Step 2: the dialogue as an editable Synfig scene - figures speak, listen, look at each other and act on words.
 
@@ -169,6 +171,7 @@ def main():
     ap.add_argument("--jobs", type=int, default=8)
     a = ap.parse_args()
     P = Project(a.project)
+    P.check("talking-character")                 # project.json validated before any long step
     fps = P.fps
     DL = json.loads((P.analysis / "dialogue.json").read_text(encoding="utf-8"))
     ASG = P.assignment()["figures"]
@@ -499,7 +502,7 @@ def main():
     out_dir = P.dir / "scenes"
     out_dir.mkdir(exist_ok=True)
     sif = out_dir / "dialogue.sif"
-    sif.write_text(canvas([scene], fps=P.fps, end=N, name=P.get("name", "Dialogue"), view=view), encoding="utf-8")
+    sif.write_text(canvas([scene], w=P.size[0], h=P.size[1], fps=P.fps, end=N, name=P.get("name", "Dialogue"), view=view), encoding="utf-8")
     (P.analysis / "actions_dialogue.json").write_text(json.dumps(gestures_out, ensure_ascii=False), encoding="utf-8")
     print(f"-> {sif.relative_to(P.dir)}: {N} frames, figures {names}, gestures {len(gestures_out)}, "
           f"screen texts {len(screen_ev)}, camera {mode} ({max(len(shots) - 1, 0)} shots), styles "

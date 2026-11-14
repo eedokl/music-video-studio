@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4", "opentimelineio==0.18.1", "pillow==13.0.0"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Film music for films WITHOUT a song: a generated score that follows a cue list (numpy synthesis), or - opt-in -
 ElevenLabs Music cues laid on the same cue list.

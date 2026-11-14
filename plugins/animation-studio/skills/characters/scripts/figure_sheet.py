@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["pillow==13.0.0", "svgelements==1.9.6"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Figure sheet: all bundled characters side by side in their rest pose (Tim, Lia, Computer, Pip, Fips), or your own
 SVG figures - to show the cast to the user, to check a new figure's scale and pivots, or to pick a cast.

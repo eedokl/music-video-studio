@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = []
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Shot plan of one section of a brick music video: set, cast places, gestures on words, cameos, props, cuts on
 beats and camera moves -> <project>/bricks/<section>.json (editable; bricks-3d/brickfilm.py renders it).
@@ -773,7 +775,7 @@ class Planner:
             "section": self.name, "from": self.S, "to": self.E, "fps": P.fps, "seed": seed,
             "out": str(P.dir / "scenes" / self.name), "stills": str(P.dir / "stills" / self.name),
             "textures": str(P.cache / "bricks_tex"), "exposure_file": str(P.cache / f"exposure_{self.name}.json"),
-            "render": {"width": 1280, "height": 720, "samples": int(self.o.get("samples", 32)),
+            "render": {"width": P.size[0], "height": P.size[1], "samples": int(self.o.get("samples", 32)),
                        "quality": self.o.get("quality", "gaps=0.2,bevel=0.3,wobble=0.6,abs=1"),
                        "jitter": float(self.o.get("jitter", 0.3))},
             "set": st, "beats": [round(b, 3) for b in self.beats if self.S - 1 <= b <= self.E + 1],

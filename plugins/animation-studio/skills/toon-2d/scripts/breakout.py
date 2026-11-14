@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4", "pillow==13.0.0", "svgelements==1.9.6"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """A figure breaks out of a 2.5D comic flight and stands in front of the page as a paper cut-out.
 
@@ -71,6 +73,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _studio  # noqa: E402
 _studio.use("toon-2d", "characters")
 import config  # noqa: E402
+import derived  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 CLIP_W, CLIP_H = 600, 750
@@ -200,10 +203,11 @@ def step_flight(C):
 # ------------------------------------------------------------------ figure + sprites
 class Figure:
     def __init__(self, C):
-        from figures import FIGURES, load
+        from figures import FIGURES, load, svg_path
         name = C.c["figure"]
         info = FIGURES.get(str(name).lower(), {})
         src = name if str(name).lower() in FIGURES else str(C.p(name))
+        self.svg = svg_path(src)                              # source SVG (an input of the cached stills)
         self.feet = tuple(C.c.get("feet", info.get("feet", (200, 590))))
         self.scale = C.c.get("svg_scale", info.get("scale", 1 / 72))
         self.mouth_size = C.c.get("mouth_size", info.get("mouth") or 0.58)
@@ -236,9 +240,9 @@ class Figure:
         return canvas(layers, w=CLIP_W, h=CLIP_H, end=end, name=name, view=f"{v[0]} {v[1]} {v[2]} {v[3]}")
 
 
-def render_still(sif_text, path):
-    """One frame of a .sif -> PNG."""
-    sif = path.with_suffix(".sif")
+def render_still(sif_text, path, sif=None):
+    """One frame of a .sif -> PNG (the .sif is written to `sif`, default next to the PNG)."""
+    sif = Path(sif) if sif else path.with_suffix(".sif")
     sif.write_text(sif_text, encoding="utf-8")
     tmp = path.parent / f"_still_{path.stem}"
     tmp.mkdir(exist_ok=True)
@@ -252,28 +256,34 @@ def render_still(sif_text, path):
     return path
 
 
-def cached_still(sif_text, path):
-    """render_still unless path exists and was rendered from exactly this .sif text (figure/fit/size changes
-    change the text, so the cache never serves a stale sprite)."""
-    sif = path.with_suffix(".sif")
-    if path.exists() and sif.exists() and sif.read_text(encoding="utf-8") == sif_text:
-        return path
-    return render_still(sif_text, path)
+def cached_still(sif_text, path, svg=None):
+    """render_still unless path was rendered (completely) from exactly this .sif text, clip size and source SVG
+    (studio-core derived.py: content hashes, record written only after the render succeeded - figure / fit / size /
+    scale changes change the text, an edited SVG changes its hash, a killed render never looks fresh). The .sif next
+    to the PNG is only for opening it in Synfig Studio."""
+    spec = {"sif": sif_text, "w": CLIP_W, "h": CLIP_H}
+    inputs = [svg] if svg else []
+    if not derived.fresh(path, inputs, spec):
+        with derived.build(path, inputs, spec) as b:
+            render_still(sif_text, b.path, sif=path.with_suffix(".sif"))
+    return path
 
 
 def sprites(C, F):
-    """Rest pose and the fitted part alone, rendered in the clip canvas (cached per .sif text)."""
+    """Rest pose and the fitted part alone, rendered in the clip canvas (cached, see cached_still)."""
     from svg2sif import emit
     rest = C.work / "rest.png"
     fit_png = C.work / "fit_part.png"
-    cached_still(F.canvas(emit(F.root), 0, "rest"), rest)
+    cached_still(F.canvas(emit(F.root), 0, "rest"), rest, F.svg)
     part = C.c.get("fit", "kopf")
     node = F.root.find(part) if part != "all" else None
-    if node is None:
-        shutil.copy(rest, fit_png)
+    if node is None:                                          # fit = the whole rest pose: a copy of rest.png
         fit_png.with_suffix(".sif").unlink(missing_ok=True)
+        if not derived.fresh(fit_png, [rest], {"copy_of": "rest"}):
+            with derived.build(fit_png, [rest], {"copy_of": "rest"}) as b:
+                shutil.copy(rest, b.path)
     else:
-        cached_still(F.canvas(emit(node) if node.items else [], 0, "fit"), fit_png)
+        cached_still(F.canvas(emit(node) if node.items else [], 0, "fit"), fit_png, F.svg)
     return rest, fit_png
 
 

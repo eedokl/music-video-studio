@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Sound-effect track on the song timeline (earshot sound bank) -> analysis/sounds.wav (build.py mixes it in).
 
@@ -41,6 +43,7 @@ POP = ("ui_pop/blip", -20)
 
 def main():
     P = Project(sys.argv[1] if len(sys.argv) > 1 else ".")
+    P.check("film-finish")                 # project.json validated before any long step
     rules = P.get("sounds", [])
     if rules is False:                                # "sounds": false = no sound-effect track at all
         (P.analysis / "sounds.wav").unlink(missing_ok=True)

@@ -194,6 +194,8 @@ marker such as "final chorus"), `"from"`/`"to"` (song seconds) or `"until_word"`
 
 ## 5. Build and look
 
+Every build script checks project.json first (studio-core `project_check.py`, details in song-analysis "Project check"): a wrong type, overlapping sections or an unknown transition stop it in seconds with exit code 2 and the key named; unknown keys only warn.
+`"size": [w, h]` sets the frame size of scenes and film (default `[1280, 720]`; keep 16:9 – the sets are 16:9).
 Per section: `scene.py <section> --project <folder> --render` → `overlays.py <section>` → (all sections) `sounds.py`
 → `build.py preview <section>` or `build.py film`. Then **look at your own result before showing it**:
 `media.py sheet film.mp4 sheet.png` and read the image. Check: figures in frame and not covering the screen face,

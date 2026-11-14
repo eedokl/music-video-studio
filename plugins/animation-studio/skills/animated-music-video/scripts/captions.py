@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["pillow==13.0.0"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Comic caption box: the sung line types itself word by word into a yellow box, in time with the singing.
 
@@ -31,9 +33,6 @@ Usage: uv run captions.py <section> [--project .]
        (scene.py --render calls it for sections with "caption")
 """
 import argparse
-import hashlib
-import json
-import os
 import shutil
 from pathlib import Path
 
@@ -41,10 +40,20 @@ from PIL import Image, ImageDraw, ImageFont
 
 import _studio  # noqa: E402
 _studio.use("song-analysis")
+import derived  # noqa: E402
 from song_project import Project  # noqa: E402
 
-W, H = 1280, 720
 FONTS = ["C:/Windows/Fonts/segoeprb.ttf", "C:/Windows/Fonts/comicbd.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"]
+
+
+def frame_size(P):
+    """FRAME SIZE - the caption layer's canvas = the project's frame size (project.json "size", default 1280x720)."""
+    return tuple(P.size)
+
+
+def px(P, v):
+    """A pixel value designed for 720p, scaled to the project's frame height (identical at the default size)."""
+    return int(round(v * P.scale))
 
 
 def font(size):
@@ -93,8 +102,8 @@ def caption_events(P, A):
     spec = A.get("caption") if isinstance(A.get("caption"), dict) else {}
     sheet = P.sheet()
     lines, words = sheet["lines"], sheet["words"]
-    fnt = font(int(spec.get("size", 30)))
-    maxw = int(spec.get("width", 520))
+    fnt = font(px(P, int(spec.get("size", 30))))         # caption sizes are given for 720p
+    maxw = px(P, int(spec.get("width", 520)))
     wins = comic_windows(P, A, spec)
     group = spec.get("group") or ("panel" if wins else "line" if A.get("kind") == "panels" else "couplet")
     sec = [l for l in lines if S - 0.5 <= l["t"] < E - 0.3]
@@ -143,31 +152,11 @@ def caption_events(P, A):
     return out, fnt, spec
 
 
-MANIFEST = "composited.json"
-PARTIAL = "composited.partial"
+LEDGER = "composited"            # scenes/<section>_raw/composited.json (+ .partial) - same files as before derived.py
 
 
-def _hash(path):
-    return hashlib.blake2b(path.read_bytes(), digest_size=16).hexdigest()
-
-
-def _known(raw):
-    """Content hashes of every composite a pass of this script wrote (finished manifest + log of an interrupted pass),
-    or None when there is no record in the hash format (no manifest, or the older size+mtime one)."""
-    known, have = set(), False
-    try:
-        m = json.loads((raw / MANIFEST).read_text(encoding="utf-8"))
-        if m and all(isinstance(v, str) for v in m.values()):
-            known |= set(m.values())
-            have = True
-    except (OSError, ValueError, AttributeError):
-        pass
-    try:
-        known |= {h for h in (raw / PARTIAL).read_text(encoding="utf-8").split() if h}
-        have = True
-    except OSError:
-        pass
-    return known if have else None
+def _ledger(raw):
+    return derived.Ledger(raw, LEDGER)
 
 
 def _fresh_render(frames, raw):
@@ -176,16 +165,17 @@ def _fresh_render(frames, raw):
     now = sorted(frames.glob("f.*.png"))
     if not now:
         return False
-    known = _known(raw)
-    if known is None:                                   # no hash record (older run): only a frame-count change shows
+    foreign = _ledger(raw).foreign(now)
+    if foreign is None:                                 # no hash record (older run): only a frame-count change shows
         return len(now) != len(list(raw.glob("f.*.png")))
-    return any(_hash(f) not in known for f in now)
+    return bool(foreign)
 
 
 def apply(P, name):
     """Post pass over scenes/<name>/: caption box (section "caption") and/or the narrator inset track
     (scenes/<name>_inset/, written by scene.py for "kind": "external" sections with "inset")."""
     A = P.section(name)
+    W, H = frame_size(P)
     frames = P.dir / "scenes" / name
     raw = P.dir / "scenes" / f"{name}_raw"
     inset_dir = P.dir / "scenes" / f"{name}_inset"
@@ -196,21 +186,21 @@ def apply(P, name):
     if not raw.exists():
         if not any(frames.glob("f.*.png")):
             raise SystemExit(f"scenes/{name}/ has no frames - render the scene first")
-        shutil.move(str(frames), str(raw))
-        frames.mkdir()
+        shutil.move(str(frames), str(raw))              # one rename: the originals are never copied over
+    frames.mkdir(exist_ok=True)                         # (also after a kill between the move and the mkdir)
     if A.get("caption"):
         events, fnt, spec = caption_events(P, A)
     else:
-        events, fnt, spec = [], font(30), {}
+        events, fnt, spec = [], font(px(P, 30)), {}
     ink = spec.get("ink", "#2b1d14")
     ghost = float(spec.get("ghost", 0.3))
     boxc = spec.get("box", "#fff3b0")
     rh = int(fnt.size * 1.4)
     n = 0
-    written = {}
-    for t in frames.glob(".tmp.f.*.png"):                # half-written composites of an interrupted pass
-        t.unlink(missing_ok=True)
-    with open(raw / PARTIAL, "a", encoding="utf-8") as log:   # opened before the first composite
+    derived.Ledger.clean(frames, "f.*.png")             # half-written composites of an interrupted pass
+    # a frame only ever appears under its final name AFTER its hash is logged (Ledger.save: temp name that "f.*.png"
+    # does not match -> hash logged + fsynced -> rename): a kill at any point leaves no unlogged f.NNNN.png
+    with _ledger(raw).session() as led:
         for src in sorted(raw.glob("f.*.png")):
             f = int(src.stem.split(".")[1])
             img = Image.open(src).convert("RGBA")
@@ -219,24 +209,26 @@ def apply(P, name):
                 if not (a0 <= f < a1):
                     continue
                 alpha = min(1.0, (f - a0 + 1) / 3, (a1 - f) / 3)
-                bw = int(max(fnt.getlength(r) for r in rows)) + 44
-                bh = rh * len(rows) + 22
-                bx = {"top_left": 30, "bottom_left": 30, "top": (W - bw) // 2, "top_right": W - bw - 30,
-                      "bottom_right": W - bw - 30}.get(place, 30)
-                by = H - bh - 120 if place.startswith("bottom") else 28
+                bw = int(max(fnt.getlength(r) for r in rows)) + px(P, 44)
+                bh = rh * len(rows) + px(P, 22)
+                m = px(P, 30)
+                bx = {"top_left": m, "bottom_left": m, "top": (W - bw) // 2, "top_right": W - bw - m,
+                      "bottom_right": W - bw - m}.get(place, m)
+                by = H - bh - px(P, 120) if place.startswith("bottom") else px(P, 28)
                 layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
                 d = ImageDraw.Draw(layer)
-                d.rounded_rectangle((bx, by, bx + bw, by + bh), 6, fill=boxc + "e6", outline=ink, width=3)
+                d.rounded_rectangle((bx, by, bx + bw, by + bh), px(P, 6), fill=boxc + "e6", outline=ink,
+                                    width=max(1, px(P, 3)))
                 gl = Image.new("RGBA", (W, H), (0, 0, 0, 0))   # ghost words on their own layer (ImageDraw doesn't blend)
                 gd = ImageDraw.Draw(gl)
                 k = 0
                 for ri, row in enumerate(rows):
-                    x = bx + 22
+                    x = bx + px(P, 22)
                     for w in row.split():
                         if wf[k] - 1 <= f:
-                            d.text((x, by + 8 + ri * rh), w, font=fnt, fill=ink)
+                            d.text((x, by + px(P, 8) + ri * rh), w, font=fnt, fill=ink)
                         elif ghost > 0:                      # words still to come stand faintly, so the box is never empty
-                            gd.text((x, by + 8 + ri * rh), w, font=fnt, fill=ink + "%02x" % int(255 * ghost))
+                            gd.text((x, by + px(P, 8) + ri * rh), w, font=fnt, fill=ink + "%02x" % int(255 * ghost))
                         x += fnt.getlength(w + " ")
                         k += 1
                 layer.alpha_composite(gl)
@@ -246,20 +238,9 @@ def apply(P, name):
             ins = inset_dir / src.name
             if use_inset and ins.exists():
                 img.alpha_composite(Image.open(ins).convert("RGBA"))
-            # a frame only ever appears under its final name AFTER its hash is logged: save under a name that
-            # "f.*.png" does not match, log, then rename - a kill at any point leaves no unlogged f.NNNN.png
-            tmp = frames / f".tmp.{src.name}"
-            img.convert("RGB").save(tmp, format="PNG")
-            written[src.name] = _hash(tmp)
-            log.write(written[src.name] + "\n")
-            log.flush()
-            os.fsync(log.fileno())
-            os.replace(tmp, frames / src.name)
+            out = img.convert("RGB")
+            led.save(frames / src.name, lambda tmp: out.save(tmp, format="PNG"))
             n += 1
-    tmp = raw / (MANIFEST + ".tmp")
-    tmp.write_text(json.dumps(written), encoding="utf-8")
-    tmp.replace(raw / MANIFEST)
-    (raw / PARTIAL).unlink(missing_ok=True)
     print(f"-> scenes/{name}/: {n} frames with {len(events)} caption boxes" + (", narrator inset" if use_inset else "")
           + f" (originals in scenes/{name}_raw/)")
 

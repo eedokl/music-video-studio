@@ -1,6 +1,8 @@
 # /// script
 # requires-python = "==3.12.*"
 # dependencies = ["mediapipe==1.2.3", "numpy==2.5.4", "opencv-python-headless==5.0.0.93", "pillow==13.0.0"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Choose the material by measurement -> selection.json (hand choices in selection.json "manual" always win).
 

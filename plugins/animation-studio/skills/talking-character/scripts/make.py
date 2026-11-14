@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = []
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Whole talking scene in one go: voices -> scene -> render -> subtitles -> sounds -> film (look) -> check.
 
@@ -22,6 +24,7 @@ from pathlib import Path
 import _studio  # noqa: E402
 _studio.use("song-analysis")
 import config  # noqa: E402
+import project_check  # noqa: E402
 from song_project import Project  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
@@ -43,6 +46,7 @@ def main():
     ap.add_argument("--jobs", type=int, default=8)
     a = ap.parse_args()
     d = Path(a.project).resolve()
+    project_check.require(d, skill="talking-character")   # project.json validated before the first step
     todo = STEPS[STEPS.index(a.start):]
     if "voices" in todo:
         run(HERE / "speak.py", "--project", d, *(["--redo"] if a.redo_voices else []),

@@ -51,6 +51,8 @@ Read `references/scene-catalog.md` (all past scenes, techniques, identities, lik
 
 ## 3. Build
 
+`render.py` checks project.json first (studio-core `project_check.py`: wrong types stop it with exit code 2 and the key named, unknown keys warn).
+
 1. **Project**: `new_video.py PROJECT --song SONG --lyrics lyrics.txt --language auto [--lead v.wav --backing b.wav]
    [--from S --to S --lyrics-from "..." --lyrics-to "..."]` - song project (`project.json` with seed + ideas,
    `song.wav`, `lyrics.txt`), the engine copied to `PROJECT/video/` and `npm install`. Keep PROJECT short on Windows.

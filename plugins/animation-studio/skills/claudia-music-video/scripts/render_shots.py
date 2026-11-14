@@ -1,8 +1,10 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4", "opencv-python-headless==5.0.0.93", "pillow==13.0.0"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
-"""Render every shot to scenes/<shot>/f.%04d.png (1280x720, 24 fps) for film-finish, with the photographic finish.
+"""Render every shot to scenes/<shot>/f.%04d.png (project.json "size", default 1280x720; 24 fps) for film-finish, with the photographic finish.
 
 Material per shot, best first:
   1. the selected clip (selection.json "clip"): placed on the song with clips.frame_index - LTX lead-in skipped,
@@ -35,7 +37,7 @@ from cvio import imread, video_capture  # noqa: E402
 from media import duration  # noqa: E402
 from song_project import Project  # noqa: E402
 
-W, H = 1280, 720
+W, H = 1280, 720                       # set from project.json "size" in main() (P.size), also for typo.py
 MOVES = [dict(zoom=(1.0, 1.10), pan=(0, 0.02, 0, -0.02), par=26), dict(zoom=(1.10, 1.0), pan=(0.03, 0, -0.03, 0), par=30),
          dict(zoom=(1.04, 1.10), pan=(-0.04, 0, 0.04, 0), par=34), dict(zoom=(1.08, 1.02), pan=(0, -0.03, 0, 0.02), par=24)]
 
@@ -149,7 +151,10 @@ def main():
     ap.add_argument("--only", default="")
     ap.add_argument("--labels", action="store_true")
     a = ap.parse_args()
+    global W, H
     P = Project(a.project)
+    P.check("claudia-music-video")                 # project.json validated before any long step
+    W, H = typo.W, typo.H = P.size   # frame size of the film (project.json "size")
     words = (P.sheet().get("words", []) if (P.analysis / "song_sheet.json").exists() else [])
     sel = json.loads((P.dir / "selection.json").read_text(encoding="utf-8")) if (P.dir / "selection.json").exists() else {}
     fin = dict(dict(grain=5.5, vignette=0.38, text_band=0.45, fade_in=0.5, fade_out=2.5), **(P.get("finish") or {}))

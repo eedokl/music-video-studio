@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Measure a talking scene: lip sync (open-mouth frames vs voice activity), duration, contact sheet - optionally
 against a reference scene.

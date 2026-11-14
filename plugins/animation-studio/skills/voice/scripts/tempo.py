@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Tighten or loosen the tempo of a spoken line WITHOUT changing its pitch - to fit a slot (a shot, a beat, a gap in
 the dialogue) or to follow "too slow / too fast" feedback. Technique of the ai_efficiency voices (ton/tempo.py).

@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Text-to-image with the local ComfyUI: painted backgrounds, B-roll stills, concept images, comic panels.
 
@@ -19,6 +21,8 @@ From Python (other skills):  _studio.use("ai-video"); from comfy_image import ge
 Notes: keep sizes divisible by 16 (1280x720 works). FLUX invents lettering now and then - write "no text, no letters,
 no logos" at the end of a still's prompt (stills only; never in an LTX video prompt) and check the contact sheet.
 FLUX has no alpha channel: for cut-outs paint on a flat colour and key it out.
+File names: assets/models.json (roles flux_schnell, sdxl_base, qwen_image, qwen_vl_te, qwen_vae); another machine
+overrides them with config comfy_models (see comfy_models.py), never by editing code.
 Takes the shared GPU lock (model "comfy:<model>") - one AI job at a time.
 """
 import argparse
@@ -28,18 +32,20 @@ from pathlib import Path
 import _studio  # noqa: E402
 _studio.use()
 import comfy  # noqa: E402
+import comfy_models  # noqa: E402
 
-MODELS = {   # name: (checkpoint, steps, cfg, sampler, scheduler, latent node)
-    "flux": ("flux1-schnell-fp8.safetensors", 4, 1.0, "euler", "simple", "EmptySD3LatentImage"),
-    "sdxl": ("sd_xl_base_1.0.safetensors", 28, 6.5, "dpmpp_2m", "karras", "EmptyLatentImage"),
-    "qwen": ("qwen_image_2512_fp8_e4m3fn.safetensors", 30, 2.5, "euler", "simple", "EmptySD3LatentImage"),
+MODELS = {   # name: (model file role in assets/models.json, steps, cfg, sampler, scheduler, latent node)
+    "flux": ("flux_schnell", 4, 1.0, "euler", "simple", "EmptySD3LatentImage"),
+    "sdxl": ("sdxl_base", 28, 6.5, "dpmpp_2m", "karras", "EmptyLatentImage"),
+    "qwen": ("qwen_image", 30, 2.5, "euler", "simple", "EmptySD3LatentImage"),
 }
-QWEN_TE, QWEN_VAE = "qwen_2.5_vl_7b_fp8_scaled.safetensors", "qwen_image_vae.safetensors"
+QWEN_TE, QWEN_VAE = "qwen_vl_te", "qwen_vae"           # roles in assets/models.json
 SDXL_NEG = "photo, 3d render, blurry, lowres, text, watermark, signature, deformed, ugly"
 
 
 def workflow(prompt, w, h, seed, steps=None, model="flux", neg=None, lora=None, lora_strength=0.8, init=None, denoise=1.0):
-    ckpt, st, cfg, sampler, sched, latent = MODELS[model]
+    role, st, cfg, sampler, sched, latent = MODELS[model]
+    ckpt = comfy_models.file(role)
     steps = steps or st
     neg = neg if neg is not None else ("" if model == "flux" else SDXL_NEG)
     M = "8" if lora else "1"                 # with a LoRA, model and text encoder run through the LoRA node
@@ -55,9 +61,9 @@ def workflow(prompt, w, h, seed, steps=None, model="flux", neg=None, lora=None, 
         "7": {"class_type": "SaveImage", "inputs": {"images": ["6", 0], "filename_prefix": "animation-studio/image"}},
     }
     if model == "qwen":                      # separate loaders instead of a checkpoint; time shift as in the template
-        wf["1"] = {"class_type": "VAELoader", "inputs": {"vae_name": QWEN_VAE}}
+        wf["1"] = {"class_type": "VAELoader", "inputs": {"vae_name": comfy_models.file(QWEN_VAE)}}
         wf["11"] = {"class_type": "UNETLoader", "inputs": {"unet_name": ckpt, "weight_dtype": "default"}}
-        wf["12"] = {"class_type": "CLIPLoader", "inputs": {"clip_name": QWEN_TE, "type": "qwen_image", "device": "default"}}
+        wf["12"] = {"class_type": "CLIPLoader", "inputs": {"clip_name": comfy_models.file(QWEN_TE), "type": "qwen_image", "device": "default"}}
         wf["13"] = {"class_type": "ModelSamplingAuraFlow", "inputs": {"model": ["11", 0], "shift": 3.1}}
         wf["2"]["inputs"]["clip"] = ["12", 0]
         wf["3"]["inputs"]["clip"] = ["12", 0]

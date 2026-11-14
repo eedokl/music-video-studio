@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["pillow==13.0.0"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Render a multiplane camera move or a 2.5D comic flight (three.js in headless Edge/Chrome) -> PNG frames -> MP4.
 

@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Shot plan from the song: cuts on the sung lines (snapped to beats), a technique per shot, framing and camera.
 
@@ -89,6 +91,7 @@ def main():
     ap.add_argument("--force", action="store_true", help="replace a plan that already has creative fields")
     a = ap.parse_args()
     P = Project(a.project)
+    P.check("claudia-music-video")                 # project.json validated before any long step
     if any(s.get("idea") for s in P.sections()) and not a.force:
         raise SystemExit("project.json already has a shot plan with ideas - use --force to replace it")
     sheet = P.sheet()

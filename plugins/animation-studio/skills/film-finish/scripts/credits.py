@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4", "pillow==13.0.0", "svgelements==1.9.6"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """End credits like in the cinema: slowly rolling text in blocks, short gag scenes between the blocks, "scene windows"
 beside the text with excerpts of the finished film (and outtakes), a music bed (instrumental, quiet under the text,
@@ -37,7 +39,8 @@ GAG = {"name": "quota", "duration": 7, "set": "room" | {"name": "stage", "dim": 
        {"color": "#16121c"}, "items": [...], "sounds": [{"at": 1.0, "sfx": "fit/key/medium" | "file.wav", "level": 0.5}],
        "zoom": {"at": 3.2, "dur": 0.8, "to": 2.3, "center": [380, 330]}, "lights_out": {"at": 7.1, "keep_mouths": true},
        "fade": true}
-  Bundled sets (toon-2d): back layers under the items, front layers (curtains) over them ("front": false = none). Coordinates: 1280x720 px.
+  Bundled sets (toon-2d): back layers under the items, front layers (curtains) over them ("front": false = none). Coordinates: 1280x720 px
+  (the credits are composed at 1280x720 and scaled to project.json "size" when it differs).
   Every item may have "at" / "to" (seconds) and "fade_in" / "fade_out" (seconds). Items are drawn in list order.
   figure  {"figure": "tim" | "lia" | "fips" | "pip" | "silhouette" | "figure.svg" | "figure.png", "x": 380, "feet": 800,
            "height": 600, "mouth": "smile" | [[0, "flat"], [2.7, "open"], [4, "o"]] (shapes: smile o open flat grin none;
@@ -83,7 +86,7 @@ from media import check_video, contact_sheet, decode, duration, ffmpeg  # noqa: 
 from encode import place  # noqa: E402
 from song_project import Project  # noqa: E402
 
-W, H, SR = 1280, 720, 48000
+W, H, SR = 1280, 720, 48000          # credits are composed at 1280x720 and scaled to project "size" at the end
 HERE = Path(__file__).resolve().parent
 CREAM, GOLD, INK, GREY = (246, 240, 226), (255, 210, 63), (43, 29, 20), (200, 190, 170)
 BG_COL = (18, 14, 22)
@@ -310,8 +313,8 @@ def silhouette_figure():
 
 
 def video_frames(path, start, n, size=None):
-    vf = ["-vf", f"scale={size[0]}:{size[1]}"] if size else []
     w, h = size or (W, H)
+    vf = ["-vf", f"scale={w}:{h}"]                  # film excerpts of a project with another "size" fit the layout
     raw = subprocess.run([ffmpeg(), "-v", "error", "-ss", f"{start:.3f}", "-i", str(path), "-frames:v", str(int(n)), *vf,
                           "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], capture_output=True, check=True).stdout
     arr = np.frombuffer(raw, np.uint8)
@@ -1089,8 +1092,10 @@ def build(P, quick_to=None, append=False):
     print(f"  {total} frames = {total / fps:.1f} s; " + ", ".join(f"{k}:{a}-{b}" for k, a, b in segments))
     wav = sound_track(P, C, A, segments, events, total, fps)
     raw = A.dir / "credits_raw.mp4"
+    vcodec = ["-c:v", "copy"] if P.size == (W, H) else [
+        "-vf", f"scale={P.size[0]}:{P.size[1]}:flags=lanczos,setsar=1", *h264(), "-pix_fmt", "yuv420p"]
     subprocess.run([ffmpeg(), "-y", "-v", "error", "-i", str(pic), "-i", str(wav), "-map", "0:v", "-map", "1:a",
-                    "-t", f"{total / fps:.3f}", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", str(raw)], check=True)
+                    "-t", f"{total / fps:.3f}", *vcodec, "-c:a", "aac", "-b:a", "192k", str(raw)], check=True)
     import build as film_build                   # the same look step as the film
     tmp = A.dir / "credits_tmp.mp4"
     film_build.look(P, raw, tmp)
@@ -1289,6 +1294,7 @@ def main():
     a = ap.parse_args()
     sys.stdout.reconfigure(line_buffering=True)
     P = Project(a.project)
+    P.check("film-finish")                 # project.json validated before any long step
     if a.draft:
         return draft(P, a.gags, a.force)
     build(P, a.to, a.append)

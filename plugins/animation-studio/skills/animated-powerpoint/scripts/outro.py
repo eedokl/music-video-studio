@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["faster-whisper==1.2.1", "numpy==2.5.4", "pillow==13.0.0", "scikit-image==0.26.0", "scipy==1.18.1"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Outro on the slide: the film comes back to the slide, pushes in on one figure's face, an iris closes on it, the
 figure winks, the iris closes and a title card ends the film (reference: the finale of the ai_efficiency film).

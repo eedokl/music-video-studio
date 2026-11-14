@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["faster-whisper==1.2.1", "numpy==2.5.4", "pillow==13.0.0", "scikit-image==0.26.0", "scipy==1.18.1"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """General 2.5D scene stage for presentation films: the slide figures act in painted sets (after they stepped out).
 
@@ -555,6 +557,8 @@ def from_json(path):
 
 
 if __name__ == "__main__":
+    import project_check
+    project_check.require(sys.argv[1], skill="animated-powerpoint")   # scene.json validated before the build
     S = from_json(sys.argv[1])
     S.build()
     if "--plan" not in sys.argv:

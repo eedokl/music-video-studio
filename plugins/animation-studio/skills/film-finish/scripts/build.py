@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4", "pillow==13.0.0"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Build the film: a preview of one section, or the whole film on the song timeline.
 
@@ -22,6 +24,9 @@ project.json:
                       "center" | "lower", "animation": "pop" (scales in with an overshoot wobble, then stands) |
                       "fade", "shadow": true (soft dark drop shadow), "fade_out": 0.75 (s)
   "look": "standard" | "none"
+  "size": [1280, 720]  frame size of the whole film (default 1280x720; studio-core project_check.frame_size). Title
+                      "size" / "y" are px of a 720-high frame and scale with it; scene frames of another size are
+                      scaled to it (with a note - re-render them)
   "credits": {...}    optional: after the film, credits.py rebuilds credits.mp4 (+ film_with_credits.mp4) from it
 Usage: uv run build.py preview <section> [--project .]
        uv run build.py film [--project .]   (numpy: transitions)
@@ -41,9 +46,9 @@ import config  # noqa: E402
 from encoding import h264  # noqa: E402
 from media import check_video, ffmpeg  # noqa: E402
 from encode import over_note, encode_target, place  # noqa: E402
+from project_check import png_size  # noqa: E402
 from song_project import Project  # noqa: E402
 
-W, H = 1280, 720
 HERE = Path(__file__).resolve().parent
 
 
@@ -105,13 +110,19 @@ def clip(P, name):
                          f"would slide against the sound)")
     if have > n + 1:
         print(f"   note: scenes/{name}/ has {have} frames, the section uses the first {n} (from/to changed?)")
+    W, H = P.size
+    got = png_size(frames / f"f.{nums[0]:04d}.png")
+    fit = ""
+    if got and tuple(got) != (W, H) and P.get("size"):   # rendered before "size" changed: fit it (without "size" as before)
+        print(f"   note: scenes/{name}/ frames are {got[0]}x{got[1]}, the project size is {W}x{H} - scaled; re-render")
+        fit = f"scale={W}:{H},setsar=1,"
     out = P.dir / "clips" / f"{name}.mp4"
     out.parent.mkdir(exist_ok=True)
     ov = P.dir / "overlays" / f"{name}.mov"
     fresh_overlay(P, name, A, ov)
     cmd = [ffmpeg(), "-y", "-v", "error", "-framerate", str(P.fps), "-start_number", str(nums[0]),
            "-i", str(frames / "f.%04d.png")]
-    hold = "tpad=stop_mode=clone:stop=1"
+    hold = fit + "tpad=stop_mode=clone:stop=1"
     if ov.exists():
         cmd += ["-i", str(ov), "-filter_complex",
                 f"[0:v]{hold}[s];[s][1:v]overlay=0:0:eof_action=pass,format=yuv420p[v]", "-map", "[v]"]
@@ -135,23 +146,24 @@ def preview(P, name):
     print(f"-> {out.relative_to(P.dir)} ({n / P.fps:.1f} s)")
 
 
-TITLE_Y = {"top": 170, "center": 360, "lower": 520}
+TITLE_Y = {"top": 170, "center": 360, "lower": 520}       # px of a 720-high frame (times P.scale)
 
 
-def title_sprite(t):
-    """The title lettering as an RGBA image (Impact, ink outline, optional drop shadow)."""
+def title_sprite(t, k=1.0):
+    """The title lettering as an RGBA image (Impact, ink outline, optional drop shadow); k = P.scale."""
     from PIL import Image, ImageDraw, ImageFont
     fp = next((f for f in ("C:/Windows/Fonts/impact.ttf", "/System/Library/Fonts/Supplemental/Impact.ttf",
                            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf") if Path(f).exists()), None)
-    size = int(t.get("size", 150))
+    size = int(t.get("size", 150) * k)
     f = ImageFont.truetype(fp, size) if fp else ImageFont.load_default()
     tw, th = f.getbbox(t["text"])[2:]
-    img = Image.new("RGBA", (tw + 80, th + 80), (0, 0, 0, 0))
+    m = round(40 * k)
+    img = Image.new("RGBA", (tw + 2 * m, th + 2 * m), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     h = t.get("color", "#ffd23f").lstrip("#")
     if t.get("shadow", True):
-        d.text((50, 52), t["text"], font=f, fill=(12, 10, 24, 200))
-    d.text((40, 40), t["text"], font=f, fill=tuple(int(h[i:i + 2], 16) for i in (0, 2, 4)) + (255,),
+        d.text((m + round(10 * k), m + round(12 * k)), t["text"], font=f, fill=(12, 10, 24, 200))
+    d.text((m, m), t["text"], font=f, fill=tuple(int(h[i:i + 2], 16) for i in (0, 2, 4)) + (255,),
            stroke_width=max(4, size // 16), stroke_fill=(23, 18, 13, 255))
     return img
 
@@ -163,8 +175,9 @@ def title_frames(P, t):
     fps = P.fps
     n = frame_count(t["from"], t["to"], fps)
     fade = max(1, round(float(t.get("fade_out", 0.75)) * fps))
-    spr = title_sprite(t)
-    y = t["y"] if isinstance(t.get("y"), (int, float)) else TITLE_Y.get(t.get("place", "top"), 170)
+    W, H = P.size
+    spr = title_sprite(t, P.scale)
+    y = (t["y"] if isinstance(t.get("y"), (int, float)) else TITLE_Y.get(t.get("place", "top"), 170)) * P.scale
     d = P.cache / "title"
     d.mkdir(exist_ok=True)
     for old in d.glob("t.*.png"):
@@ -185,9 +198,10 @@ def title_frames(P, t):
 def title_image(P, t):
     if any(k in t for k in ("size", "y", "place", "shadow")):     # positioned lettering, static
         from PIL import Image
-        spr = title_sprite(t)
+        W, H = P.size
+        spr = title_sprite(t, P.scale)
         img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        y = t["y"] if isinstance(t.get("y"), (int, float)) else TITLE_Y.get(t.get("place", "top"), 170)
+        y = (t["y"] if isinstance(t.get("y"), (int, float)) else TITLE_Y.get(t.get("place", "top"), 170)) * P.scale
         img.alpha_composite(spr, (W // 2 - spr.width // 2, int(y - spr.height / 2)))
         out = P.cache / "title.png"
         img.save(out)
@@ -197,15 +211,16 @@ def title_image(P, t):
 
 def title_image_plain(P, t):
     from PIL import Image, ImageDraw, ImageFont
+    W, H = P.size
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     fp = next((f for f in ("C:/Windows/Fonts/impact.ttf", "/System/Library/Fonts/Supplemental/Impact.ttf",
                            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf") if Path(f).exists()), None)
-    f = ImageFont.truetype(fp, 120) if fp else ImageFont.load_default()
+    f = ImageFont.truetype(fp, round(120 * P.scale)) if fp else ImageFont.load_default()
     h = t.get("color", "#ffd23f").lstrip("#")
     tw = d.textlength(t["text"], font=f)
     d.text(((W - tw) / 2, H * 0.32), t["text"], font=f, fill=tuple(int(h[i:i + 2], 16) for i in (0, 2, 4)) + (255,),
-           stroke_width=8, stroke_fill=(43, 29, 20, 255))
+           stroke_width=max(1, round(8 * P.scale)), stroke_fill=(43, 29, 20, 255))
     out = P.cache / "title.png"
     img.save(out)
     return out
@@ -214,6 +229,7 @@ def title_image_plain(P, t):
 def film(P):
     secs = sorted(P.sections(), key=lambda a: a["from"])
     fps = P.fps
+    W, H = P.size
     t_start = secs[0]["from"]
     inputs, parts, pos = [], [], t_start
     for i, a in enumerate(secs):
@@ -273,7 +289,9 @@ def film(P):
     look(P, raw, tmp)
     out = place(tmp, P.dir / "film.mp4")
     results, targets = [out], {}
-    for name, mb, w, h, ak in (("film_small", 29.0, 1280, 720, 128), ("film_mail", 12.0, 960, 540, 64)):
+    for name, mb, side, ak in (("film_small", 29.0, 1280, 128), ("film_mail", 12.0, 960, 64)):
+        s = min(1.0, side / max(W, H))                     # long side <= 1280 / 960 (1280x720 -> 1280x720, 960x540)
+        w, h = round(W * s / 2) * 2, round(H * s / 2) * 2
         target = P.cache / f"{name}_tmp.mp4"
         if out.stat().st_size < mb * 1e6:
             shutil.copy(out, target)                        # already small enough
@@ -298,6 +316,7 @@ def main():
     ap.add_argument("--project", default=".")
     a = ap.parse_args()
     P = Project(a.project)
+    P.check("film-finish")                 # project.json validated before any long step
     if a.what == "preview":
         if not a.section:
             raise SystemExit("build.py preview <section>")

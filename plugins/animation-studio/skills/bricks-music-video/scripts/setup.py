@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = []
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Turn a song project (song-analysis new_project.py) into a brick-film project: minifig looks for the figures,
 a brick set per section (varied with the creative seed), the "bricks" options block and a seed.

@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4", "pillow==13.0.0"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """48 fps version of the film: RIFE frame interpolation ONLY in camera moves, every other frame doubled.
 
@@ -35,7 +37,7 @@ from encoding import h264  # noqa: E402
 from media import check_video, ffmpeg  # noqa: E402
 from song_project import Project  # noqa: E402
 
-W, H = 1280, 720
+W, H = 1280, 720                       # set from project.json "size" in main() (P.size)
 
 
 def move_ranges(P, n_frames):
@@ -74,7 +76,10 @@ def main():
     ap.add_argument("--src", default="film.mp4")
     ap.add_argument("--cut-threshold", type=float, default=28.0, help="mean abs. difference (0-255) that counts as a cut")
     a = ap.parse_args()
+    global W, H
     P = Project(a.project)
+    P.check("film-finish")                 # project.json validated before any long step
+    W, H = P.size   # frame size of the film (project.json "size")
     src = P.path(a.src)
     if not src.exists():
         raise SystemExit(f"{src} missing - build the film first (build.py film)")

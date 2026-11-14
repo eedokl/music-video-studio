@@ -1,6 +1,8 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["numpy==2.5.4", "pillow==13.0.0"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Pop-up video version (like the 1980s "Pop-up Videos"): info cards about how the film was made pop up at free spots
 of the finished film, each with a pop sound, held long enough to read.
@@ -40,7 +42,7 @@ from encoding import h264  # noqa: E402
 from media import check_video, duration, ffmpeg  # noqa: E402
 from song_project import Project, word_matches  # noqa: E402
 
-W, H = 1280, 720
+W, H = 1280, 720                       # set from project.json "size" in main() (P.size)
 PLACES = {"top_right": (1040, 95, -3), "top_left": (250, 100, 3), "top": (640, 85, -2),
           "bottom_left": (290, 610, 2), "bottom_right": (1050, 615, -2), "mid_right": (1040, 330, 2)}
 FONTS = ["C:/Windows/Fonts/segoeui.ttf", "C:/Windows/Fonts/arial.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"]
@@ -140,6 +142,7 @@ def overlay_cards(src, cards, n, fps, out):
                             "-pix_fmt", "rgb24", "-"], stdout=subprocess.PIPE)
     enc = subprocess.Popen([ffmpeg(), "-y", "-v", "error", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}",
                             "-r", str(fps), "-i", "-", *h264(), "-pix_fmt", "yuv420p", str(out)], stdin=subprocess.PIPE)
+    kx, ky = W / 1280, H / 720                            # PLACES and card sizes are designed for 1280x720
     f = 0
     while f < n:
         buf = dec.stdout.read(W * H * 3)
@@ -155,7 +158,8 @@ def overlay_cards(src, cards, n, fps, out):
         for t0, t1, cimg, (cx, cy), _, _ in live:
             u, out_u = (t - t0) * fps, (t1 - t) * fps
             s = out_u / 4 if out_u < 4 else 0.2 + u / 5 if u < 5 else 1.0 + 0.12 * np.exp(-(u - 5) / 2) * np.cos((u - 5) * 1.5)
-            s = max(s, 0.01)
+            s = max(s, 0.01) * ky
+            cx, cy = cx * kx, cy * ky
             cc = cimg.resize((max(1, int(cimg.width * s)), max(1, int(cimg.height * s))), Image.LANCZOS)
             x = int(min(max(cx - cc.width / 2, 8), W - cc.width - 8))
             y = int(min(max(cy - cc.height / 2, 8), H - cc.height - 8))
@@ -235,7 +239,10 @@ def main():
     ap.add_argument("--to", type=float, help="only up to this film second (quick test)")
     ap.add_argument("--no-credits", action="store_true", help="do not build film_popup_with_credits.mp4")
     a = ap.parse_args()
+    global W, H
     P = Project(a.project)
+    P.check("film-finish")                 # project.json validated before any long step
+    W, H = P.size   # frame size of the film (project.json "size")
     if a.draft:
         return draft(P)
     base = P.cache / "film_raw.mp4"
