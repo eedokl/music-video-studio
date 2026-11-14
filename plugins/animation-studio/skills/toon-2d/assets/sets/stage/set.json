@@ -1,0 +1,29 @@
+{
+ "description": "Theatre stage with red curtains (painted in Krita for 'Prompts!'). Figures in full with legs; the computer is a big screen at the back.",
+ "back": [
+  "back.png"
+ ],
+ "front": [
+  "curtain.png"
+ ],
+ "scale": 0.68,
+ "floor": -2.9,
+ "places": {
+  "tim": -3.3,
+  "lia": 3.0
+ },
+ "screen": [
+  -2.4,
+  3.3,
+  2.4,
+  0.2
+ ],
+ "glow": "#5fb3ff",
+ "image_box": [
+  -6.9,
+  4.25,
+  6.9,
+  -3.51
+ ],
+ "view": "-6.9 4.25 6.9 -3.51"
+}

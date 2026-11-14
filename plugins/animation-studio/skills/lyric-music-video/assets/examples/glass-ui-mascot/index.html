@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Glass UI Mascot</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;800&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="bg"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+    <div id="stage3d"></div>
+    <div id="scene" class="scene dark"></div>
+    <div id="labels"></div>
+    <div id="wipe"></div>
+
+    <div id="hud">
+      <button id="play">Play</button>
+      <div id="bar"><div id="fill"></div></div>
+      <span id="time">0:00</span>
+    </div>
+
+    <div id="start">
+      <div class="card-start">
+        <div class="mono dim">LYRIC VIDEO · EXAMPLE</div>
+        <h1>Glass UI <span>Mascot</span></h1>
+        <p>36 scenes in a fictional cloud console.</p>
+        <button id="go">▶ Play video</button>
+        <p class="mono dim keys">Space play/pause · ←/→ seek 5 s · F fullscreen</p>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

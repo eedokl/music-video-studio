@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Figure "Fips" - drawn the way an artist would set it up in Inkscape:
+     parts as groups with meaningful ids (= the parts animated later in Synfig),
+     circles/ellipses/paths mixed, one group with a transform, pivots as small circles pivot_<part>. -->
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+     width="400" height="400" viewBox="0 0 400 400">
+  <g inkscape:groupmode="layer" inkscape:label="Fips" id="fips">
+    <g id="beine" stroke="#e08a2c" stroke-width="7" stroke-linecap="round" fill="none">
+      <path d="M 180 330 L 175 378 M 165 380 L 190 380"/>
+      <path d="M 222 330 L 226 378 M 214 380 L 240 380"/>
+    </g>
+    <g id="schwanz">
+      <path d="M 120 270 C 80 260 50 240 40 215 C 70 222 95 225 125 238 Z"
+            fill="#3f86c2" stroke="#2b1d14" stroke-width="6" stroke-linejoin="round"/>
+    </g>
+    <g id="fluegel_hinten">
+      <path d="M 245 225 C 300 215 330 250 320 290 C 295 280 265 265 240 255 Z"
+            fill="#3f86c2" stroke="#2b1d14" stroke-width="6" stroke-linejoin="round"/>
+      <circle id="pivot_fluegel_hinten" cx="250" cy="235" r="3" fill="#f0f"/>
+    </g>
+    <g id="koerper">
+      <circle id="pivot_koerper" cx="200" cy="378" r="3" fill="#f0f"/>
+      <ellipse cx="200" cy="265" rx="92" ry="80" fill="#6fb7e8" stroke="#2b1d14" stroke-width="6"/>
+      <ellipse cx="205" cy="285" rx="55" ry="48" fill="#f3e7c9"/>
+    </g>
+    <g id="kopf" transform="rotate(-6 200 160)">
+      <circle id="pivot_kopf" cx="200" cy="215" r="3" fill="#f0f"/>
+      <path d="M 185 92 C 180 70 195 58 205 64 C 208 50 225 48 228 62 C 215 66 212 80 210 92 Z"
+            fill="#3f86c2" stroke="#2b1d14" stroke-width="5" stroke-linejoin="round"/>
+      <circle cx="200" cy="155" r="68" fill="#6fb7e8" stroke="#2b1d14" stroke-width="6"/>
+      <circle cx="160" cy="180" r="13" fill="#f08b8b" opacity="0.6"/>
+      <circle cx="248" cy="180" r="13" fill="#f08b8b" opacity="0.6"/>
+      <g id="auge_l">
+        <ellipse cx="178" cy="145" rx="17" ry="21" fill="#ffffff" stroke="#2b1d14" stroke-width="5"/>
+        <g id="pupille_l"><circle cx="182" cy="148" r="9" fill="#2b1d14"/></g>
+        <circle id="pivot_auge_l" cx="178" cy="145" r="2" fill="#f0f"/>
+      </g>
+      <g id="auge_r">
+        <ellipse cx="226" cy="145" rx="17" ry="21" fill="#ffffff" stroke="#2b1d14" stroke-width="5"/>
+        <g id="pupille_r"><circle cx="230" cy="148" r="9" fill="#2b1d14"/></g>
+        <circle id="pivot_auge_r" cx="226" cy="145" r="2" fill="#f0f"/>
+      </g>
+      <g id="schnabel_unten">
+        <path d="M 196 182 C 210 184 226 184 238 180 C 230 194 214 200 200 196 Z"
+              fill="#e8a33a" stroke="#2b1d14" stroke-width="5" stroke-linejoin="round"/>
+        <circle id="pivot_schnabel_unten" cx="200" cy="184" r="3" fill="#f0f"/>
+      </g>
+      <g id="schnabel_oben">
+        <path d="M 194 170 C 215 162 240 166 256 178 C 235 186 212 186 194 184 Z"
+              fill="#f6b84a" stroke="#2b1d14" stroke-width="5" stroke-linejoin="round"/>
+      </g>
+    </g>
+    <g id="fluegel_vorn">
+      <path d="M 150 230 C 110 225 85 260 95 300 C 120 292 145 275 162 255 Z"
+            fill="#3f86c2" stroke="#2b1d14" stroke-width="6" stroke-linejoin="round"/>
+      <path d="M 120 262 C 112 272 108 282 108 290" fill="none" stroke="#2b1d14" stroke-width="3" stroke-linecap="round"/>
+      <circle id="pivot_fluegel_vorn" cx="152" cy="238" r="3" fill="#f0f"/>
+    </g>
+  </g>
+</svg>
+

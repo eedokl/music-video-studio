@@ -1,0 +1,74 @@
+{
+ "tim_1.wav": {
+  "who": "tim",
+  "score": 1.0,
+  "heard": "Okay, ganz ruhig. Ich schreibe nur noch schnell diesen einen Prompt, dann mache ich Feierabend. Versprochen!",
+  "pitch_hz": 198,
+  "seconds": 5.87,
+  "design": "A man in his mid twenties with a bright, friendly, slightly nervous tenor voice. A curious, enthusiastic hobby programmer, quick and expressive, sometimes a little cheeky. Natural conversational pace. Speaks native German."
+ },
+ "tim_2.wav": {
+  "who": "tim",
+  "score": 1.0,
+  "heard": "Okay, ganz ruhig. Ich schreibe nur noch schnell diesen einen Prompt, dann mache ich Feierabend. Versprochen!",
+  "pitch_hz": 235,
+  "seconds": 6.88,
+  "design": "A man in his mid twenties with a bright, friendly, slightly nervous tenor voice. A curious, enthusiastic hobby programmer, quick and expressive, sometimes a little cheeky. Natural conversational pace. Speaks native German."
+ },
+ "tim_3.wav": {
+  "who": "tim",
+  "score": 1.0,
+  "heard": "Okay, ganz ruhig. Ich schreibe nur noch schnell diesen einen Prompt, dann mache ich Feierabend. Versprochen!",
+  "pitch_hz": 198,
+  "seconds": 6.15,
+  "design": "A man in his mid twenties with a bright, friendly, slightly nervous tenor voice. A curious, enthusiastic hobby programmer, quick and expressive, sometimes a little cheeky. Natural conversational pace. Speaks native German."
+ },
+ "computer_1.wav": {
+  "who": "computer",
+  "score": 0.904,
+  "heard": "Guten Abend, Ihr Kontingent ist zu 90 % verbraucht. Möchten Sie jetzt auf Pro upgraden?",
+  "pitch_hz": 112,
+  "seconds": 5.98,
+  "design": "A friendly home computer that talks: a calm, smooth, clear and precise voice of a man around forty, polite, slightly smug and a little mechanical in its rhythm, like an announcer of a game show. Speaks native German."
+ },
+ "computer_2.wav": {
+  "who": "computer",
+  "score": 0.904,
+  "heard": "Guten Abend. Ihr Kontingent ist zu 90 % verbraucht. Möchten Sie jetzt auf Pro upgraden?",
+  "pitch_hz": 103,
+  "seconds": 6.16,
+  "design": "A friendly home computer that talks: a calm, smooth, clear and precise voice of a man around forty, polite, slightly smug and a little mechanical in its rhythm, like an announcer of a game show. Speaks native German."
+ },
+ "computer_3.wav": {
+  "who": "computer",
+  "score": 0.904,
+  "heard": "Guten Abend. Ihr Kontingent ist zu 90 % verbraucht. Möchten Sie jetzt auf Pro upgraden?",
+  "pitch_hz": 130,
+  "seconds": 6.43,
+  "design": "A friendly home computer that talks: a calm, smooth, clear and precise voice of a man around forty, polite, slightly smug and a little mechanical in its rhythm, like an announcer of a game show. Speaks native German."
+ },
+ "lia_1.wav": {
+  "who": "lia",
+  "score": 1.0,
+  "heard": "Hey, schau mal. Wenn wir das zusammen machen, wird es viel lustiger. Komm, wir fangen einfach an.",
+  "pitch_hz": 291,
+  "seconds": 5.61,
+  "design": "A woman around twenty-five with a warm, clear, lively voice. Confident, witty and kind, a singer who also speaks with a smile. Natural conversational pace. Speaks native German."
+ },
+ "lia_2.wav": {
+  "who": "lia",
+  "score": 1.0,
+  "heard": "Hey, schau mal. Wenn wir das zusammen machen, wird es viel lustiger. Komm, wir fangen einfach an.",
+  "pitch_hz": 250,
+  "seconds": 6.19,
+  "design": "A woman around twenty-five with a warm, clear, lively voice. Confident, witty and kind, a singer who also speaks with a smile. Natural conversational pace. Speaks native German."
+ },
+ "lia_3.wav": {
+  "who": "lia",
+  "score": 1.0,
+  "heard": "Hey, schau mal, wenn wir das zusammen machen, wird es viel lustiger. Komm, wir fangen einfach an.",
+  "pitch_hz": 286,
+  "seconds": 5.55,
+  "design": "A woman around twenty-five with a warm, clear, lively voice. Confident, witty and kind, a singer who also speaks with a smile. Natural conversational pace. Speaks native German."
+ }
+}

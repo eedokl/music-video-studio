@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Comic 2.5D Renderer</title>
+<style>body { margin: 0; background: #222; color: #ddd; font: 14px sans-serif; } canvas { display: block; }</style>
+<script type="importmap">{ "imports": { "three": "/_mp/vendor/three.module.js" } }</script>
+</head>
+<body>
+<div id="status" style="padding:6px">loading …</div>
+<script type="module">
+// 2.5D comic flight: the comic page is a card with windows (transparent panel areas).
+// Behind each window its panel scene stands as a diorama: layers at depths (multiplane) or a
+// relief from image + depth map. A stencil makes each diorama visible only through its own window.
+// Camera keys refer to "page" or a panel id. Config: ?config=/comic.json (&auto=1)
+import * as THREE from 'three';
+
+const params = new URLSearchParams(location.search);
+const status = document.getElementById('status');
+const log = (msg) => { status.textContent = msg; fetch('/log', { method: 'POST', body: msg }).catch(() => {}); };
+window.addEventListener('error', (e) => log('ERROR: ' + e.message));
+window.addEventListener('unhandledrejection', (e) => log('ERROR: ' + (e.reason && e.reason.message || e.reason)));
+
+const cfg = await (await fetch(params.get('config') || '/comic.json')).json();
+const W = cfg.width || 1280, H = cfg.height || 720, END = cfg.end, FOV = cfg.fov || 30, ASPECT = W / H;
+const tanV = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, stencil: true });
+renderer.setSize(W, H);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(cfg.background || '#2f2621');
+if (cfg.desk) {          // the page lies on a desk under a lamp (screen background)
+  const c = document.createElement('canvas'); c.width = 640; c.height = 360;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(320, 120, 10, 320, 160, 420);
+  grd.addColorStop(0, cfg.desk[0] || '#4a3524'); grd.addColorStop(0.55, cfg.desk[1] || '#1a120c'); grd.addColorStop(1, '#080605');
+  g.fillStyle = grd; g.fillRect(0, 0, 640, 360);
+  let s = (cfg.seed ?? 1) >>> 0 || 1;   // wood grain: seeded (same seed, same desk)
+  const rnd = () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
+  for (let i = 0; i < 90; i++) {
+    g.strokeStyle = `rgba(0,0,0,${0.05 + 0.06 * rnd()})`; g.lineWidth = 1 + 2 * rnd();
+    const y = rnd() * 360; g.beginPath(); g.moveTo(0, y);
+    g.bezierCurveTo(200, y + 10 * rnd() - 5, 440, y + 10 * rnd() - 5, 640, y + 6 * rnd() - 3); g.stroke();
+  }
+  const bgTex = new THREE.CanvasTexture(c); bgTex.colorSpace = THREE.SRGBColorSpace; scene.background = bgTex;
+}
+const camera = new THREE.PerspectiveCamera(FOV, ASPECT, 0.05, 500);
+const loader = new THREE.TextureLoader();
+const loadTex = (src) => new Promise((ok, fail) => loader.load('/' + src, (t) => {
+  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; ok(t);
+}, undefined, () => fail(new Error('image missing: ' + src))));
+const loadImg = (src) => new Promise((ok, fail) => { const i = new Image(); i.onload = () => ok(i);
+  i.onerror = () => fail(new Error('image missing: ' + src)); i.src = '/' + src; });
+
+// ---- page (units: page pixels / px_per_unit, centre = origin, y up) ----
+const pageTex = await loadTex(cfg.page.src);
+const PPU = cfg.page.px_per_unit || 100;
+const PW = pageTex.image.width / PPU, PH = pageTex.image.height / PPU;
+const toWorld = (px, py) => [px / PPU - PW / 2, PH / 2 - py / PPU];
+
+// soft shadow under the page
+{
+  const c = document.createElement('canvas'); c.width = 512; c.height = 600;
+  const g = c.getContext('2d'); g.shadowColor = 'rgba(0,0,0,0.7)'; g.shadowBlur = 40;
+  g.fillStyle = '#000'; g.fillRect(60, 60, 392, 480);
+  const tex = new THREE.CanvasTexture(c);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(PW * 512 / 392, PH * 600 / 480),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false }));
+  m.position.set(0.18, -0.25, -0.01); m.renderOrder = -10; scene.add(m);
+}
+const page = new THREE.Mesh(new THREE.PlaneGeometry(PW, PH),
+  new THREE.MeshBasicMaterial({ map: pageTex, transparent: true, depthTest: false, depthWrite: false }));
+page.renderOrder = 100000;
+scene.add(page);
+
+// ---- Panels ----
+const panels = {};
+const stencilMat = (ref, extra) => ({
+  stencilWrite: true, stencilRef: ref, stencilFunc: THREE.EqualStencilFunc,
+  stencilFail: THREE.KeepStencilOp, stencilZFail: THREE.KeepStencilOp, stencilZPass: THREE.KeepStencilOp, ...extra,
+});
+const viewDist = (w, h) => Math.max(h / 2 / tanV, w / 2 / (tanV * ASPECT));
+
+const softRect = (() => {    // soft dark spot for shadows
+  const c = document.createElement('canvas'); c.width = 256; c.height = 256;
+  const g = c.getContext('2d'); g.shadowColor = 'rgba(0,0,0,1)'; g.shadowBlur = 36; g.fillStyle = '#000'; g.fillRect(48, 48, 160, 160);
+  return new THREE.CanvasTexture(c);
+})();
+const frameTex = (() => {    // ink frame with an empty centre
+  const c = document.createElement('canvas'); c.width = 512; c.height = 512;
+  const g = c.getContext('2d'); g.strokeStyle = '#17120d'; g.lineWidth = 14; g.strokeRect(7, 7, 498, 498);
+  return new THREE.CanvasTexture(c);
+})();
+const lifts = [];
+for (const [pi, p] of cfg.panels.entries()) {
+  const ref = pi + 1;
+  const grp = new THREE.Group(); scene.add(grp);
+  const meshes = [];
+  const [rx, ry, rw, rh] = p.rect;
+  const [cx, cy] = toWorld(rx + rw / 2, ry + rh / 2);
+  const w = rw / PPU, h = rh / PPU, Dv = viewDist(w, h);
+  panels[p.id] = { cx, cy, w, h, Dv };
+  // window: writes only the panel's stencil number
+  const win = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({
+    colorWrite: false, depthWrite: false, depthTest: false, stencilWrite: true, stencilRef: ref,
+    stencilFunc: THREE.AlwaysStencilFunc, stencilZPass: THREE.ReplaceStencilOp }));
+  win.position.set(cx, cy, 0); win.renderOrder = 0; grp.add(win); meshes.push(win);
+
+  let order = 1 + pi * 1000;
+  const k = (d) => (Dv + d) / Dv;   // big enough to fill the window seen from the panel view point
+  // relief from image + depth map (technique B)
+  if (p.relief) {
+    const r = p.relief, seg = r.segments || 200, over = r.overscan || cfg.overscan || 1.08;
+    const [tex, dimg] = await Promise.all([loadTex(r.src), loadImg(r.depthmap)]);
+    const c = document.createElement('canvas'); c.width = dimg.width; c.height = dimg.height;
+    const g = c.getContext('2d'); g.drawImage(dimg, 0, 0);
+    const dd = g.getImageData(0, 0, c.width, c.height).data;
+    const geo = new THREE.PlaneGeometry(1, 1, seg, seg);
+    const pos = geo.attributes.position, uv = geo.attributes.uv;
+    for (let i = 0; i < pos.count; i++) {
+      const u = uv.getX(i), v = uv.getY(i);
+      const px = Math.min(c.width - 1, Math.round(u * (c.width - 1)));
+      const py = Math.min(c.height - 1, Math.round((1 - v) * (c.height - 1)));
+      const t = dd[(py * c.width + px) * 4] / 255;          // bright = near
+      const dz = r.base - r.amount * t;                      // distance behind the page
+      pos.setXYZ(i, cx + (u - 0.5) * w * k(dz) * over, cy + (v - 0.5) * h * k(dz) * over, -dz);
+    }
+    geo.computeBoundingSphere();
+    // transparent: true so it is drawn in the same renderOrder sequence as everything else -
+    // otherwise three.js draws it early as "opaque" and the page shadow paints over it.
+    const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial(stencilMat(ref, { map: tex, transparent: true })));
+    mesh.renderOrder = order++; grp.add(mesh); meshes.push(mesh);
+  }
+  // layers (technique A), sorted back to front
+  for (const L of [...(p.layers || [])].sort((a, b) => b.depth - a.depth)) {
+    const tex = await loadTex(L.src);
+    const over = L.overscan || p.overscan || cfg.overscan || 1.12;
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w * k(L.depth) * over, h * k(L.depth) * over),
+      new THREE.MeshBasicMaterial(stencilMat(ref, { map: tex, transparent: true, depthTest: false, depthWrite: false,
+        blending: L.blend === 'add' ? THREE.AdditiveBlending : THREE.NormalBlending })));
+    mesh.position.set(cx, cy, -L.depth); mesh.renderOrder = order++; grp.add(mesh); meshes.push(mesh);
+  }
+  meshes.forEach((m) => { m.userData.base = m.renderOrder; });
+  // lifted panel: dark hole in the page, shadow on it, ink frame around the panel
+  const hole = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: 0x120d09, transparent: true,
+    opacity: 0, depthTest: false, depthWrite: false }));
+  hole.position.set(cx, cy, -0.001); hole.renderOrder = 99999; scene.add(hole);
+  const shadow = new THREE.Mesh(new THREE.PlaneGeometry(w * 1.6, h * 1.6), new THREE.MeshBasicMaterial({ map: softRect,
+    transparent: true, opacity: 0, depthTest: false, depthWrite: false }));
+  shadow.position.set(cx + 0.12, cy - 0.2, 0.001); shadow.renderOrder = 150000; scene.add(shadow);
+  const border = new THREE.Mesh(new THREE.PlaneGeometry(w * 1.012, h * 1.018), new THREE.MeshBasicMaterial({ map: frameTex,
+    transparent: true, opacity: 0, depthTest: false, depthWrite: false }));
+  border.position.set(cx, cy, 0.002); border.renderOrder = 400000; grp.add(border);
+  lifts.push({ id: p.id, grp, meshes, hole, shadow, border });
+}
+
+// ---- lift: the panel being read lifts off the page (derived from the camera keys) ----
+const LIFT_H = cfg.lift_height ?? 0;
+const liftIv = {};
+for (let i = 0; i < cfg.camera.length; i++) {
+  const k = cfg.camera[i];
+  if (k.view === 'page' || k.lift === false) continue;
+  const iv = (liftIv[k.view] ??= []);
+  const last = iv[iv.length - 1];
+  if (last && i > 0 && cfg.camera[i - 1].view === k.view) last[1] = k.frame + 8;
+  else iv.push([k.frame - 12, k.frame + 8]);
+}
+const clamp01 = (v) => Math.max(0, Math.min(1, v));
+const easeOutBack = (u) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(u - 1, 3) + c1 * Math.pow(u - 1, 2); };
+const easeInOut = (u) => u * u * (3 - 2 * u);
+function liftAt(id, f) {
+  let v = 0;
+  for (const [a, b] of liftIv[id] || []) v = Math.max(v, Math.min(easeOutBack(clamp01((f - a) / 12)), 1 - easeInOut(clamp01((f - b) / 11))));
+  return v;
+}
+
+// ---- camera ----
+// Every key: target (page or panel, dx/dy), distance (dist or push) and optional angles in degrees:
+// yaw (sideways around the target), pitch (from above/below), roll. The camera circles the target and looks at it -
+// so the page lies tilted in space and the layers inside the panels visibly shift against each other.
+const pageDist = viewDist(PW, PH) * 1.06;
+function keyPos(key) {
+  const ang = [key.yaw || 0, key.pitch || 0, key.roll || 0];
+  if (key.view === 'page') return { t: [key.dx || 0, key.dy || 0], d: pageDist * (key.dist || 1), ang };
+  const p = panels[key.view];
+  if (!p) throw new Error('unknown panel: ' + key.view);
+  return { t: [p.cx + (key.dx || 0) * p.w * 0.1, p.cy + (key.dy || 0) * p.h * 0.1], d: p.Dv * (1 - (key.push || 0) * 0.6), ang };
+}
+const keys = cfg.camera.map((k) => ({ ...k, pos: keyPos(k) }));
+const smooth = (u) => u * u * (3 - 2 * u);
+const mix = (a, b, u) => a + (b - a) * u;
+function camAt(f) {
+  let a = keys[0], b = keys[0], u = 0;
+  if (f > keys[0].frame) {
+    a = b = keys[keys.length - 1];
+    for (let i = 0; i < keys.length - 1; i++) {
+      if (f <= keys[i + 1].frame) { a = keys[i]; b = keys[i + 1]; u = smooth((f - a.frame) / (b.frame - a.frame)); break; }
+    }
+  }
+  return { t: [mix(a.pos.t[0], b.pos.t[0], u), mix(a.pos.t[1], b.pos.t[1], u)], d: mix(a.pos.d, b.pos.d, u),
+           ang: a.pos.ang.map((v, j) => mix(v, b.pos.ang[j], u)) };
+}
+
+function renderAt(f) {
+  const c = camAt(f);
+  const [yaw, pitch, roll] = c.ang.map(THREE.MathUtils.degToRad);
+  const target = new THREE.Vector3(c.t[0], c.t[1], 0);
+  camera.position.set(target.x + c.d * Math.sin(yaw) * Math.cos(pitch), target.y + c.d * Math.sin(pitch),
+                      c.d * Math.cos(yaw) * Math.cos(pitch));
+  camera.up.set(0, 1, 0);
+  camera.lookAt(target);
+  camera.rotateZ(roll);
+  if (LIFT_H) for (const L of lifts) {
+    const k = liftAt(L.id, f), up = k > 0.002;
+    L.grp.position.z = k * LIFT_H;
+    for (const m of L.meshes) m.renderOrder = m.userData.base + (up ? 200000 : 0);
+    L.hole.material.opacity = clamp01(k * 1.4) * 0.9;
+    L.shadow.material.opacity = clamp01(k) * 0.55;
+    L.shadow.position.z = 0.001; L.shadow.scale.setScalar(0.85 + 0.25 * clamp01(k));
+    L.border.material.opacity = clamp01(k * 2);
+  }
+  renderer.render(scene, camera);
+}
+window.renderAt = renderAt;
+
+async function exportAll() {
+  const pending = [];
+  const pad = (n) => String(n).padStart(4, '0');
+  for (let f = 0; f <= END; f++) {
+    renderAt(f);
+    // saving continues in the background while the next frame renders (max. 6 at once)
+    const blob = await new Promise((ok) => renderer.domElement.toBlob(ok, 'image/png'));
+    const job = fetch(`/save/mp_${pad(f)}.png`, { method: 'POST', body: blob }).then((r) => {
+      if (!r.ok) throw new Error('saving failed: frame ' + f); });
+    pending.push(job);
+    if (pending.length >= 6) await pending.shift();
+    status.textContent = `Frame ${f + 1}/${END + 1}`;
+  }
+  await Promise.all(pending);
+}
+if (params.get('auto')) {
+  try { await exportAll(); log(`${END + 1} frames rendered`); } catch (e) { log('ERROR: ' + e.message); }
+  await fetch('/done');
+} else {
+  renderAt(0);
+  status.textContent = 'ready - window.renderAt(frame)';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+{
+ "name": "music-video-studio",
+ "owner": {"name": "music-video-studio"},
+ "plugins": [
+  {"name": "animation-studio", "source": "./plugins/animation-studio",
+   "description": "Animated music videos and more from shared building blocks."}
+ ]
+}

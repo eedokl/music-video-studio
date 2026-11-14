@@ -1,0 +1,13 @@
+{
+  "name": "standard",
+  "description": "Project standard look: paper texture + film grain + vignette (multiplied over the film)",
+  "frames": 24,
+  "format": "mp_0000.jpg ... mp_0023.jpg, 1280x720, JPEG quality 92 (converted from the original PNG renders)",
+  "made_with": "Shaders 4.0.6 (WebGPU), renderFrame deltaSeconds 1/24",
+  "components": [
+    {"type": "SolidColor", "props": {"color": "#ffffff"}},
+    {"type": "Paper", "props": {"roughness": 0.55, "grainScale": 1.2, "displacement": 0.0, "seed": 7}},
+    {"type": "FilmGrain", "props": {"strength": 0.25, "bias": 0, "animated": true}},
+    {"type": "Vignette", "props": {"color": "#2b1d14", "radius": 0.78, "falloff": 0.55, "intensity": 0.55}}
+  ]
+}

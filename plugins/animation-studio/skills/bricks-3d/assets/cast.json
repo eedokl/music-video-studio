@@ -1,0 +1,33 @@
+{
+ "_info": "Minifigure looks for brick films. colours = LDraw colour codes per part (LDConfig.ldr); parts = other LDraw part numbers; face = face style of textures.py; torso_print = torso print of textures.py (or null); hair_streak = linear RGB of ONE coloured streak (figure's right side); hair_clip = image clip on the hair (figure's left side); silhouette = whole figure one matte dark colour (face only a grin). Own characters only - never licensed figures, no logos.",
+ "looks": {
+  "tim": {
+   "colours": {"torso": 4, "arm_r": 4, "arm_l": 4, "hand_r": 14, "hand_l": 14, "hips": 272, "leg_r": 272, "leg_l": 272, "head": 14, "hair": 70},
+   "face": "glasses", "torso_print": "hoodie", "voice": "male"
+  },
+  "lia": {
+   "colours": {"torso": 72, "arm_r": 72, "arm_l": 72, "hand_r": 14, "hand_l": 14, "hips": 0, "leg_r": 0, "leg_l": 0, "head": 14, "hair": 0},
+   "parts": {"hair": "62711"},
+   "face": "calm", "torso_print": "blazer", "hair_streak": [0.70, 0.18, 0.10, 1], "hair_clip": "clip_star.png", "voice": "female"
+  },
+  "silhouette": {
+   "colours": {"torso": 0, "arm_r": 0, "arm_l": 0, "hand_r": 0, "hand_l": 0, "hips": 0, "leg_r": 0, "leg_l": 0, "head": 0, "hair": 0},
+   "face": "grin", "torso_print": null, "silhouette": [0.004, 0.004, 0.005, 1], "voice": null
+  },
+  "robot": {
+   "colours": {"torso": 71, "arm_r": 71, "arm_l": 71, "hand_r": 72, "hand_l": 72, "hips": 72, "leg_r": 72, "leg_l": 72, "head": 71},
+   "face": "robot", "torso_print": "robot_panel", "voice": "announcer"
+  },
+  "rocker": {
+   "colours": {"torso": 0, "arm_r": 0, "arm_l": 0, "hand_r": 14, "hand_l": 14, "hips": 1, "leg_r": 1, "leg_l": 1, "head": 14, "hair": 70},
+   "parts": {"hair": "3901"},
+   "face": "classic", "torso_print": "tee_star", "voice": "male"
+  },
+  "singer": {
+   "colours": {"torso": 26, "arm_r": 26, "arm_l": 26, "hand_r": 14, "hand_l": 14, "hips": 0, "leg_r": 0, "leg_l": 0, "head": 14, "hair": 70},
+   "parts": {"hair": "62711"},
+   "face": "lashes", "torso_print": "dress", "voice": "female"
+  }
+ },
+ "figure_defaults": {"tim": "tim", "lia": "lia", "computer": "screen", "mann": "silhouette"}
+}

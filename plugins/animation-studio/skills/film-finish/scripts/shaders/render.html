@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Shaders job</title>
+<style>
+  /* The page must be exactly the canvas size (default 1280x720): the library measures the canvas parent.
+     shaders_render.py also starts the browser with --window-size and --force-device-scale-factor=1. */
+  html, body { margin: 0; width: 1280px; height: 720px; overflow: hidden; background: #222; color: #ddd; font: 14px sans-serif; }
+  #status { position: absolute; left: 4px; top: 4px; z-index: 2; padding: 6px; }
+</style>
+<!-- the npm package expects a bundler that replaces process.env - without one: a shim -->
+<script>window.process = { env: { NODE_ENV: 'production' } };</script>
+</head>
+<body>
+<div id="status">loading ...</div>
+<canvas id="c" width="1280" height="720" style="width:1280px;height:720px;display:block"></canvas>
+<script type="module">
+// Generic frame-exact runner for the Shaders library (WebGPU, WebGL fallback inside the library).
+// shaders_render.py writes job.json next to this page:
+//   { "width": 1280, "height": 720, "fps": 24,
+//     "items": [ { "name": "mp_0000.png", "preset": {components: [...]} | null (= keep the previous preset),
+//                  "warmup": 0, "delay_ms": 0 }, ... ] }
+// Every item: (updatePreset if given) -> warmup extra frames -> renderFrame({deltaSeconds: 1/fps}) -> PNG -> /save/<name>.
+// renderFrame with deltaSeconds switches the library to frame-locked time: same job, same frames.
+import { createRendererFromJSON, getWebGPUSupport } from '/node_modules/shaders/dist/core/index.js';
+
+const status = document.getElementById('status');
+const log = (m) => { status.textContent = m; return fetch('/log', { method: 'POST', body: m }).catch(() => {}); };
+const fail = async (m) => { await log('ERROR: ' + m); await fetch('/done').catch(() => {}); };
+window.addEventListener('error', (e) => fail(e.message));
+window.addEventListener('unhandledrejection', (e) => fail(e.reason && e.reason.message || String(e.reason)));
+
+const jobUrl = new URLSearchParams(location.search).get('job');
+const job = await (await fetch(jobUrl)).json();
+const W = job.width || 1280, H = job.height || 720, dt = 1 / (job.fps || 24);
+for (const el of [document.documentElement, document.body]) { el.style.width = W + 'px'; el.style.height = H + 'px'; }
+const canvas = document.getElementById('c');
+canvas.width = W; canvas.height = H; canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+
+const support = getWebGPUSupport ? await getWebGPUSupport() : null;
+await log('WebGPU: ' + JSON.stringify(support));
+const renderer = createRendererFromJSON(job.items[0].preset);
+await renderer.initialize(canvas);
+canvas.width = W; canvas.height = H;            // force again after initialize (devicePixelRatio)
+await log('context: ' + renderer.getGPUContext().type);
+
+for (const [i, it] of job.items.entries()) {
+  if (it.preset && i > 0) {
+    renderer.updatePreset(it.preset);
+    // a new preset only shows from the NEXT rendered frame - render once without advancing time
+    await renderer.renderFrame({ deltaSeconds: 0, waitForGpu: true });
+  }
+  for (let k = 0; k < (it.warmup || 0); k++) {   // let images load / time-based effects settle (gallery)
+    await renderer.renderFrame({ deltaSeconds: dt, waitForGpu: true });
+    if (it.delay_ms) await new Promise((ok) => setTimeout(ok, it.delay_ms));
+  }
+  await renderer.renderFrame({ deltaSeconds: dt, waitForGpu: true });
+  const blob = await new Promise((ok) => canvas.toBlob(ok, 'image/png'));
+  await fetch('/save/' + it.name, { method: 'POST', body: blob });
+  status.textContent = `${i + 1}/${job.items.length}`;
+}
+await log(`frames: ${job.items.length}`);
+await fetch('/done');
+</script>
+</body>
+</html>

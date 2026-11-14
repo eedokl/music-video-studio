@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Figure "Lia": the singer (AI persona). Parts = groups with ids, pivots = pivot_<part>.
+     Mouth left out on purpose (lip sync at pivot_mund). Same scale as tim.svg (feet at y=590). -->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+     width="400" height="600" viewBox="0 0 400 600">
+  <g inkscape:groupmode="layer" inkscape:label="Lia" id="lia">
+    <g id="beine">
+      <path d="M 165 478 L 168 575 L 192 575 L 194 478 Z" fill="#f5cfae" stroke="#2b1d14" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M 206 478 L 208 575 L 232 575 L 235 478 Z" fill="#f5cfae" stroke="#2b1d14" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M 160 572 C 162 560 196 560 196 574 L 196 590 L 156 590 Z" fill="#5b3fa6" stroke="#2b1d14" stroke-width="5"/>
+      <path d="M 204 574 C 204 560 238 560 240 572 L 244 590 L 204 590 Z" fill="#5b3fa6" stroke="#2b1d14" stroke-width="5"/>
+    </g>
+    <g id="haare_hinten">
+      <path d="M 105 190 C 95 110 150 70 200 72 C 255 70 308 112 296 195 L 312 330 C 290 350 255 345 245 320 L 155 320 C 140 348 105 350 88 330 Z"
+            fill="#5b3fa6" stroke="#2b1d14" stroke-width="6" stroke-linejoin="round"/>
+    </g>
+    <g id="arm_r">
+      <path d="M 250 318 C 270 318 286 332 288 352 L 292 440 C 283 448 266 448 257 442 L 246 345 Z"
+            fill="#f5cfae" stroke="#2b1d14" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M 250 318 C 270 318 286 332 288 352 L 289 372 C 276 380 258 378 248 370 Z" fill="#23b5b5" stroke="#2b1d14" stroke-width="5"/>
+      <circle cx="275" cy="456" r="15" fill="#f5cfae" stroke="#2b1d14" stroke-width="5"/>
+      <circle id="pivot_arm_r" cx="258" cy="330" r="3" fill="#f0f"/>
+    </g>
+    <g id="koerper">
+      <path d="M 168 288 C 176 300 224 300 232 288 C 252 296 262 306 262 330 L 285 478 C 240 494 160 494 115 478 L 138 330 C 138 306 148 296 168 288 Z"
+            fill="#23b5b5" stroke="#2b1d14" stroke-width="6" stroke-linejoin="round"/>
+      <path d="M 140 400 C 175 412 225 412 260 400 L 266 440 C 225 452 175 452 134 440 Z" fill="#1a8f8f"/>
+      <circle cx="200" cy="330" r="13" fill="#ffd23f" stroke="#2b1d14" stroke-width="4"/>
+      <circle id="pivot_koerper" cx="200" cy="478" r="3" fill="#f0f"/>
+    </g>
+    <g id="kopf">
+      <circle id="pivot_kopf" cx="200" cy="290" r="3" fill="#f0f"/>
+      <path d="M 186 268 L 186 296 L 214 296 L 214 268 Z" fill="#f5cfae" stroke="#2b1d14" stroke-width="5"/>
+      <ellipse cx="200" cy="200" rx="84" ry="92" fill="#f5cfae" stroke="#2b1d14" stroke-width="6"/>
+      <path d="M 118 190 C 112 118 160 84 205 86 C 252 86 292 118 284 182 C 270 150 240 128 210 126 C 222 140 220 150 214 158 C 196 136 160 132 140 150 C 132 160 124 172 118 190 Z"
+            fill="#6b4cc0" stroke="#2b1d14" stroke-width="5" stroke-linejoin="round"/>
+      <circle cx="150" cy="232" r="13" fill="#ff8fb1" opacity="0.55"/>
+      <circle cx="250" cy="232" r="13" fill="#ff8fb1" opacity="0.55"/>
+      <path d="M 198 210 C 194 222 196 228 205 228" fill="none" stroke="#2b1d14" stroke-width="4" stroke-linecap="round"/>
+      <g id="auge_l">
+        <ellipse cx="166" cy="196" rx="20" ry="25" fill="#ffffff" stroke="#2b1d14" stroke-width="4"/>
+        <g id="pupille_l"><circle cx="168" cy="199" r="11" fill="#3b2a7a"/><circle cx="164" cy="194" r="4" fill="#ffffff"/></g>
+        <circle id="pivot_auge_l" cx="166" cy="196" r="2" fill="#f0f"/>
+      </g>
+      <g id="auge_r">
+        <ellipse cx="234" cy="196" rx="20" ry="25" fill="#ffffff" stroke="#2b1d14" stroke-width="4"/>
+        <g id="pupille_r"><circle cx="232" cy="199" r="11" fill="#3b2a7a"/><circle cx="228" cy="194" r="4" fill="#ffffff"/></g>
+        <circle id="pivot_auge_r" cx="234" cy="196" r="2" fill="#f0f"/>
+      </g>
+      <g id="brauen">
+        <path d="M 146 160 C 156 152 174 152 186 158" fill="none" stroke="#4a2f8a" stroke-width="6" stroke-linecap="round"/>
+        <path d="M 214 158 C 226 152 244 152 254 160" fill="none" stroke="#4a2f8a" stroke-width="6" stroke-linecap="round"/>
+        <circle id="pivot_brauen" cx="200" cy="157" r="2" fill="#f0f"/>
+      </g>
+      <g id="headset">
+        <path d="M 118 200 C 112 130 150 96 200 96 C 250 96 288 130 282 200" fill="none" stroke="#2b1d14" stroke-width="8"/>
+        <path d="M 118 200 C 112 130 150 96 200 96 C 250 96 288 130 282 200" fill="none" stroke="#c9d6e8" stroke-width="3"/>
+        <ellipse cx="116" cy="206" rx="14" ry="20" fill="#3a3f4a" stroke="#2b1d14" stroke-width="4"/>
+        <path d="M 116 222 C 120 250 150 262 172 258" fill="none" stroke="#2b1d14" stroke-width="5" stroke-linecap="round"/>
+        <circle cx="174" cy="258" r="7" fill="#3a3f4a" stroke="#2b1d14" stroke-width="3"/>
+      </g>
+      <circle id="pivot_mund" cx="200" cy="250" r="2" fill="#f0f"/>
+    </g>
+    <g id="arm_l">
+      <path d="M 150 318 C 130 318 114 332 112 352 L 108 440 C 117 448 134 448 143 442 L 154 345 Z"
+            fill="#f5cfae" stroke="#2b1d14" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M 150 318 C 130 318 114 332 112 352 L 111 372 C 124 380 142 378 152 370 Z" fill="#23b5b5" stroke="#2b1d14" stroke-width="5"/>
+      <circle cx="125" cy="456" r="15" fill="#f5cfae" stroke="#2b1d14" stroke-width="5"/>
+      <circle id="pivot_arm_l" cx="142" cy="330" r="3" fill="#f0f"/>
+    </g>
+  </g>
+</svg>
+

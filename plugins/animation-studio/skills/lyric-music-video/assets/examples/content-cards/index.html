@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Content Cards</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="bg"></div>
+    <div id="stage3d"></div>
+    <div id="scene" class="scene dark"></div>
+    <div id="labels"></div>
+    <div id="wipe"></div>
+    <div id="flash"></div>
+    <div id="grain"></div>
+    <div id="vignette"></div>
+
+    <div id="hud">
+      <button id="play">Play</button>
+      <div id="bar"><div id="fill"></div></div>
+      <span id="time">0:00</span>
+    </div>
+
+    <div id="start">
+      <div class="card-start">
+        <div class="mono dim">CONTENT CARDS · EXAMPLE</div>
+        <h1>One Station, <span>All Aboard</span></h1>
+        <p>One card per sung item: meet the crew of a fictional space station.</p>
+        <button id="go">▶ Play video</button>
+        <p class="mono dim keys">Space play/pause · ←/→ seek 5 s · F fullscreen</p>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

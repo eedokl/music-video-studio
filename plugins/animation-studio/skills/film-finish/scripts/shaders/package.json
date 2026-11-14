@@ -1,0 +1,11 @@
+{
+  "name": "animation-studio-shaders",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shaders (WebGPU effect library) for film-finish/scripts/shaders_render.py: looks, transition masks, effect gallery",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "shaders": "4.0.6"
+  }
+}

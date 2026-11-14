@@ -1,0 +1,104 @@
+"""Hand the cut over for manual editing: film.otio (Kdenlive, DaVinci Resolve, ...) and film.mlt (MLT / melt).
+
+  uv run --no-project --with opentimelineio python edit_handoff.py [--project .] [--crossfade 0]
+
+Built from the same pieces as build.py film: one video clip per section (clips/<section>.mp4, silent, with overlays),
+the song (+ sound effects) as one continuous audio track - so the editor gets exactly the film's timeline and can
+re-cut, add transitions or credits by hand. Gaps between sections stay gaps.
+- film.otio: Kdenlive 25.04+ imports it natively (File > Import > OpenTimelineIO). Media paths are written as plain
+  absolute paths with "/" - Kdenlive does not understand file:/// URLs (it prepends the project folder).
+  Default: hard cuts, so every section stays on its exact song frame (music videos). --crossfade N adds dissolves,
+  but the section clips have no handles: each dissolve shortens the picture by N frames and pulls every later section
+  N frames earlier against the song - fine for dialogue shorts, wrong for lip-synced music videos.
+- film.mlt: written by melt (config key "melt", ships with Kdenlive/Shotcut) when available; `melt film.mlt` plays
+  it, and Kdenlive/Shotcut open it as well.
+The look is NOT baked into the hand-off clips: apply it once at the end of manual editing (apply_look.py).
+"""
+import argparse
+import subprocess
+from pathlib import Path
+
+import _studio  # noqa: E402
+_studio.use("song-analysis")
+import config  # noqa: E402
+from build import clip, sound_track  # noqa: E402
+from song_project import Project  # noqa: E402
+
+
+def media_path(p):
+    return str(Path(p).resolve()).replace("\\", "/")
+
+
+def main():
+    import opentimelineio as otio
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--project", default=".")
+    ap.add_argument("--crossfade", type=int, default=0, help="frames of dissolve between sections (0 = hard cuts)")
+    a = ap.parse_args()
+    P = Project(a.project)
+    fps, xf = P.fps, a.crossfade
+    secs = sorted(P.sections(), key=lambda s: s["from"])
+    if not secs:
+        raise SystemExit("no sections in project.json")
+    t0 = secs[0]["from"]
+    if xf and len(secs) > 1:
+        print(f"WARNING: --crossfade {xf} shortens the picture by {xf * (len(secs) - 1)} frames and moves later sections "
+              "earlier against the song (no handles) - keep hard cuts for lip-synced music videos")
+    shots = []
+    for i, s in enumerate(secs):
+        c, n = clip(P, s["name"])
+        end = min(s["to"], secs[i + 1]["from"]) if i + 1 < len(secs) else s["to"]
+        shots.append({"path": c, "name": s["name"], "start": round((s["from"] - t0) * fps),
+                      "dur": round((end - s["from"]) * fps)})
+    film_len = shots[-1]["start"] + shots[-1]["dur"]
+    audio = sound_track(P)
+
+    rt = lambda f: otio.opentime.RationalTime(f, fps)
+    tr = lambda s, d: otio.opentime.TimeRange(rt(s), rt(d))
+    tl = otio.schema.Timeline(name=P.get("name", "Film"))
+    v1 = otio.schema.Track(name="V1 picture", kind=otio.schema.TrackKind.Video)
+    h1, h2 = xf // 2, xf - xf // 2
+    cursor = 0
+    for i, sh in enumerate(shots):
+        if sh["start"] > cursor:
+            v1.append(otio.schema.Gap(source_range=tr(0, sh["start"] - cursor)))
+        cut_in = h2 if (i > 0 and xf) else 0
+        cut_out = h1 if (i < len(shots) - 1 and xf) else 0
+        if i > 0 and xf:
+            v1.append(otio.schema.Transition(name="Dissolve", transition_type=otio.schema.TransitionTypes.SMPTE_Dissolve,
+                                             in_offset=rt(h1), out_offset=rt(h2)))
+        ref = otio.schema.ExternalReference(target_url=media_path(sh["path"]), available_range=tr(0, sh["dur"]))
+        v1.append(otio.schema.Clip(name=sh["name"], media_reference=ref, source_range=tr(cut_in, sh["dur"] - cut_in - cut_out)))
+        cursor = sh["start"] + sh["dur"]
+    tl.tracks.append(v1)
+    a1 = otio.schema.Track(name="A1 song + sounds", kind=otio.schema.TrackKind.Audio)
+    a1.append(otio.schema.Clip(name="song", media_reference=otio.schema.ExternalReference(
+        target_url=media_path(audio), available_range=tr(0, round((t0 * fps)) + film_len)),
+        source_range=tr(round(t0 * fps), film_len)))
+    tl.tracks.append(a1)
+    out = P.dir / "film.otio"
+    otio.adapters.write_to_file(tl, str(out))
+    msg = f"-> film.otio ({len(shots)} sections, {film_len} frames = {film_len / fps:.1f} s)"
+
+    melt = config.get("melt")
+    if melt and Path(melt).exists():
+        cmd = [melt, "-profile", "atsc_720p_24" if fps == 24 else "atsc_720p_25"]
+        cursor = 0
+        for i, sh in enumerate(shots):
+            if sh["start"] > cursor:
+                cmd += ["-blank", str(sh["start"] - cursor - 1)]
+            cmd += [str(sh["path"]), "in=0", f"out={sh['dur'] - 1}"]
+            if i > 0 and xf:
+                cmd += ["-mix", str(xf), "-mixer", "luma"]
+            cursor = sh["start"] + sh["dur"]
+        cmd += ["-track", str(audio), f"in={round(t0 * fps)}", f"out={round(t0 * fps) + film_len - 1}",
+                "-transition", "mix", "a_track=0", "b_track=1", "always_active=1", "sum=1"]
+        subprocess.run(cmd + ["-consumer", f"xml:{P.dir / 'film.mlt'}"], check=True, capture_output=True)
+        msg += ", film.mlt"
+    else:
+        msg += " (no melt configured - film.mlt skipped; check_tools.py --set melt=...)"
+    print(msg)
+
+
+if __name__ == "__main__":
+    main()

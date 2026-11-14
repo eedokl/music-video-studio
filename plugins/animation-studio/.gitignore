@@ -1,0 +1,4 @@
+# the repo root ignores *.png / *.wav (project media) - the plugin's own assets are needed
+!*.png
+!*.wav
+__pycache__/

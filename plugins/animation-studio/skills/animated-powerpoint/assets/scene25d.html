@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Scene stage 2.5D</title>
+<style>body { margin: 0; background: #222; color: #ddd; font: 14px sans-serif; } canvas { display: block; }</style>
+<script type="importmap">{ "imports": { "three": "/_mp/vendor/three.module.js" } }</script>
+</head>
+<body>
+<div id="status" style="padding:6px">loading …</div>
+<script type="module">
+// General 2.5D scene stage for presentation films (scene.py writes the config, copies this page):
+//  - layers:   set layers in the room (image, size, position, depth, order), opacity / position per frame
+//  - overlays: layers right in front of the camera (e.g. a floor-plan flight as a 2D zoom), scale/offset/tilt per frame
+//  - figs:     slide figures as Synfig frame sequences with light maps; per frame feet, shading, turn to the camera,
+//              scene light (tint, rim colour)
+//  - sprites:  bubbles, star eyes, props - in the room or hung on a figure
+//  - steam:    coffee steam curls at fixed points
+// Every value per frame comes from the JSON config. Protocol of toon-2d render_multiplane.py (/save, /log, /done).
+import * as THREE from 'three';
+
+const params = new URLSearchParams(location.search);
+const status = document.getElementById('status');
+const log = (m) => { status.textContent = m; fetch('/log', { method: 'POST', body: m }).catch(() => {}); };
+window.addEventListener('error', (e) => log('ERROR: ' + e.message));
+window.addEventListener('unhandledrejection', (e) => log('ERROR: ' + (e.reason && e.reason.message || e.reason)));
+
+const cfg = await (await fetch(params.get('config'))).json();
+const W = cfg.width, H = cfg.height, END = cfg.end;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(W, H);
+renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(cfg.background || '#1c1a18');
+const camera = new THREE.PerspectiveCamera(cfg.fov, W / H, 0.05, 500);
+scene.add(camera);
+const loader = new THREE.TextureLoader();
+const loadTex = (url) => new Promise((ok, fail) => loader.load('/' + url, (t) => {
+  t.colorSpace = THREE.NoColorSpace; t.anisotropy = 8; ok(t); }, undefined, () => fail(new Error('missing image: ' + url))));
+const pad = (n, w) => String(n).padStart(w, '0');
+const seqUrl = (src, n) => src.replace(/%0(\d)d/, (_, w) => pad(n, +w));
+const basic = (map, extra = {}) => new THREE.MeshBasicMaterial({ map, transparent: true, depthTest: false,
+  depthWrite: false, ...extra });
+
+// ---------- set layers ----------
+const layers = {};
+for (const L of cfg.layers || []) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(L.w, L.h), basic(await loadTex(L.src)));
+  m.position.set(L.x || 0, L.y || 0, L.z || 0);
+  if (L.rotx) m.rotation.x = L.rotx;
+  m.renderOrder = L.order; scene.add(m); layers[L.name] = m;
+}
+// ---------- layers in front of the camera ----------
+const overlays = {};
+const OD = 2.0, OH = 2 * OD * Math.tan(THREE.MathUtils.degToRad(cfg.fov / 2));
+for (const O of cfg.overlays || []) {
+  const g = new THREE.Group(); g.position.set(0, 0, -OD); camera.add(g);
+  const h = OH * (O.fit || 1), w = h * O.aspect;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), basic(await loadTex(O.src)));
+  m.renderOrder = 100 + (O.order || 0); g.add(m); overlays[O.name] = { g, m, w, h };
+}
+
+// ---------- figures ----------
+const figVert = `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
+const figFrag = `
+  uniform sampler2D tex, lightMap; uniform float shade, opacity, boil, boilAmp; uniform vec3 tint, rimCol; varying vec2 vUv;
+  float hsh(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+  float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hsh(i), hsh(i + vec2(1, 0)), f.x), mix(hsh(i + vec2(0, 1)), hsh(i + vec2(1, 1)), f.x), f.y); }
+  vec2 boilUv(vec2 uv) {        // line boil: a new, slightly distorted redraw every 2 frames
+    vec2 o = vec2(vn(uv * 34.0 + boil * 7.13), vn(uv * 34.0 + boil * 3.71 + 19.0)) - 0.5;
+    return uv + o * boilAmp;
+  }
+  void main() {
+    vec2 uv = boilUv(vUv);
+    vec4 c = texture2D(tex, uv);
+    vec3 m = texture2D(lightMap, uv).rgb;
+    float lum = dot(c.rgb, vec3(0.299, 0.587, 0.114));
+    vec3 col = c.rgb * mix(1.0, m.r * 2.0 * m.b, shade) + shade * m.g * lum * vec3(1.0, 0.93, 0.78) * 0.5;
+    col = mix(col, col * vec3(1.03, 1.0, 0.95), shade);
+    col = col * tint + m.g * lum * rimCol * shade;           // scene light (e.g. night / neon)
+    float alpha = mix(c.a, smoothstep(0.35, 0.8, c.a), shade);
+    gl_FragColor = vec4(col, alpha * opacity);
+  }`;
+const schattenTex = cfg.tex && cfg.tex.shadow ? await loadTex(cfg.tex.shadow) : null;
+const figs = {};
+for (const [n, d] of Object.entries(cfg.figs || {})) {
+  const mat = new THREE.ShaderMaterial({ uniforms: { tex: { value: await loadTex(seqUrl(d.src, 0)) },
+    lightMap: { value: await loadTex(seqUrl(d.light, 0)) }, shade: { value: 1 }, opacity: { value: 1 },
+    boil: { value: 0 }, boilAmp: { value: cfg.boil ?? 0.0016 },
+    tint: { value: new THREE.Color(...(d.tint || [1, 1, 1])) }, rimCol: { value: new THREE.Color(...(d.rim || [0, 0, 0])) } },
+    vertexShader: figVert, fragmentShader: figFrag, transparent: true, depthTest: false, depthWrite: false });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(d.plane_w, d.plane_w), mat);
+  mesh.renderOrder = d.order ?? 10; scene.add(mesh);
+  let soft = null;
+  if (d.shadow && schattenTex) {
+    soft = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.42), basic(schattenTex, { opacity: 0 }));
+    soft.rotation.x = -Math.PI / 2; soft.renderOrder = (d.order ?? 10) - 0.5; scene.add(soft);
+  }
+  figs[n] = { d, mat, mesh, soft, frame: -1 };
+}
+
+// ---------- sprites (bubbles, star eyes, effects) ----------
+// cfg.sprites: [{name, src, aspect, h, order, fig?}] ; je Frame F.sprites[name] = {p:[x,y,z], s, a, rot}
+// with fig: p is in the figure's Synfig units (origin = sole) and the sprite hangs on the figure plane.
+const sprites = {};
+for (const S of cfg.sprites || []) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(S.h * S.aspect, S.h), basic(await loadTex(S.src), { opacity: 0,
+    blending: S.add ? THREE.AdditiveBlending : THREE.NormalBlending }));
+  m.visible = false;
+  if (S.fig) { figs[S.fig].mesh.add(m); } else { scene.add(m); }
+  m.renderOrder = S.order ?? 50;
+  sprites[S.name] = { S, m };
+}
+
+// ---------- steam ----------
+const dampfTex = cfg.tex && cfg.tex.steam && (cfg.steam || []).length ? await loadTex(cfg.tex.steam) : null;
+const dampf = [];
+for (const [k, p] of (cfg.steam || []).entries()) {
+  for (let i = 0; i < 3; i++) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.44), basic(dampfTex, { opacity: 0 }));
+    m.renderOrder = p.order ?? 30; scene.add(m);
+    dampf.push({ m, p, phase: i / 3 + k * 0.37 });
+  }
+}
+
+async function renderAt(f) {
+  const F = cfg.frames[f];
+  await Promise.all(Object.entries(figs).map(async ([n, g]) => {
+    if (g.frame === f) return;
+    const [t, lm] = await Promise.all([loadTex(seqUrl(g.d.src, f)), loadTex(seqUrl(g.d.light, f))]);
+    g.mat.uniforms.tex.value.dispose(); g.mat.uniforms.tex.value = t;
+    g.mat.uniforms.lightMap.value.dispose(); g.mat.uniforms.lightMap.value = lm; g.frame = f;
+  }));
+  camera.position.set(...F.cam); camera.lookAt(new THREE.Vector3(...F.look));
+  for (const [n, m] of Object.entries(layers)) {
+    m.material.opacity = (F.layers && F.layers[n] !== undefined) ? F.layers[n] : 1;
+    const lp = F.lpos && F.lpos[n];                 // movable set layers: [x, y, z, sx, sy]
+    if (lp) { m.position.set(lp[0], lp[1], lp[2]); m.scale.set(lp[3] ?? 1, lp[4] ?? 1, 1); }
+  }
+  for (const [n, o] of Object.entries(overlays)) {
+    const s = (F.overlays && F.overlays[n]) || { opacity: 0 };
+    o.m.material.opacity = s.opacity ?? 1;
+    o.m.visible = (s.opacity ?? 1) > 0.001;
+    const sc = s.s ?? 1;
+    o.m.scale.set(sc, sc, 1);
+    o.m.position.set(-(s.x ?? 0) * o.w * sc, -(s.y ?? 0) * o.h * sc, 0);   // (x, y) = image point relative to the centre
+    o.g.rotation.x = THREE.MathUtils.degToRad(s.tilt ?? 0);
+  }
+  for (const [n, g] of Object.entries(figs)) {
+    const s = F.figs[n];
+    const [fx, fy, fz] = s.feet;
+    const ry = (g.d.billboard ? s.shade : 0) * Math.atan2(camera.position.x - fx, camera.position.z - fz);
+    g.mesh.rotation.y = ry;
+    g.mesh.position.set(fx + g.d.center_dx * Math.cos(ry), fy + g.d.center_above_feet, fz - g.d.center_dx * Math.sin(ry));
+    g.mat.uniforms.shade.value = s.shade;
+    g.mat.uniforms.boil.value = Math.floor(f / 2) % 7;
+    g.mat.uniforms.opacity.value = s.opacity ?? 1;
+    if (g.soft) { g.soft.position.set(fx, fy + 0.01, fz - 0.2); g.soft.scale.set(2, 2, 1); g.soft.material.opacity = s.soft ?? 0; }
+  }
+  for (const [n, { S, m }] of Object.entries(sprites)) {
+    const s = F.sprites && F.sprites[n];
+    m.visible = !!s && (s.a ?? 1) > 0.001 && (s.s ?? 1) > 0.001;
+    if (!m.visible) continue;
+    let [x, y, z] = s.p;
+    if (S.fig) {                                    // figure coordinates -> local plane coordinates
+      const d = figs[S.fig].d;
+      x = x * d.su_world - d.center_dx; y = y * d.su_world - d.center_above_feet; z = 0.02;
+    } else if (!S.fig) {
+      m.rotation.y = Math.atan2(camera.position.x - x, camera.position.z - z) * (S.billboard ? 1 : 0);
+    }
+    m.position.set(x, y, z);
+    m.scale.set(s.sx ?? s.s ?? 1, s.s ?? 1, 1);
+    m.rotation.z = s.rot ?? 0;
+    m.material.opacity = s.a ?? 1;
+  }
+  const t = f / cfg.fps;
+  for (const s of dampf) {
+    const u = (t * 0.45 + s.phase) % 1;
+    const on = (F.steam ?? 1);
+    s.m.position.set(s.p.x + 0.06 * Math.sin(u * 6.28 + s.phase * 9), s.p.y + u * 0.75, s.p.z);
+    s.m.scale.set(0.7 + u * 0.8, 0.7 + u * 0.8, 1);
+    s.m.rotation.z = 0.25 * Math.sin(u * 4 + s.phase * 5);
+    s.m.material.opacity = on * Math.sin(u * Math.PI) * 0.75;
+  }
+  renderer.render(scene, camera);
+}
+
+async function exportAll() {
+  const pending = [];
+  for (let f = 0; f <= END; f++) {
+    await renderAt(f);
+    const blob = await new Promise((ok) => renderer.domElement.toBlob(ok, 'image/png'));
+    pending.push(fetch(`/save/mp_${pad(f, 4)}.png`, { method: 'POST', body: blob }).then((r) => {
+      if (!r.ok) throw new Error('saving failed: frame ' + f); }));
+    if (pending.length >= 6) await pending.shift();
+    status.textContent = `Frame ${f + 1}/${END + 1}`;
+  }
+  await Promise.all(pending);
+}
+window.renderAt = renderAt;
+if (params.get('auto')) {
+  try { await exportAll(); log('frames rendered'); } catch (e) { log('ERROR: ' + e.message); }
+  await fetch('/done');
+} else {
+  await renderAt(Number(params.get('f') || 0));
+  status.textContent = 'ready';
+}
+</script>
+</body>
+</html>

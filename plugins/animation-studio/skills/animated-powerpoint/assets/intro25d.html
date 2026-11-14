@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Deck intro 2.5D</title>
+<style>body { margin: 0; background: #111; color: #ddd; font: 14px sans-serif; } canvas { display: block; }</style>
+<script type="importmap">{ "imports": { "three": "/_mp/vendor/three.module.js" } }</script>
+</head>
+<body>
+<div id="status" style="padding:6px">loading …</div>
+<script type="module">
+// Deck intro: the slide as a screen in a dark room, flipping slides, flying words, a card with a strike + handwriting,
+// a story slide with a typewriter title, wobble and a page turn onto the first frame of the next clip.
+// Every value per frame comes from intro_stage.json (intro.py). Protocol of toon-2d render_multiplane.py.
+import * as THREE from 'three';
+
+const params = new URLSearchParams(location.search);
+const status = document.getElementById('status');
+const log = (m) => { status.textContent = m; fetch('/log', { method: 'POST', body: m }).catch(() => {}); };
+window.addEventListener('error', (e) => log('ERROR: ' + e.message));
+window.addEventListener('unhandledrejection', (e) => log('ERROR: ' + (e.reason && e.reason.message || e.reason)));
+
+const cfg = await (await fetch(params.get('config') || '/intro_stage.json')).json();
+const W = cfg.width, H = cfg.height, END = cfg.end;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(W, H);
+renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0e0d0c);
+const camera = new THREE.PerspectiveCamera(cfg.fov, W / H, 0.05, 500);
+scene.add(camera);
+const loader = new THREE.TextureLoader();
+const loadTex = (url) => new Promise((ok, fail) => loader.load('/' + url, (t) => {
+  t.colorSpace = THREE.NoColorSpace; t.anisotropy = 8; ok(t); }, undefined, () => fail(new Error('missing image: ' + url))));
+
+const slides = {};
+for (const [k, v] of Object.entries(cfg.slides)) slides[k] = await loadTex(v);
+const SW = cfg.slide_w || 16, SH = cfg.slide_h || 9;
+const strich = cfg.slides.card ? await loadTex('tex/strike.png') : slides[Object.keys(slides)[0]];
+const week = cfg.slides.card ? await loadTex('tex/write.png') : strich;
+const titel = await loadTex('tex/title.png'), s2start = await loadTex('tex/next.png');
+
+// the first frame of the next clip lies behind the story slide and shows during the page turn
+const hinten = new THREE.Mesh(new THREE.PlaneGeometry(SW, SH), new THREE.MeshBasicMaterial({ map: s2start,
+  transparent: true, depthTest: false, depthWrite: false }));
+hinten.position.z = -0.03; hinten.renderOrder = 0; hinten.visible = false; scene.add(hinten);
+
+// screen: slide + overlays (strike, handwriting, title) with reveal masks
+const mat = new THREE.ShaderMaterial({
+  uniforms: { tex: { value: slides[cfg.frames[0].slide] }, strich: { value: strich }, week: { value: week }, titel: { value: titel },
+    glow: { value: 0 }, sReveal: { value: 0 }, wReveal: { value: 0 }, tReveal: { value: 0 }, showCard: { value: 0 },
+    showTitle: { value: 0 }, shade: { value: 1 }, yx: { value: new THREE.Vector2(...cfg.year_x) } },
+  vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: `
+    uniform sampler2D tex, strich, week, titel; uniform float glow, sReveal, wReveal, tReveal, showCard, showTitle, shade;
+    uniform vec2 yx; varying vec2 vUv;
+    void main() {
+      vec3 c = texture2D(tex, vUv).rgb;
+      if (showCard > 0.5) {
+        float sx = yx.x - 0.01 + (yx.y - yx.x + 0.02) * sReveal;          // strike from left to right
+        vec4 s = texture2D(strich, vUv); c = mix(c, s.rgb, s.a * step(vUv.x, sx));
+        float wx = yx.x - 0.04 + 0.32 * wReveal;                           // the word is written
+        vec4 w = texture2D(week, vUv); c = mix(c, w.rgb, w.a * step(vUv.x, wx));
+      }
+      if (showTitle > 0.5) { vec4 t = texture2D(titel, vUv); c = mix(c, t.rgb, t.a * step(vUv.x, tReveal)); }
+      gl_FragColor = vec4(c * glow * shade, 1.0);
+    }`,
+  transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide,
+});
+// pivot at the left edge (page turn)
+const pivot = new THREE.Group(); pivot.position.set(-SW / 2, 0, 0); scene.add(pivot);
+const leinwand = new THREE.Mesh(new THREE.PlaneGeometry(SW, SH), mat);
+leinwand.position.set(SW / 2, 0, 0); leinwand.renderOrder = 1; pivot.add(leinwand);
+
+// words
+const wordTex = await Promise.all(cfg.words.map((w) => loadTex(w.src)));
+const keyTex = await Promise.all(cfg.keys.map((w) => loadTex(w.src)));
+const pool = [];
+function wordMesh(i) {
+  while (pool.length <= i) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ transparent: true,
+      depthTest: false, depthWrite: false, side: THREE.DoubleSide }));
+    scene.add(m); pool.push(m);
+  }
+  return pool[i];
+}
+// white flash in front of the camera (cut to the story slide)
+const blitz = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), new THREE.MeshBasicMaterial({ color: 0xffffff,
+  transparent: true, opacity: 0, depthTest: false, depthWrite: false }));
+blitz.position.set(0, 0, -1); blitz.renderOrder = 99; camera.add(blitz);
+
+async function renderAt(f) {
+  const F = cfg.frames[f];
+  mat.uniforms.tex.value = slides[F.slide];
+  const flicker = f < 24 ? 0.92 + 0.08 * Math.sin(f * 1.9) * Math.sin(f * 0.7) : 1;
+  mat.uniforms.glow.value = F.glow * flicker;
+  mat.uniforms.showCard.value = F.slide === 'card' ? 1 : 0;
+  mat.uniforms.sReveal.value = F.strike || 0; mat.uniforms.wReveal.value = F.write || 0;
+  mat.uniforms.showTitle.value = F.title !== undefined ? 1 : 0; mat.uniforms.tReveal.value = F.title || 0;
+  const turn = F.turn || 0, wob = F.wobble || 0;
+  pivot.rotation.y = -turn * Math.PI * 0.97;
+  mat.uniforms.shade.value = 1 - 0.55 * Math.sin(Math.min(turn, 1) * Math.PI * 0.97);
+  leinwand.rotation.z = THREE.MathUtils.degToRad(wob * 1.1);
+  leinwand.position.y = wob * 0.04;
+  hinten.visible = turn > 0;
+  camera.position.set(...F.cam); camera.lookAt(F.cam[0] * 0.3, F.cam[1] * 0.3, 0);
+  pool.forEach((m) => { m.visible = false; });
+  F.words.sort((a, b) => a[4] - b[4]).forEach((w, k) => {
+    const [i, isKey, x, y, z, rot, h, a] = w;
+    const m = wordMesh(k);
+    const info = isKey ? cfg.keys[i] : cfg.words[i];
+    m.material.map = isKey ? keyTex[i] : wordTex[i];
+    m.material.opacity = a * Math.min(1, (15.0 - z) / 2);
+    m.scale.set(h * info.aspect, h, 1);
+    m.position.set(x, y, z); m.rotation.set(0, 0, rot);
+    m.renderOrder = (isKey ? 50 : 10) + k; m.visible = true;            // keywords always on top
+  });
+  blitz.material.opacity = F.flash || 0;
+  renderer.render(scene, camera);
+}
+
+async function exportAll() {
+  const pad = (n) => String(n).padStart(4, '0');
+  const pending = [];
+  for (let f = 0; f <= END; f++) {
+    await renderAt(f);
+    const blob = await new Promise((ok) => renderer.domElement.toBlob(ok, 'image/png'));
+    pending.push(fetch(`/save/mp_${pad(f)}.png`, { method: 'POST', body: blob }).then((r) => {
+      if (!r.ok) throw new Error('saving failed: frame ' + f); }));
+    if (pending.length >= 6) await pending.shift();
+    status.textContent = `Frame ${f + 1}/${END + 1}`;
+  }
+  await Promise.all(pending);
+}
+window.renderAt = renderAt;
+if (params.get('auto')) {
+  try { await exportAll(); log('frames rendered'); } catch (e) { log('FEHLER: ' + e.message); }
+  await fetch('/done');
+} else {
+  await renderAt(Number(params.get('f') || 0));
+  status.textContent = 'ready';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+"""Cut the film with film-finish: lyrics overlay per shot (overlays.py), the whole film on the song (build.py film:
+film.mp4, film_small.mp4 < 30 MB, film_mail.mp4, 0 decode errors), then review sheets:
+  film_sheet.png        3x3 frames over the film (media.contact_sheet)
+  film_shots.jpg        one row per shot at 20/50/80 % (ai-video sheets.shot_sheet) - for the canon check by eye
+  review.json           shot list with technique, material, lip numbers - hand it to the video-review skill
+Usage: uv run --no-project --with numpy --with pillow --with opencv-python-headless python make_film.py [<project>]
+         [--no-lyrics]
+"""
+import argparse
+import json
+import subprocess
+import sys
+
+import _studio  # noqa: E402
+_studio.use("song-analysis", "ai-video", "film-finish")
+import media  # noqa: E402
+import sheets  # noqa: E402
+from song_project import Project  # noqa: E402
+
+FF = _studio.skill_dir("film-finish") / "scripts"
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("project", nargs="?", default=".")
+    ap.add_argument("--no-lyrics", action="store_true")
+    a = ap.parse_args()
+    P = Project(a.project)
+    if "lyrics_style" not in P.p:                         # Claudia look: caps with the clay highlight #D97757
+        P.p["lyrics_style"] = "caps"
+        P.file.write_text(json.dumps(P.p, ensure_ascii=False, indent=1), encoding="utf-8")
+    for s in P.sections():
+        ov = P.dir / "overlays" / f"{s['name']}.mov"
+        if s.get("lyrics") and not a.no_lyrics:
+            subprocess.run([sys.executable, str(FF / "overlays.py"), s["name"], "--project", str(P.dir)], check=True)
+        elif ov.exists():
+            ov.unlink()
+    subprocess.run([sys.executable, str(FF / "build.py"), "film", "--project", str(P.dir)], check=True)
+    film = P.dir / "film.mp4"
+    media.contact_sheet(film, P.dir / "film_sheet.png")
+    t0 = min(s["from"] for s in P.sections())
+    sheets.shot_sheet(film, [(s["from"], s["to"], f"{s['name']} {s['technique']}") for s in P.sections()],
+                      P.dir / "film_shots.jpg", offset=t0)
+    sel = json.loads((P.dir / "selection.json").read_text(encoding="utf-8")) if (P.dir / "selection.json").exists() else {}
+    review = {"film": "film.mp4", "shots": [dict(name=s["name"], start=s["from"], end=s["to"], technique=s["technique"],
+                                                 line=s.get("line"), material=(sel.get("clip") or {}).get(s["name"]))
+                                            for s in P.sections()]}
+    (P.dir / "review.json").write_text(json.dumps(review, ensure_ascii=False, indent=1), encoding="utf-8")
+    print("-> film.mp4, film_sheet.png, film_shots.jpg, review.json")
+
+
+if __name__ == "__main__":
+    main()

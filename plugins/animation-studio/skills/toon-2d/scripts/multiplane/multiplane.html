@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Multiplane Renderer</title>
+<style>body { margin: 0; background: #222; color: #ddd; font: 14px sans-serif; } canvas { display: block; }</style>
+<script type="importmap">{ "imports": { "three": "/_mp/vendor/three.module.js" } }</script>
+</head>
+<body>
+<div id="status" style="padding:6px">loading …</div>
+<script type="module">
+// Multiplane camera: layers (images or image sequences) as glass plates at real depths,
+// perspective camera with keyframes. Config: ?config=/multiplane.json  (&auto=1 = render all + quit)
+import * as THREE from 'three';
+
+const params = new URLSearchParams(location.search);
+const status = document.getElementById('status');
+const log = (msg) => { status.textContent = msg; fetch('/log', { method: 'POST', body: msg }).catch(() => {}); };
+window.addEventListener('error', (e) => log('ERROR: ' + e.message));
+window.addEventListener('unhandledrejection', (e) => log('ERROR: ' + (e.reason && e.reason.message || e.reason)));
+
+const cfg = await (await fetch(params.get('config') || '/multiplane.json')).json();
+const W = cfg.width || 1280, H = cfg.height || 720, END = cfg.end, FOV = cfg.fov || 30;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, alpha: false });
+renderer.setSize(W, H);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(cfg.background || '#000000');
+const camera = new THREE.PerspectiveCamera(FOV, W / H, 0.1, 2000);
+const loader = new THREE.TextureLoader();
+const tanHalf = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
+const pad = (n, w) => String(n).padStart(w, '0');
+const seqUrl = (src, n) => '/' + src.replace(/%0(\d)d/, (_, w) => pad(n, +w));
+
+function loadTex(url) {
+  return new Promise((ok, fail) => loader.load(url, (t) => { t.colorSpace = THREE.SRGBColorSpace; ok(t); },
+    undefined, () => fail(new Error('image missing: ' + url))));
+}
+
+// Planes: list order = back to front. Each plane is sized so that it fills the frame from the camera start,
+// times overscan (margin for the camera move; near planes need more).
+const planes = [];
+for (const [i, p] of cfg.planes.entries()) {
+  const firstUrl = p.sequence ? seqUrl(p.src, p.start || 0) : '/' + p.src;
+  const tex = await loadTex(firstUrl);
+  const over = p.overscan || cfg.overscan || 1.35;
+  const h = 2 * p.dist * tanHalf * over, w = h * W / H;
+  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false,
+    opacity: p.opacity ?? 1, blending: p.blend === 'add' ? THREE.AdditiveBlending : THREE.NormalBlending });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
+  mesh.position.set(p.x || 0, p.y || 0, -p.dist);
+  mesh.renderOrder = i;
+  scene.add(mesh);
+  planes.push({ ...p, mesh, frame: p.sequence ? (p.start || 0) : null });
+}
+
+// Camera keys: [{frame, x, y, z, pan, tilt, ease?}] - ease in/out per segment (ease: 'linear' to switch it off)
+const keys = cfg.camera;
+const smooth = (u) => u * u * (3 - 2 * u);
+function camAt(f) {
+  if (f <= keys[0].frame) return keys[0];
+  for (let i = 0; i < keys.length - 1; i++) {
+    const a = keys[i], b = keys[i + 1];
+    if (f <= b.frame) {
+      const u = (b.ease === 'linear' ? (x) => x : smooth)((f - a.frame) / (b.frame - a.frame));
+      const lerp = (k) => (a[k] || 0) + ((b[k] || 0) - (a[k] || 0)) * u;
+      return { x: lerp('x'), y: lerp('y'), z: lerp('z'), pan: lerp('pan'), tilt: lerp('tilt') };
+    }
+  }
+  return keys[keys.length - 1];
+}
+
+async function renderAt(f) {
+  for (const p of planes) {
+    if (!p.sequence) continue;
+    const n = Math.min((p.start || 0) + f, p.last ?? Infinity);
+    if (n !== p.frame) {
+      const t = await loadTex(seqUrl(p.src, n));
+      p.mesh.material.map.dispose();
+      p.mesh.material.map = t;
+      p.frame = n;
+    }
+  }
+  const c = camAt(f);
+  // z = dolly: positive = closer to the planes (the three.js camera looks along -z)
+  camera.position.set(c.x || 0, c.y || 0, -(c.z || 0));
+  camera.rotation.set(THREE.MathUtils.degToRad(c.tilt || 0), THREE.MathUtils.degToRad(c.pan || 0), 0, 'YXZ');
+  renderer.render(scene, camera);
+}
+
+async function exportAll() {
+  const pending = [];
+  for (let f = 0; f <= END; f++) {
+    await renderAt(f);
+    // saving continues in the background while the next frame renders (max. 6 at once)
+    const blob = await new Promise((ok) => renderer.domElement.toBlob(ok, 'image/png'));
+    const job = fetch(`/save/mp_${pad(f, 4)}.png`, { method: 'POST', body: blob }).then((r) => {
+      if (!r.ok) throw new Error('saving failed: frame ' + f); });
+    pending.push(job);
+    if (pending.length >= 6) await pending.shift();
+    status.textContent = `Frame ${f + 1}/${END + 1}`;
+  }
+  await Promise.all(pending);
+}
+
+window.renderAt = renderAt;
+window.exportAll = exportAll;
+if (params.get('auto')) {
+  try { await exportAll(); log(`${END + 1} frames rendered`); }
+  catch (e) { log('ERROR: ' + e.message); }
+  await fetch('/done');
+} else {
+  await renderAt(0);
+  status.textContent = 'ready - window.exportAll() renders all frames';
+}
+</script>
+</body>
+</html>

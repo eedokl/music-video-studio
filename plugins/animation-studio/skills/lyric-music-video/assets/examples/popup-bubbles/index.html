@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pop-Up Lyric Bubbles</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Nunito:wght@700;900&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="stage"></div>
+    <div id="popups"></div>
+
+    <div id="title">
+      <div class="small">A Pop-Up Lyric Video</div>
+      <h1>Welcome to<br /><span>the Console</span></h1>
+    </div>
+
+    <div id="credits">
+      <h2>Welcome to the Console</h2>
+      <p>Keep the lights on. Script it all.</p>
+    </div>
+
+    <div id="section"></div>
+
+    <div id="hud">
+      <button id="play">Play</button>
+      <div id="bar"><div id="fill"></div></div>
+      <span id="time">0:00</span>
+    </div>
+
+    <div id="start">
+      <div class="card">
+        <div class="tag">Pop-Up Video</div>
+        <h1>Welcome to<br /><span>the Console</span></h1>
+        <p>A three.js lyric video with pop-up info bubbles.</p>
+        <button id="go">▶ Play video</button>
+        <p class="keys">Space play/pause · ←/→ seek 5 s · F fullscreen · H hide bubbles</p>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

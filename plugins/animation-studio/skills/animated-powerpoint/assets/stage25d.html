@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Slide stage 2.5D</title>
+<style>body { margin: 0; background: #222; color: #ddd; font: 14px sans-serif; } canvas { display: block; }</style>
+<script type="importmap">{ "imports": { "three": "/_mp/vendor/three.module.js" } }</script>
+</head>
+<body>
+<div id="status" style="padding:6px">loading …</div>
+<script type="module">
+// The slide as a sheet standing in a room; figures (Synfig frame sequences) step out of it.
+// Every value per frame comes from stage.json (written by clip.py) - this page only applies them.
+// Protocol of toon-2d render_multiplane.py: POST /save/mp_NNNN.png, /log, GET /done.
+import * as THREE from 'three';
+
+const params = new URLSearchParams(location.search);
+const status = document.getElementById('status');
+const log = (m) => { status.textContent = m; fetch('/log', { method: 'POST', body: m }).catch(() => {}); };
+window.addEventListener('error', (e) => log('ERROR: ' + e.message));
+window.addEventListener('unhandledrejection', (e) => log('ERROR: ' + (e.reason && e.reason.message || e.reason)));
+
+const cfg = await (await fetch(params.get('config') || '/stage.json')).json();
+const W = cfg.width, H = cfg.height, END = cfg.end;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(W, H);
+renderer.outputColorSpace = THREE.LinearSRGBColorSpace;   // textures pass through unchanged (values = image values)
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(cfg.background || 0x1c1a18);
+const camera = new THREE.PerspectiveCamera(cfg.fov, W / H, 0.1, 500);
+const loader = new THREE.TextureLoader();
+const loadTex = (url) => new Promise((ok, fail) => loader.load('/' + url, (t) => {
+  t.colorSpace = THREE.NoColorSpace; t.anisotropy = 8; ok(t); }, undefined, () => fail(new Error('missing image: ' + url))));
+const pad = (n, w) => String(n).padStart(w, '0');
+const seqUrl = (src, n) => src.replace(/%0(\d)d/, (_, w) => pad(n, +w));
+const basic = (map, extra = {}) => new THREE.MeshBasicMaterial({ map, transparent: true, depthTest: false,
+  depthWrite: false, ...extra });
+const FY = cfg.floor_y, SW = cfg.slide.w, SH = cfg.slide.h;
+
+// ---------- room (everything 'transparent': one list, order = renderOrder) ----------
+const wall = new THREE.Mesh(new THREE.PlaneGeometry(SW * 5, SH * 4.5), basic(await loadTex(cfg.tex.wall)));
+wall.position.set(0, FY + SH * 2.25, -5); wall.renderOrder = 0; scene.add(wall);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(SW * 5, 45), basic(await loadTex(cfg.tex.floor)));
+floor.rotation.x = -Math.PI / 2; floor.position.set(0, FY, 17.5); floor.renderOrder = 1; scene.add(floor);
+const shadowTex = await loadTex(cfg.tex.shadow);
+const foot = new THREE.Mesh(new THREE.PlaneGeometry(SW * 1.19, 1.6), basic(shadowTex, { opacity: 0.5 }));
+foot.rotation.x = -Math.PI / 2; foot.position.set(0, FY + 0.005, 0.25); foot.renderOrder = 2; scene.add(foot);
+const edge = new THREE.Mesh(new THREE.PlaneGeometry(SW + 0.12, SH + 0.06),
+  new THREE.MeshBasicMaterial({ color: 0x3a3936, transparent: true, depthTest: false, depthWrite: false }));
+edge.position.set(0.05, 0.0, -0.06); edge.renderOrder = 2; scene.add(edge);
+
+// ---------- the slide: a sheet that can bulge like rubber ----------
+const slideTex = [];
+for (const t of cfg.slide.states) slideTex.push(await loadTex(t));
+const slideMat = new THREE.ShaderMaterial({
+  uniforms: { tex: { value: slideTex[0] }, bulge: { value: 0 }, center: { value: new THREE.Vector2(0, 0) },
+    sigma: { value: 1.25 } },
+  vertexShader: `
+    uniform float bulge, sigma; uniform vec2 center;
+    varying vec2 vUv; varying vec3 vN;
+    void main() {
+      vUv = uv;
+      vec3 p = position;
+      vec2 d = p.xy - center;
+      float g = exp(-dot(d, d) / (2.0 * sigma * sigma));
+      p.z += bulge * g;
+      vec2 grad = -bulge * g * d / (sigma * sigma);
+      vN = normalize(vec3(-grad, 1.0));
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+    }`,
+  fragmentShader: `
+    uniform sampler2D tex;
+    varying vec2 vUv; varying vec3 vN;
+    void main() {
+      vec3 c = texture2D(tex, vUv).rgb;
+      vec3 L = normalize(vec3(-0.45, 0.55, 0.7));
+      float li = 1.0 + 0.45 * (dot(normalize(vN), L) - L.z);
+      gl_FragColor = vec4(c * clamp(li, 0.82, 1.08), 1.0);
+    }`,
+  transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide,
+});
+const slide = new THREE.Mesh(new THREE.PlaneGeometry(SW, SH, 192, 108), slideMat);
+slide.renderOrder = 3; scene.add(slide);
+
+// ---------- figures: Synfig frames + light map, flat (slide) -> rounded (room), line boil ----------
+const figVS = `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
+const figFS = `
+  uniform sampler2D tex, lightMap; uniform float shade, boil, seed; varying vec2 vUv;
+  float h(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7)) + seed * 17.13) * 43758.5453); }
+  float n2(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(h(i), h(i + vec2(1, 0)), f.x), mix(h(i + vec2(0, 1)), h(i + vec2(1, 1)), f.x), f.y); }
+  // light map (lightmaps.py): R = light/2, G = rim light, B = ambient occlusion
+  void main() {
+    vec2 uv = vUv + boil * shade * (vec2(n2(vUv * 38.0), n2(vUv * 38.0 + 5.2)) - 0.5);
+    vec4 c = texture2D(tex, uv);
+    vec3 m = texture2D(lightMap, uv).rgb;
+    float lum = dot(c.rgb, vec3(0.299, 0.587, 0.114));
+    vec3 col = c.rgb * mix(1.0, m.r * 2.0 * m.b, shade) + shade * m.g * lum * vec3(1.0, 0.93, 0.78) * 0.5;
+    col = mix(col, col * vec3(1.03, 1.0, 0.95), shade);           // a little warmer in the room
+    float alpha = mix(c.a, smoothstep(0.35, 0.8, c.a), shade);    // the soft slide edge disappears
+    gl_FragColor = vec4(col, alpha);
+  }`;
+const figs = [];
+for (const fc of cfg.figures) {
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { tex: { value: await loadTex(seqUrl(fc.src, 0)) }, lightMap: { value: await loadTex(seqUrl(fc.light, 0)) },
+      shade: { value: 0 }, boil: { value: cfg.boil || 0 }, seed: { value: 0 } },
+    vertexShader: figVS, fragmentShader: figFS, transparent: true, depthTest: false, depthWrite: false });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(fc.plane_w, fc.plane_w), mat);
+  scene.add(mesh);
+  const contact = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.42), basic(shadowTex, { opacity: 0 }));
+  contact.rotation.x = -Math.PI / 2; contact.renderOrder = 4; scene.add(contact);
+  const blobs = fc.foot_blobs.map((b) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), basic(shadowTex, { opacity: 0 }));
+    m.rotation.x = -Math.PI / 2; m.renderOrder = 4; scene.add(m); return { ...b, m };
+  });
+  let tag = null;
+  if (fc.tag) {
+    const TW = fc.tag.w, TH = TW * fc.tag.aspect;
+    tag = new THREE.Mesh(new THREE.PlaneGeometry(TW, TH), basic(await loadTex(fc.tag.src)));
+    tag.renderOrder = 9; tag.userData.TH = TH; scene.add(tag);
+  }
+  figs.push({ fc, mesh, mat, contact, blobs, tag, frame: 0 });
+}
+
+// ---------- paper bits ----------
+const bits = (cfg.frames[0].bits || []).map(() => {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.7),
+    new THREE.MeshBasicMaterial({ color: 0xf2f1ec, side: THREE.DoubleSide, transparent: true, depthTest: false, depthWrite: false }));
+  m.visible = false; scene.add(m); return m;
+});
+
+// ---------- sparkles (glasses flash), always facing the camera ----------
+const sparkles = [];
+if (cfg.sparkles) {
+  const st = await loadTex(cfg.tex.sparkle);
+  for (let i = 0; i < cfg.sparkles; i++) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), basic(st, { opacity: 0, blending: THREE.AdditiveBlending }));
+    m.renderOrder = 10; m.visible = false; scene.add(m); sparkles.push(m);
+  }
+}
+const Lb = new THREE.Vector3(-0.45, 0.55, 0.7).normalize();
+async function renderAt(f) {
+  const d = cfg.frames[f];
+  camera.position.set(...d.cam); camera.lookAt(new THREE.Vector3(...d.look));
+  slideMat.uniforms.tex.value = slideTex[d.state];
+  slideMat.uniforms.bulge.value = d.bulge; slideMat.uniforms.center.value.set(...d.bulge_center);
+  slideMat.uniforms.sigma.value = d.bulge_sigma;
+  const order = [];
+  for (let i = 0; i < figs.length; i++) {
+    const F = figs[i], s = d.figs[i];
+    if (f !== F.frame) {
+      const t = await loadTex(seqUrl(F.fc.src, f)), lm = await loadTex(seqUrl(F.fc.light, f));
+      F.mat.uniforms.tex.value.dispose(); F.mat.uniforms.tex.value = t;
+      F.mat.uniforms.lightMap.value.dispose(); F.mat.uniforms.lightMap.value = lm; F.frame = f;
+    }
+    const [fx, fy, fz] = s.feet;
+    const ry = s.shade * Math.atan2(camera.position.x - fx, camera.position.z - fz);   // turns to the camera in the room
+    F.mesh.rotation.y = ry;
+    F.mesh.position.set(fx + F.fc.center_dx * Math.cos(ry), fy + F.fc.center_above_feet, fz + 0.01 - F.fc.center_dx * Math.sin(ry));
+    F.mat.uniforms.shade.value = s.shade;
+    F.mat.uniforms.seed.value = Math.floor(f / 2);                  // line boil: new pattern every 2 frames
+    order.push([fz, F]);
+    const sh = s.shadow;
+    F.contact.position.set(sh.x, FY + 0.01, sh.z); F.contact.scale.set(sh.s, sh.s, 1); F.contact.material.opacity = sh.a;
+    for (const b of F.blobs) {                       // a dark small shadow under each sole, turning with the figure
+      b.m.position.set(fx + b.dx * Math.cos(ry), FY + 0.012, fz + b.dz - b.dx * Math.sin(ry));
+      b.m.scale.set(b.w, b.w * 0.32, 1); b.m.material.opacity = sh.contact;
+    }
+    if (F.tag) {
+      const ts = s.tag, tp = F.fc.tag.pos;
+      F.tag.visible = ts > 0.001; F.tag.scale.set(ts, ts, 1);
+      F.tag.position.set(tp[0], tp[1] + F.tag.userData.TH * ts / 2, tp[2]);
+      F.tag.rotation.y = Math.atan2(camera.position.x - tp[0], camera.position.z - tp[2]);
+    }
+  }
+  order.sort((a, b) => a[0] - b[0]).forEach(([, F], k) => { F.mesh.renderOrder = 6 + k * 0.01; });
+  const front = Math.max(...d.figs.map((s) => s.feet[2]));
+  (d.bits || []).forEach((b, i) => {
+    const m = bits[i]; m.visible = !!b[7];
+    m.position.set(b[0], b[1], b[2]); m.rotation.set(b[3], b[4], b[5]); m.scale.set(b[6], b[6], 1);
+    const n = new THREE.Vector3(0, 0, 1).applyEuler(m.rotation);
+    m.material.color.setScalar(0.8 + 0.2 * Math.abs(n.dot(Lb)));
+    m.renderOrder = b[2] > front ? 8 : 5;
+  });
+  (d.sparkles || []).forEach((s, i) => {
+    const m = sparkles[i]; m.visible = s[5] > 0 && s[3] > 0.001;
+    m.position.set(s[0], s[1], s[2]); m.scale.set(s[3], s[3], 1); m.quaternion.copy(camera.quaternion);
+    m.rotateZ(s[4]); m.material.opacity = 1;
+  });
+  renderer.render(scene, camera);
+}
+
+async function exportAll() {
+  const pending = [];
+  for (let f = 0; f <= END; f++) {
+    await renderAt(f);
+    const blob = await new Promise((ok) => renderer.domElement.toBlob(ok, 'image/png'));
+    pending.push(fetch(`/save/mp_${pad(f, 4)}.png`, { method: 'POST', body: blob }).then((r) => {
+      if (!r.ok) throw new Error('saving failed: frame ' + f); }));
+    if (pending.length >= 6) await pending.shift();
+    status.textContent = `frame ${f + 1}/${END + 1}`;
+  }
+  await Promise.all(pending);
+}
+window.renderAt = renderAt;
+if (params.get('auto')) {
+  try { await exportAll(); log(`${END + 1} frames rendered`); } catch (e) { log('ERROR: ' + e.message); }
+  await fetch('/done');
+} else {
+  await renderAt(Number(params.get('f') || 0));
+  status.textContent = 'ready';
+}
+</script>
+</body>
+</html>

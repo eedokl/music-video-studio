@@ -1,0 +1,42 @@
+{
+ "_about": "Fixed voice per character. A project overrides or adds entries in project.json \"voices\" (same keys). engine: qwen (Qwen3-TTS: VoiceDesign makes a reference once, every line is then cloned from it with the Base model -> the same voice in every film) | piper (ONNX voice model) | system (Windows speech, SSML). Voices are DESCRIBED, never cloned from real actors. 'fallback' is tried in order when the engine is not installed.",
+ "voices": {
+  "tim": {
+   "engine": "qwen",
+   "design": "A man in his mid twenties with a bright, friendly, slightly nervous tenor voice. A curious, enthusiastic hobby programmer, quick and expressive, sometimes a little cheeky. Natural conversational pace. Speaks native German.",
+   "sample_text": "Okay, ganz ruhig. Ich schreibe nur noch schnell diesen einen Prompt, dann mache ich Feierabend. Versprochen!",
+   "reference": "voices/tim.wav",
+   "fallback": [{"engine": "piper", "model": "de_DE-thorsten-high", "pitch": 1.06},
+                {"engine": "system", "voice": "Hedda", "ssml_pitch": "-10%", "pitch": 0.84}]
+  },
+  "lia": {
+   "engine": "qwen",
+   "design": "A woman around twenty-five with a warm, clear, lively voice. Confident, witty and kind, a singer who also speaks with a smile. Natural conversational pace. Speaks native German.",
+   "sample_text": "Hey, schau mal! Wenn wir das zusammen machen, wird es viel lustiger. Komm, wir fangen einfach an.",
+   "reference": "voices/lia.wav",
+   "fallback": [{"engine": "piper", "model": "de_DE-mls-medium", "speaker": 0, "pitch": 1.0},
+                {"engine": "system", "voice": "Hedda"}]
+  },
+  "computer": {
+   "engine": "qwen",
+   "design": "A friendly home computer that talks: a calm, smooth, clear and precise voice of a man around forty, polite, slightly smug and a little mechanical in its rhythm, like an announcer of a game show. Speaks native German.",
+   "sample_text": "Guten Abend. Ihr Kontingent ist zu neunzig Prozent verbraucht. Möchten Sie jetzt auf Pro upgraden?",
+   "reference": "voices/computer.wav",
+   "fx": "screen",
+   "fallback": [{"engine": "piper", "model": "de_DE-thorsten_emotional-medium", "pitch": 0.97, "fx": "screen"},
+                {"engine": "system", "voice": "Hedda", "ssml_pitch": "-15%", "pitch": 0.9, "fx": "screen"}]
+  },
+  "narrator": {
+   "engine": "qwen",
+   "design": "A warm, calm storyteller around fifty with a soft, deep voice, like reading a bedtime story. Speaks native German.",
+   "sample_text": "Es war einmal ein kleiner Computer, der nachts heimlich Geschichten schrieb.",
+   "reference": "voices/narrator.wav",
+   "fallback": [{"engine": "piper", "model": "de_DE-thorsten-high"}, {"engine": "system", "voice": "Hedda"}]
+  }
+ },
+ "fx": {
+  "screen": "highpass=f=140,lowpass=f=7500,aecho=0.8:0.6:14:0.22",
+  "radio": "highpass=f=330,lowpass=f=3300,acompressor=threshold=-20dB:ratio=5:makeup=4",
+  "small": "highpass=f=220"
+ }
+}

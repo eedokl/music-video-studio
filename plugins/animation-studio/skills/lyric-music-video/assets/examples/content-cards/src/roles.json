@@ -1,0 +1,404 @@
+{
+ "families": {
+  "product": {
+   "label": "Command & Crew",
+   "color": "#8e44ad"
+  },
+  "dsp": {
+   "label": "Station Systems",
+   "color": "#1f7fd1"
+  },
+  "ai": {
+   "label": "Robotics & Flight",
+   "color": "#16a39a"
+  },
+  "sw": {
+   "label": "Engineering & Research",
+   "color": "#2c5d8f"
+  },
+  "quality": {
+   "label": "Safety & Life Support",
+   "color": "#2e9e5b"
+  }
+ },
+ "stages": [
+  {
+   "id": "data",
+   "label": "Supplies",
+   "text": "Receive, sort and store everything the cargo ships bring."
+  },
+  {
+   "id": "dsp",
+   "label": "Power & comms",
+   "text": "Keep the lights on and the radio clear."
+  },
+  {
+   "id": "ai",
+   "label": "Robotics",
+   "text": "Let rovers and arms work outside, safely and on their own."
+  },
+  {
+   "id": "sw",
+   "label": "Habitat & build",
+   "text": "Shape decks, modules and parts that last for years."
+  },
+  {
+   "id": "qa",
+   "label": "Safety",
+   "text": "Prove every system works, every day and every night."
+  },
+  {
+   "id": "product",
+   "label": "Mission",
+   "text": "Reach the goals the station was built for."
+  }
+ ],
+ "roles": [
+  {
+   "name": "Crew Coach",
+   "summary": "The Crew Coach helps the crew work well together by guiding routines, easing friction and keeping everyone learning.",
+   "icon": "crew-coach-icon.png",
+   "illustration": "crew-coach.png",
+   "family": "product",
+   "stages": [
+    "enabler"
+   ],
+   "quote": "I help the crew stay in sync by clearing blockers, running good routines and making room for every voice on board.",
+   "tasks": [
+    "Run the daily crew briefing and the weekly review",
+    "Coach teams in shared routines and clear handovers",
+    "Remove blockers and keep improving how the crew works",
+    "Keep communication open between shifts and modules"
+   ],
+   "competence": [
+    "Knows how small teams work best under pressure",
+    "Supports crew performance and steady improvement",
+    "Encourages sharing knowledge across every module"
+   ]
+  },
+  {
+   "name": "Flight Software Engineer – Autopilot",
+   "summary": "The Flight Software Engineer writes the autopilot code that keeps shuttles and rovers on course.",
+   "icon": "flight-software-icon.png",
+   "illustration": "flight-software.png",
+   "family": "ai",
+   "stages": [
+    "ai"
+   ],
+   "quote": "I teach our vehicles to steer themselves with lean, reliable code that runs on tiny onboard computers.",
+   "tasks": [
+    "Write autopilot software for shuttles and rovers",
+    "Tune control loops for small onboard computers",
+    "Bring trained models into the flight software",
+    "Measure timing, memory and power on the real vehicle"
+   ],
+   "competence": [
+    "Strong programming skills for small onboard computers",
+    "Knowledge of control systems and machine learning",
+    "Understanding of limits like memory, timing and power",
+    "Works across software, robotics and flight topics"
+   ]
+  },
+  {
+   "name": "Research Lead",
+   "summary": "The Research Lead turns open questions into experiments and new ideas into the station's next upgrades.",
+   "icon": "research-lead-icon.png",
+   "illustration": "research-lead.png",
+   "family": "sw",
+   "stages": [
+    "sw"
+   ],
+   "quote": "I solve the hard questions on board by combining curiosity, careful experiments and a good look at tomorrow.",
+   "tasks": [
+    "Plan experiments and the methods behind them",
+    "Break complex problems into testable steps",
+    "Turn promising results into station upgrades",
+    "Share findings with every crew and module"
+   ],
+   "competence": [
+    "Deep expertise in science and engineering methods",
+    "Knowledge of experiment design and data analysis",
+    "Analytical problem solving and system thinking",
+    "Explains complex ideas in plain words"
+   ]
+  },
+  {
+   "name": "Greenhouse Lead",
+   "summary": "The Greenhouse Lead grows the station's food, from the first seedling to a steady harvest line.",
+   "icon": "greenhouse-lead-icon.png",
+   "illustration": "greenhouse-lead.png",
+   "family": "dsp",
+   "stages": [
+    "dsp",
+    "sw"
+   ],
+   "quote": "I connect plants, light and water into a garden that feeds the whole crew, season after season.",
+   "tasks": [
+    "Plan crops, light cycles and nutrient mixes",
+    "Turn test beds into a steady harvest line",
+    "Balance water, power and space with other modules",
+    "Review yields and share what grows best"
+   ],
+   "competence": [
+    "Deep knowledge of plants in closed habitats",
+    "Understanding of light, water and air systems",
+    "Systems thinking across food, power and waste",
+    "Leadership, planning and clear communication"
+   ]
+  },
+  {
+   "name": "Water Recycler",
+   "summary": "The Water Recycler keeps every drop moving: collected, filtered, stored and clean enough to drink.",
+   "icon": "water-recycler-icon.png",
+   "illustration": "water-recycler.png",
+   "family": "dsp",
+   "stages": [
+    "data"
+   ],
+   "quote": "I turn used water into fresh water by watching every filter, every tank and every sample.",
+   "tasks": [
+    "Run collection, filtering and storage loops",
+    "Test water samples every shift",
+    "Automate the checks on pumps and filters",
+    "Report water quality and fix leaks fast"
+   ],
+   "competence": [
+    "Knowledge of filtration and recycling loops",
+    "Experience with pumps, sensors and simple scripts",
+    "Understanding of water chemistry on board",
+    "Strong analytical and problem-solving skills"
+   ]
+  },
+  {
+   "name": "Power Engineer",
+   "summary": "The Power Engineer balances solar panels, batteries and loads so the station never goes dark.",
+   "icon": "power-engineer-icon.png",
+   "illustration": "power-engineer.png",
+   "family": "dsp",
+   "stages": [
+    "dsp"
+   ],
+   "quote": "I keep every module powered by trimming the load and squeezing the most out of every panel.",
+   "tasks": [
+    "Manage solar panels, batteries and power lines",
+    "Trim loads and plan power for every shift",
+    "Install and test new power hardware",
+    "Find and fix faults before they spread"
+   ],
+   "competence": [
+    "Expertise in electrical systems and batteries",
+    "Knowledge of solar power and load planning",
+    "Understanding of switches, converters and controllers",
+    "Calm troubleshooting under pressure"
+   ]
+  },
+  {
+   "name": "Radio Operator",
+   "summary": "The Radio Operator keeps contact with ground control and passing ships, clear through any static.",
+   "icon": "radio-operator-icon.png",
+   "illustration": "radio-operator.png",
+   "family": "dsp",
+   "stages": [
+    "data",
+    "dsp"
+   ],
+   "quote": "I make sure every message gets through by turning faint, noisy static into a clear voice.",
+   "tasks": [
+    "Run the daily contact windows with ground control",
+    "Clean up noisy transmissions and log every call",
+    "Maintain antennas, receivers and backup links",
+    "Relay messages between crews and visiting ships"
+   ],
+   "competence": [
+    "Expertise in radio systems and antennas",
+    "Strong ear for weak and noisy transmissions",
+    "Knowledge of filters and transmission protocols",
+    "Clear, calm and precise communication"
+   ]
+  },
+  {
+   "name": "Rover Robotics Engineer",
+   "summary": "The Rover Robotics Engineer builds and teaches the rovers that work outside the hull.",
+   "icon": "rover-robotics-icon.png",
+   "illustration": "rover-robotics.png",
+   "family": "ai",
+   "stages": [
+    "ai"
+   ],
+   "quote": "I put a brain in our rovers so they can drill, carry and explore while the crew stays safe inside.",
+   "tasks": [
+    "Build and repair rovers and robotic arms",
+    "Train rovers to recognise rocks, tools and hazards",
+    "Test new behaviours on the practice field",
+    "Work with power, flight and safety teams"
+   ],
+   "competence": [
+    "Expertise in robotics and onboard computing",
+    "Knowledge of sensors, motors and machine learning",
+    "Understanding of limits in power and weight",
+    "Strong hands-on and problem-solving skills"
+   ]
+  },
+  {
+   "name": "Station Architect",
+   "summary": "The Station Architect draws how modules, docks and trusses fit together into one safe station.",
+   "icon": "station-architect-icon.png",
+   "illustration": "station-architect.png",
+   "family": "ai",
+   "stages": [
+    "ai",
+    "sw"
+   ],
+   "quote": "I draw the blueprint of the station, every bolt and every beam, so it can grow without breaking.",
+   "tasks": [
+    "Define how modules, docks and trusses connect",
+    "Turn mission needs into a buildable layout",
+    "Balance mass, air and power across the station",
+    "Guide build crews on interfaces and trade-offs"
+   ],
+   "competence": [
+    "Strong expertise in structures and layouts",
+    "Knowledge of docking, mass and power budgets",
+    "Understanding of how modules share air and power",
+    "Guides decisions across every build crew"
+   ]
+  },
+  {
+   "name": "Mission Commander",
+   "summary": "The Mission Commander sets the course, picks the priorities and keeps every crew aimed at the same goal.",
+   "icon": "mission-commander-icon.png",
+   "illustration": "mission-commander.png",
+   "family": "product",
+   "stages": [
+    "product"
+   ],
+   "quote": "I turn the mission into clear priorities, so every crew knows what matters today and why.",
+   "tasks": [
+    "Set and order the mission goals for each week",
+    "Align ground control wishes with what the crew can do",
+    "Lead planning and the big decisions on board",
+    "Make sure every shift adds real value to the mission"
+   ],
+   "competence": [
+    "Strong sense for priorities and trade-offs",
+    "Balances crew, mission and technical needs",
+    "Clear communication with ground and crew",
+    "Strategic thinking and calm decisions"
+   ]
+  },
+  {
+   "name": "Habitat Designer",
+   "summary": "The Habitat Designer builds the decks, cabins and gardens where the crew lives and works.",
+   "icon": "habitat-designer-icon.png",
+   "illustration": "habitat-designer.png",
+   "family": "sw",
+   "stages": [
+    "sw"
+   ],
+   "quote": "I design living spaces that hold the weight of daily life and still feel like home.",
+   "tasks": [
+    "Lay out decks, cabins and shared spaces",
+    "Turn crew needs into practical designs",
+    "Guide choices on materials and space",
+    "Work with build crews on every refit"
+   ],
+   "competence": [
+    "Strong expertise in habitat and interior design",
+    "Understanding of life support, light and noise",
+    "Balances cosiness, safety and weight- Strong communication across all crews"
+   ]
+  },
+  {
+   "name": "Life-Support Manager",
+   "summary": "The Life-Support Manager keeps oxygen, water, heat and pressure running for everyone on board.",
+   "icon": "life-support-icon.png",
+   "illustration": "life-support.png",
+   "family": "quality",
+   "stages": [
+    "enabler"
+   ],
+   "quote": "I keep the backbone of the station strong, so nobody has to think about the air they breathe.",
+   "tasks": [
+    "Manage oxygen, water, heat and pressure systems",
+    "Plan maintenance and spare parts for every loop",
+    "Coordinate repairs with power and water crews",
+    "Keep every life-support system available and safe"
+   ],
+   "competence": [
+    "Knowledge of air, water and thermal systems",
+    "Understanding of alarms, backups and redundancy",
+    "Experience with maintenance and operations",
+    "Strong coordination and planning skills"
+   ]
+  },
+  {
+   "name": "Safety Officer",
+   "summary": "The Safety Officer owns the drills, checklists and standards that keep the station safe.",
+   "icon": "safety-officer-icon.png",
+   "illustration": "safety-officer.png",
+   "family": "quality",
+   "stages": [
+    "qa"
+   ],
+   "quote": "I design how we prove the station is safe, from the spacesuit up to the whole station.",
+   "tasks": [
+    "Define drills, checklists and safety standards",
+    "Plan checks for suits, modules and the whole station",
+    "Coach crews in emergency routines",
+    "Keep improving how fast and well we check"
+   ],
+   "competence": [
+    "Expertise in safety engineering and risk",
+    "Knowledge of drills, checklists and standards",
+    "Understanding of every station system",
+    "Strong coaching and communication skills"
+   ]
+  },
+  {
+   "name": "Night Inspector",
+   "summary": "The Night Inspector walks the station every night and catches small problems before they grow.",
+   "icon": "night-inspector-icon.png",
+   "illustration": "night-inspector.png",
+   "family": "quality",
+   "stages": [
+    "qa"
+   ],
+   "quote": "I keep the station healthy by checking every hatch, valve and gauge while the others sleep.",
+   "tasks": [
+    "Run the nightly inspection round",
+    "Log readings from every module and gauge",
+    "Report leaks, faults and wear in the morning briefing",
+    "Improve the checklists after every finding"
+   ],
+   "competence": [
+    "Experience with inspections and measurements",
+    "Knowledge of station systems and gauges",
+    "Understanding of maintenance routines",
+    "Sharp eye for small changes"
+   ]
+  },
+  {
+   "name": "Station Machinist",
+   "summary": "The Station Machinist makes and repairs the parts and tools the station runs on.",
+   "icon": "station-machinist-icon.png",
+   "illustration": "station-machinist.png",
+   "family": "sw",
+   "stages": [
+    "enabler"
+   ],
+   "quote": "I forge the parts that power us all, from a tiny bracket to a brand-new pump housing.",
+   "tasks": [
+    "Make and repair parts in the station workshop",
+    "Print spare parts instead of waiting for cargo",
+    "Fit new tools into existing modules",
+    "Ask crews what they need and build it"
+   ],
+   "competence": [
+    "Strong machining and repair skills",
+    "Knowledge of 3D printing and materials",
+    "Understanding of how station systems fit together",
+    "Builds parts that are easy to service"
+   ]
+  }
+ ]
+}

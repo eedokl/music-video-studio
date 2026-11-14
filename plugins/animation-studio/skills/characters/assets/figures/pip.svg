@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Figure "Pip" (the code-drawn Pip redrawn as an Inkscape-style SVG).
+     Rig convention of the plugin: parts = groups with id, pivots = pivot_<part>, mouth drawn by lip sync at pivot_mund,
+     feet at SVG point (200, 590), 72 px = 1 Synfig unit. The whole body is the head ("kopf", pivot at the feet). -->
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600">
+  <g id="pip">
+    <g id="kopf">
+      <circle id="pivot_kopf" cx="200" cy="590" r="2" fill="#f0f"/>
+      <g id="antenne">
+        <circle id="pivot_antenne" cx="200" cy="381" r="2" fill="#f0f"/>
+        <path d="M 200 384.8 C 200.4 366 202.6 342 203.6 320" fill="none" stroke="#3b2418" stroke-width="6.5" stroke-linecap="round"/>
+        <circle cx="203.6" cy="312.8" r="17.3" fill="#3b2418"/>
+        <circle cx="203.6" cy="312.8" r="13" fill="#ec5a4f"/>
+        <circle cx="200" cy="307.8" r="3.6" fill="#ffb3a6"/>
+      </g>
+      <path d="M 200 590 C 262.4 590 295 567.2 295 514.4 C 295 461.6 248 377.6 200 377.6 C 152 377.6 105 461.6 105 514.4 C 105 567.2 137.6 590 200 590 Z"
+            fill="#fbb53f"/>
+      <path d="M 200 590 C 137.6 590 105 567.2 105 514.4 C 105 461.6 152 377.6 200 377.6 C 168 392 132 450 134 512 C 136 560 166 584 200 590 Z"
+            fill="#c9761f" opacity="0.35"/>
+      <ellipse cx="238" cy="420" rx="17" ry="11" fill="#fff0b0" opacity="0.6"/>
+      <path d="M 200 590 C 262.4 590 295 567.2 295 514.4 C 295 461.6 248 377.6 200 377.6 C 152 377.6 105 461.6 105 514.4 C 105 567.2 137.6 590 200 590 Z"
+            fill="none" stroke="#3b2418" stroke-width="6.5"/>
+      <ellipse cx="200" cy="521.6" rx="56.2" ry="43.8" fill="#ffe2a0"/>
+      <ellipse cx="141" cy="473.4" rx="14.4" ry="8.6" fill="#f0807a" opacity="0.55"/>
+      <ellipse cx="259" cy="473.4" rx="14.4" ry="8.6" fill="#f0807a" opacity="0.55"/>
+      <g id="auge_l">
+        <ellipse cx="169.8" cy="437.4" rx="23.8" ry="29" fill="#3b2418"/>
+        <ellipse cx="169.8" cy="437.4" rx="19.4" ry="23.7" fill="#ffffff"/>
+        <g id="pupille_l"><circle cx="169.8" cy="439.6" r="10.8" fill="#3b2418"/><circle cx="173.4" cy="435.3" r="3.6" fill="#ffffff"/></g>
+        <circle id="pivot_auge_l" cx="169.8" cy="437.4" r="2" fill="#f0f"/>
+      </g>
+      <g id="auge_r">
+        <ellipse cx="230.2" cy="437.4" rx="23.8" ry="29" fill="#3b2418"/>
+        <ellipse cx="230.2" cy="437.4" rx="19.4" ry="23.7" fill="#ffffff"/>
+        <g id="pupille_r"><circle cx="230.2" cy="439.6" r="10.8" fill="#3b2418"/><circle cx="233.8" cy="435.3" r="3.6" fill="#ffffff"/></g>
+        <circle id="pivot_auge_r" cx="230.2" cy="437.4" r="2" fill="#f0f"/>
+      </g>
+      <g id="blatt">
+        <circle id="pivot_blatt" cx="155.4" cy="388.4" r="2" fill="#f0f"/>
+        <g transform="translate(155.4 388.4) rotate(-22)">
+          <path d="M -28.4 0 L -38.6 3.4" fill="none" stroke="#3b2418" stroke-width="3.4" stroke-linecap="round"/>
+          <path d="M -28.4 0 C -14 -18 14 -18 28.4 0 C 14 18 -14 18 -28.4 0 Z" fill="#e8862f" stroke="#3b2418" stroke-width="3.4"/>
+          <ellipse cx="4.5" cy="-4" rx="9" ry="5" fill="#ffc062" opacity="0.7"/>
+          <path d="M -25.5 0 L 22.7 0" fill="none" stroke="#a24e1c" stroke-width="2"/>
+        </g>
+      </g>
+      <circle id="pivot_mund" cx="200" cy="474.8" r="2" fill="#f0f"/>
+    </g>
+  </g>
+</svg>
