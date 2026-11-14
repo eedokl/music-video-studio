@@ -34,6 +34,14 @@ from song_project import Project  # noqa: E402
 HERE = Path(__file__).resolve().parent
 PAGE = HERE.parent / "assets" / "takes.html"
 LIP_DIRS = ("lipsync", "s2v", "infinitetalk", "humo", "minimax_h3")
+VOCALISE = {"oh", "ooh", "oooh", "ah", "aah", "la", "na", "mm", "mmm", "hm", "uh", "whoa", "wo", "yeah", "ha", "hey"}
+
+
+def vocalise(line):
+    """A line without real words ("Ooh, ah", "(la la)"): the lip score says little there - judge by eye (the live film's
+    S2V vocalises 49 / 64 measured weak but were kept for their expression)."""
+    ws = re.findall(r"[A-Za-zÄÖÜäöüß]+", line or "")
+    return bool(line) and all(w.lower() in VOCALISE for w in ws)
 
 
 def done(files):
@@ -123,6 +131,7 @@ def build(P, only=None, rebuild=False):
                              motion=li.get("motion"), warn=li.get("warn", ""), kind=c.parent.name))
         shots.append(dict(name=s["name"], start=s["from"], end=s["to"], technique=s.get("technique"),
                           line=s.get("line") or "", auto=a_ent.get("file"), auto_entry=a_ent,
+                          vocalise=s.get("technique") == "lipsync" and vocalise(s.get("line")), engine=s.get("engine"),
                           manual=(manual.get(s["name"]) or {}).get("file"), takes=rows))
         print(f"  {s['name']}: {len(rows)} takes" + (f", auto {Path(shots[-1]['auto']).name}" if shots[-1]["auto"] else ""))
     data = dict(title=P.get("title") or P.dir.name, shots=shots)

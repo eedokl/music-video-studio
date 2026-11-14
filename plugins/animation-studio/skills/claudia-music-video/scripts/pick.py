@@ -223,7 +223,7 @@ def pick_clips(P, sel, log, rows, curve):
         score, c, lag, rl, closed, r = max(open_, key=lambda x: x[0])
         out[name] = {"file": relp(P, c), "lag": lag, "score": score, "r": rl, "r0": r["r0"], "range": r["range"]}
         log.append(f"clip {name}: {c.parent.name}/{c.name}  lag {lag:+d}  score {score}")
-        if all((x[3] or 0) < 0 for x in rated) and (curve or "rhubarb") == "rhubarb":
+        if all((x[3] or 0) < 0 for x in rated) and curve == "rhubarb":
             log.append(f"  WARNING {name}: every take correlates NEGATIVELY with the Rhubarb curve - the curve, not the "
                        "clips, may be off (user test: -0.6 with rhubarb, +0.77 with the level): pick again with --curve level")
 
@@ -233,7 +233,9 @@ def main():
     ap.add_argument("what", choices=["auto", "start", "broll", "clips", "all"])
     ap.add_argument("project", nargs="?", default=".")
     ap.add_argument("--repair-mic", action="store_true", help="start: repair the mic when no variant passes (GPU)")
-    ap.add_argument("--curve", choices=["rhubarb", "level", "mix", "both"], help="vocal curve (default project lip_curve or rhubarb)")
+    ap.add_argument("--curve", choices=["rhubarb", "level", "mix", "both"],
+                    help="vocal curve (default project lip_curve or mix = Rhubarb + vocal level, as the live film used: "
+                         "Rhubarb alone went negative in loud choruses where the lips were right)")
     a = ap.parse_args()
     P = Project(a.project)
     sel = load(P)
@@ -243,7 +245,7 @@ def main():
     if a.what in ("auto", "broll", "all"):
         pick_broll(P, sel, log, rb)
     if a.what in ("clips", "all"):
-        pick_clips(P, sel, log, rc, a.curve or P.get("lip_curve", "rhubarb"))
+        pick_clips(P, sel, log, rc, a.curve or P.get("lip_curve", "mix"))
     save(P, sel)
     with open(P.dir / "picks.log", "a", encoding="utf-8") as f:
         f.write("\n".join(log) + "\n")

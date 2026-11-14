@@ -21,7 +21,9 @@ of the sung shots sing on camera, never three of the same in a row. --s2v: lip-s
 sung word >= 1.4 s, not in a [Speaker]/spoken part, shot <= 4.7 s) get engine "s2v", at most 15 % of the sung shots
 (~15 min GPU each). Set "engine" by hand for an emotional close-up the rule misses.
 Framings and cameras never repeat back to back. A new seed gives a different plan; ideas recorded by the user win.
-Usage: uv run plan.py [<project>] [--version studio|live] [--lipsync 0.5] [--max-len 5.0] [--s2v] [--force]
+Usage: uv run plan.py [<project>] [--version studio|live] [--lipsync 0.5] [--max-len 5.0] [--no-s2v] [--force]
+  S2V (Wan2.2-S2V) for held notes is on by default (rule of the Europe 2031 studio film, see the s2v block below);
+  --no-s2v = LTX only.
 """
 import argparse
 import json
@@ -89,7 +91,8 @@ def main():
     ap.add_argument("--version", choices=["studio", "live"])
     ap.add_argument("--lipsync", type=float, help="share of sung shots with lip-sync (default 0.5)")
     ap.add_argument("--max-len", type=float, default=5.0)
-    ap.add_argument("--s2v", action="store_true", help="allow Wan2.2-S2V for held notes (slow: ~15 min per shot)")
+    ap.add_argument("--s2v", action="store_true", help=argparse.SUPPRESS)     # old flag: S2V is on by default now
+    ap.add_argument("--no-s2v", action="store_true", help="no Wan2.2-S2V shots (LTX only; S2V ~11-18 min per shot)")
     ap.add_argument("--force", action="store_true", help="replace a plan that already has creative fields")
     a = ap.parse_args()
     P = Project(a.project)
@@ -156,16 +159,25 @@ def main():
             if idea.get("by") == "user" or not shots[-1]["idea"]:
                 shots[-1]["idea"] = idea["idea"]
         hist.append(tech)
-    if a.s2v:                                # held notes (longest sung word >= 1.4 s), not in spoken parts
+    if not a.no_s2v:
+        # Wan2.2-S2V for held notes, the rule of the Europe 2031 studio film (planung/shotplan.py waehle()): candidates
+        # hold a sung word >= 0.7 s, ranked by held seconds - 0.25 x words per second (slow lines first), at most a
+        # quarter of the singing shots and 6 per film (S2V costs 11-18 min a shot); spoken / rap parts stay LTX.
+        # There V3 kept S2V in 5 of 6 such shots; jobs.py renders 1 LTX seed next to every S2V clip, so the take page
+        # (takes.py) can still switch a shot to LTX.
         held = []
         for s in shots:
-            ws = [w["end"] - w["t"] for w in sheet.get("words", []) if s["from"] <= w["t"] < s["to"]]
+            ws = [w for w in sheet.get("words", []) if s["from"] <= w["t"] < s["to"]]
             spoken = any(k in s["marker"].lower() for k in ("speak", "spoken", "rap"))
-            if s["technique"] == "lipsync" and ws and max(ws) >= 1.4 and not spoken and s["to"] - s["from"] <= 4.7:
-                held.append((max(ws), s))
-        cap = max(1, round(0.15 * sum(x["technique"] == "lipsync" for x in shots)))
-        for _, s in sorted(held, key=lambda x: -x[0])[:cap]:
+            if s["technique"] != "lipsync" or not ws or spoken or s["to"] - s["from"] > 4.7:
+                continue
+            hold = max(w["end"] - w["t"] for w in ws)
+            if hold >= 0.7:
+                held.append((hold - 0.25 * len(ws) / (s["to"] - s["from"]), hold, s))
+        cap = min(6, max(1, round(0.25 * sum(x["technique"] == "lipsync" for x in shots))))
+        for _, hold, s in sorted(held, key=lambda x: -x[0])[:cap]:
             s["engine"] = "s2v"
+            s["engine_reason"] = f"held note {hold:.1f} s"
     if "lipsync" not in hist:
         k = max(range(len(shots)), key=lambda j: len(shots[j]["line"]))
         shots[k]["technique"] = "lipsync"

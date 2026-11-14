@@ -70,8 +70,9 @@ function render() {
   for (const shot of data.shots) {
     const sec = el('section'); sec.id = 'shot-' + shot.name;
     const head = el('div', 'head');
-    head.append(el('b', null, shot.name), el('span', null, shot.technique + '  ' + fmt(shot.start) + '–' + fmt(shot.end)),
-                el('span', 'line', shot.line ? '„' + shot.line + '“' : ''));
+    head.append(el('b', null, shot.name), el('span', null, shot.technique + (shot.engine === 's2v' ? ' (S2V planned)' : '')
+                + '  ' + fmt(shot.start) + '–' + fmt(shot.end)), el('span', 'line', shot.line ? '„' + shot.line + '“' : ''));
+    if (shot.vocalise) head.appendChild(el('span', 'badge warn', 'vocalise: no words, the lip score says little - judge the expression'));
     const bPlay = el('button', null, '▶ play'); bPlay.onclick = () => play(sec, shot);
     head.appendChild(bPlay);
     if (shot.manual) { const bAuto = el('button', null, 'back to automatic'); bAuto.onclick = () => choose(shot, null); head.appendChild(bAuto); }

@@ -42,7 +42,7 @@ Check `analysis/song_sheet.png`: the sung lines must sit on the vocals (they bec
 
 ## 3. Shot plan + creative brief
 
-`uv run "$S/plan.py" <proj> --version studio|live [--lipsync 0.5] [--s2v]` - one shot per sung
+`uv run "$S/plan.py" <proj> --version studio|live [--lipsync 0.5] [--no-s2v]` - one shot per sung
 line on the beat, techniques `lipsync` / `broll` / `claudia_moving`, framings and cameras drawn with the creative seed.
 
 **Engines for sung shots** (field `engine`, default `ltx`):
@@ -50,13 +50,14 @@ line on the beat, techniques `lipsync` / `broll` / `claudia_moving`, framings an
 | engine | when | cost |
 |---|---|---|
 | `ltx` (LTX-2.3) | default: text-heavy lines, fast syllables, best image | ~2.5 min per seed, 2 seeds |
-| `s2v` (Wan2.2-S2V) | a single held, emotional note or call < 4.7 s (close-up); `plan.py --s2v` marks held notes (longest sung word >= 1.4 s, not in [Speaker] parts, max 15 % of sung shots) | ~15 min per shot, 832x480 @16 fps; + 1 LTX seed, the measurement picks |
+| `s2v` (Wan2.2-S2V) | held, emotional notes and slow lines < 4.7 s (close-up) - **on by default**: plan.py marks shots holding a sung word >= 0.7 s, ranked by held seconds - 0.25 x words per second, max a quarter of the sung shots and 6 per film, not in [Speaker] parts (`engine_reason` says why); `--no-s2v` = LTX only | 11-18 min per shot, 832x480 @16 fps; + 1 LTX seed, the measurement / takes.py picks |
 | `infinitetalk` | long sung passages (one take instead of several cuts, chained 81-frame passes) or held notes where the start image must stay | ~80 s per second of video, 832x480 @25 fps; + 1 LTX seed when <= 4.7 s |
 | `humo` / `minimax` | rescue for plosive-heavy lines where LTX measured ~0 (HuMo 1.7B / local MiniMax H3); both rejected as default (static face / robotic body) | HuMo ~130 s, H3 ~42 s per second of video (H3 renders >= 5.2 s); + 1 LTX seed, the measurement picks |
 
-S2V is off by default (GPU time). Measured on Europe 2031 (same start image, seed and vocal window as the
-reference): S2V shot 46 r 0.51 (reference 0.39), shot 14 0.45 (reference 0.53) - one S2V seed is a lottery, so the
-LTX seed rendered next to it is the safety net.
+Why S2V by default for held notes: in the Europe 2031 studio film (same rule) V3 kept S2V in 5 of 6 such shots
+(lip scores 0.63 / 0.53 / 0.40 / 0.39; one with ~0 was still chosen for its expression, one switched to LTX); in the
+live film the sung S2V shots scored good / medium. One S2V seed is a lottery, so the LTX seed rendered next to it is
+the safety net - compare both in takes.py. Show the user the time (`night_run.py --dry-run`) before the run.
 
 Other techniques you can set per shot:
 - `typo` - drawn typography, no AI: `"typo": {"kind": "newsflash" | "stamps" | "departures" | "title", ...}` (see
@@ -109,7 +110,9 @@ jump, Christian/others not recognisable. Override in `selection.json["manual"]`;
 run again for that shot (`--only s05`), new clips get new names. A re-made start image that the canon check scores
 LOWER than the old one is not taken automatically (nothing is re-rendered): put it into `manual.start` first.
 Weak shots (score < 0.2): 2 more seeds with a stronger mouth sentence (`variants.seeds` 4), another start image, or
-B-roll instead; loud choruses and shouted calls ("Hey! Hey!" live on the backing stem): `--curve mix`.
+B-roll instead. The lip curve is `mix` by default (Rhubarb + vocal level, as the live film measured: Rhubarb alone
+went negative in loud choruses where the lips were right); `--curve rhubarb|level|both` or project `"lip_curve"`
+overrides it. Vocalises without words ("Ooh") measure weak whatever the mouth does: judge them by eye (takes.py marks them).
 S2V/InfiniteTalk clips are 832x480: `"$A/upscale.py" clip.mp4 clip_720p.mp4` (Real-ESRGAN) before the cut if they
 look soft (render_shots otherwise scales with Lanczos). The clip's json is copied to `clip_720p.json`; use it with
 `selection.json["manual"]["clip"]["s07"] = {"file": "ai/s2v/s07_v2_720p.mp4", "lag": <lag of the original pick>}`.
