@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Takes</title>
+<style>
+  :root { --bg: #14161b; --card: #1d2027; --ink: #e8e6e1; --dim: #8d8f96; --accent: #d97757; --ok: #5fb3a1; --warn: #e0b04a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.4 system-ui, sans-serif; }
+  header { position: sticky; top: 0; z-index: 2; background: var(--bg); padding: 12px 20px; border-bottom: 1px solid #2a2d35;
+           display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap; }
+  h1 { font-size: 18px; margin: 0; }
+  .hint { color: var(--dim); }
+  main { padding: 8px 20px 60px; }
+  section { margin: 18px 0 26px; }
+  .head { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; margin-bottom: 8px; }
+  .head b { font-size: 16px; }
+  .line { color: var(--dim); font-style: italic; }
+  button { background: #2a2d35; color: var(--ink); border: 0; padding: 6px 12px; border-radius: 6px; cursor: pointer; font: inherit; }
+  button:hover { background: #353945; }
+  .row { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 4px; }
+  .take { flex: 0 0 320px; background: var(--card); border: 2px solid transparent; border-radius: 8px; padding: 6px; cursor: pointer; }
+  .take.chosen { border-color: var(--accent); }
+  .take video { width: 100%; display: block; border-radius: 4px; background: #000; }
+  .meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 6px; font-size: 12px; }
+  .badge { padding: 1px 6px; border-radius: 4px; background: #2a2d35; }
+  .badge.auto { background: var(--ok); color: #0b1a17; }
+  .badge.mine { background: var(--accent); color: #1a0e09; }
+  .badge.warn { background: var(--warn); color: #1d1503; }
+  .file { color: var(--dim); word-break: break-all; }
+  .saved { color: var(--ok); margin-left: 8px; font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">Takes</h1>
+  <span class="hint">Click a take to choose it (saved at once). ▶ plays all takes of a shot together, sound from the chosen one.
+    Then: <code>render_shots.py --only &lt;changed shots&gt;</code> and <code>make_film.py</code>.</span>
+</header>
+<main id="main"></main>
+<script>
+const main = document.getElementById('main');
+let data = null;
+
+function fmt(t) { const m = Math.floor(t / 60); return m + ':' + (t - 60 * m).toFixed(2).padStart(5, '0'); }
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+async function choose(shot, file, node) {
+  const r = await fetch('/api/choose', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                         body: JSON.stringify({ shot: shot.name, file }) });
+  if (!r.ok) { alert((await r.json()).error || 'could not save'); return; }
+  shot.manual = file;
+  render();
+  const s = document.getElementById('shot-' + shot.name);
+  const ok = el('span', 'saved', 'saved'); s.querySelector('.head').appendChild(ok); setTimeout(() => ok.remove(), 1500);
+}
+
+function current(shot) { return shot.manual || shot.auto; }
+
+function play(sec, shot) {
+  const vids = [...sec.querySelectorAll('video')];
+  vids.forEach(v => { v.pause(); v.currentTime = 0; v.muted = v.dataset.file !== current(shot); });
+  if (!vids.some(v => !v.muted) && vids.length) vids[0].muted = false;
+  vids.forEach(v => v.play());
+}
+
+function render() {
+  main.innerHTML = '';
+  for (const shot of data.shots) {
+    const sec = el('section'); sec.id = 'shot-' + shot.name;
+    const head = el('div', 'head');
+    head.append(el('b', null, shot.name), el('span', null, shot.technique + '  ' + fmt(shot.start) + '–' + fmt(shot.end)),
+                el('span', 'line', shot.line ? '„' + shot.line + '“' : ''));
+    const bPlay = el('button', null, '▶ play'); bPlay.onclick = () => play(sec, shot);
+    head.appendChild(bPlay);
+    if (shot.manual) { const bAuto = el('button', null, 'back to automatic'); bAuto.onclick = () => choose(shot, null); head.appendChild(bAuto); }
+    sec.appendChild(head);
+    const row = el('div', 'row');
+    for (const t of shot.takes) {
+      const card = el('div', 'take' + (t.file === current(shot) ? ' chosen' : ''));
+      const v = el('video'); v.src = '/' + t.preview; v.preload = 'metadata'; v.muted = true; v.playsInline = true;
+      v.dataset.file = t.file;
+      card.appendChild(v);
+      const meta = el('div', 'meta');
+      if (t.file === shot.auto) meta.appendChild(el('span', 'badge auto', 'automatic pick'));
+      if (t.file === shot.manual) meta.appendChild(el('span', 'badge mine', 'your choice'));
+      if (t.score != null) meta.appendChild(el('span', 'badge', 'lip score ' + t.score.toFixed(2)));
+      if (t.motion != null) meta.appendChild(el('span', 'badge', 'motion ' + t.motion));
+      if (t.lag) meta.appendChild(el('span', 'badge', 'lag ' + (t.lag > 0 ? '+' : '') + t.lag));
+      if (t.warn) meta.appendChild(el('span', 'badge warn', t.warn));
+      meta.appendChild(el('span', 'file', t.file));
+      card.appendChild(meta);
+      card.onclick = () => { if (t.file !== current(shot) || !shot.manual) choose(shot, t.file); };
+      row.appendChild(card);
+    }
+    sec.appendChild(row);
+    main.appendChild(sec);
+  }
+}
+
+fetch('/api/takes').then(r => r.json()).then(d => {
+  data = d; document.getElementById('title').textContent = 'Takes – ' + d.title; render();
+});
+</script>
+</body>
+</html>

@@ -1,10 +1,12 @@
 """claudia-music-video: synthetic AI clips (ffmpeg test pictures with sound) + their <clip>.json meta as night_run /
 ltx.py write them + selection.json -> render_shots.py -> make_film.py (lyrics, film, sheets, review.json)."""
-from common import (FPS, Test, full, expect, expect_film, need, read_json, script, song_sheet, tone, write_json)
+from common import (FPS, Test, full, expect, expect_film, need, read_json, script, song_sheet, tone, video_frames,
+                    write_json)
 
 NEW = script("song-analysis", "new_project.py")
 RENDER = script("claudia-music-video", "render_shots.py")
 FILM = script("claudia-music-video", "make_film.py")
+TAKES = script("claudia-music-video", "takes.py")
 
 SONG = 3.30
 WORDS = [("Light", 0.20, 0.60, 0), ("the", 0.60, 0.75, 0), ("city", 0.80, 1.40, 0),
@@ -44,6 +46,30 @@ def run_claudia(ctx):
          {"kind": "ltx_moving", "delay_frames": 0, "song_start": cut - 0.25, "lead_in": 0.25, "shot": "s02"}, 2)
     write_json(d / "selection.json", {"clip": {"s01": {"file": "ai/lipsync/s01_v1_s1.mp4", "lag": 0},
                                                "s02": {"file": "ai/broll/s02_v1.mp4", "lag": 1}}})
+    # takes.py: a second take of s01, scores from picks.log; previews on the song; choose by hand and back
+    clip(ctx, d / "ai" / "lipsync" / "s01_v1_s2.mp4", 49,
+         {"kind": "ltx_lipsync", "delay_frames": 1, "song_start": 0.0, "lead_in": 0.0, "shot": "s01"}, 3)
+    (d / "picks.log").write_text("  lipsync/s01_v1_s1.mp4                r0 0.6  r@0 0.6  range 1.0  face 1.0  score 0.6\n"
+                                 "  lipsync/s01_v1_s2.mp4                r0 0.3  r@1 0.4  range 0.9  face 1.0  score 0.4"
+                                 "  mouth closed\n", encoding="utf-8")
+    ctx.uv(TAKES, d)
+    tj = read_json(d / "takes" / "takes.json")
+    s01 = next(s for s in tj["shots"] if s["name"] == "s01")
+    expect(len(s01["takes"]) == 2 and s01["auto"] == "ai/lipsync/s01_v1_s1.mp4"
+           and {t["score"] for t in s01["takes"]} == {0.6, 0.4} and s01["takes"][1]["lag"] == 1
+           and "mouth closed" in s01["takes"][1]["warn"], f"takes.json s01: {s01}")
+    for t in s01["takes"]:
+        pv = d / t["preview"]
+        expect(pv.exists() and abs(video_frames(pv) - round(cut * FPS)) <= 1, f"preview {pv.name}: wrong length")
+    drv = (f"import sys; sys.path.insert(0, r'{TAKES.parent}'); import takes; from song_project import Project; "
+           f"P = Project(r'{d}'); takes.choose(P, 's01', 'ai/lipsync/s01_v1_s2.mp4'); "
+           "import json; s = json.load(open(P.dir / 'selection.json')); "
+           "assert s['manual']['clip']['s01'] == {'file': 'ai/lipsync/s01_v1_s2.mp4', 'lag': 1}, s; "
+           "assert s['clip']['s01']['file'].endswith('s2.mp4'), s; "
+           "takes.choose(P, 's01', None); s = json.load(open(P.dir / 'selection.json')); "
+           "assert 's01' not in s['manual']['clip'] and s['clip']['s01']['file'].endswith('s1.mp4'), s; print('choose ok')")
+    out = ctx.run(["python", "-c", drv])
+    expect("choose ok" in out.stdout, f"takes.choose:\n{out.stdout}")
     ctx.uv(RENDER, d, timeout=900)
     log = (d / "render.log").read_text(encoding="utf-8")
     expect(log.count(" clip ") == 2 and "card" not in log, f"render_shots did not use both clips:\n{log}")
@@ -61,4 +87,4 @@ def run_claudia(ctx):
     ctx.note(f"{total} frames = round({SONG}*24) (song length), both clips placed, lyrics overlay, review.json")
 
 
-TESTS = [Test("claudia-music-video", run_claudia, about="fake LTX clips + meta -> render_shots.py -> make_film.py")]
+TESTS = [Test("claudia-music-video", run_claudia, about="fake LTX clips + meta -> takes.py (compare/choose) -> render_shots.py -> make_film.py")]

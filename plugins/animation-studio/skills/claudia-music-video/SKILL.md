@@ -114,6 +114,14 @@ S2V/InfiniteTalk clips are 832x480: `"$A/upscale.py" clip.mp4 clip_720p.mp4` (Re
 look soft (render_shots otherwise scales with Lanczos). The clip's json is copied to `clip_720p.json`; use it with
 `selection.json["manual"]["clip"]["s07"] = {"file": "ai/s2v/s07_v2_720p.mp4", "lag": <lag of the original pick>}`.
 
+**Checkpoint - compare the takes by eye (optional, no GPU):** `uv run "$S/takes.py" <proj> --serve` makes a small
+preview of every take on the song (placed exactly as render_shots places it, with the song's sound) and opens a page:
+per shot all takes side by side, lip score / motion / warnings from picks.log, the automatic pick marked; ▶ plays a
+shot's takes together; a click on a take saves it to `selection.json` "manual" (and "clip") at once, "back to
+automatic" undoes it. Offer it to the user before the cut: in the Europe 2031 night run the eye preferred natural
+movement over the highest lip score (V3 took the V1 take in 11 of 17 singing shots). Then `render_shots.py --only
+<changed shots>`. Previews take ~0.2 s each (CPU); the page is local only (127.0.0.1).
+
 ## 6. Cut
 
 Every build script checks project.json first (studio-core `project_check.py`, details in song-analysis "Project check"): a wrong type, an impossible section (from >= to, duplicate name) or an unknown transition stop it in seconds with exit code 2 and the key named; unknown keys and overlapping sections (build.py cuts at the next start) only warn. `"size": [w, h]` = shot size (default 1280x720).
