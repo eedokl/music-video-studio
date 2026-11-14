@@ -223,7 +223,7 @@ function tick() {
 let saveTimer;
 function save() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => fetch("/api/choice", { method: "POST", body: JSON.stringify({ choice }) }), 200);
+  saveTimer = setTimeout(() => fetch("/api/choice", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ choice }) }), 200);
 }
 
 function pick(id) {
@@ -259,7 +259,7 @@ async function cutStatus() {
 
 $("cutButton").onclick = async () => {
   stop();
-  await fetch("/api/cut", { method: "POST", body: JSON.stringify({ choice }) });
+  await fetch("/api/cut", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ choice }) });
   cutStatus();
 };
 $("play").onclick = () => playing ? stop() : start();

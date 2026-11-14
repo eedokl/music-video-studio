@@ -247,7 +247,7 @@ def measure(fig_dir, cfg):
                 runs.append({"x": (x0 + x) / 2, "w": x - x0, "sole": bottom})
         x += 1
     runs.sort(key=lambda r: -r["w"])
-    blobs = sorted(runs[:2], key=lambda r: r["x"]) or [{"x": xs.mean(), "w": xs.ptp(), "sole": sole}]
+    blobs = sorted(runs[:2], key=lambda r: r["x"]) or [{"x": float(xs.mean()), "w": int(np.ptp(xs)), "sole": sole}]
     front = max(blobs, key=lambda r: r["sole"])                  # lowest foot = front foot
     feet = (sum(b["x"] for b in blobs) / len(blobs), front["sole"])
     for b in blobs:                                              # a foot drawn higher stands further back

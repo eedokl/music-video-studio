@@ -172,10 +172,14 @@ def write(cues, prefix):
         v_lines = [f"<v {c['who']}>{lines[0]}"] + lines[1:] if c.get("who") else lines
         srt += [str(i), f"{stamp(c['t'], ',')} --> {stamp(c['end'], ',')}", *s_lines, ""]
         vtt += [f"{stamp(c['t'], '.')} --> {stamp(c['end'], '.')}", *v_lines, ""]
+    if prefix.suffix.lower() in (".srt", ".vtt"):          # "film.srt" given as prefix
+        prefix = prefix.with_suffix("")
+    # append, never with_suffix: a prefix like "pip_v1.5" or "film.de" must keep its dot part
+    f_srt, f_vtt = (prefix.with_name(prefix.name + ext) for ext in (".srt", ".vtt"))
     prefix.parent.mkdir(parents=True, exist_ok=True)
-    prefix.with_suffix(".srt").write_text("\n".join(srt), encoding="utf-8")
-    prefix.with_suffix(".vtt").write_text("\n".join(vtt), encoding="utf-8")
-    return prefix.with_suffix(".srt"), prefix.with_suffix(".vtt")
+    f_srt.write_text("\n".join(srt), encoding="utf-8")
+    f_vtt.write_text("\n".join(vtt), encoding="utf-8")
+    return f_srt, f_vtt
 
 
 def write_from_cut(shots_json, prefix, **kw):

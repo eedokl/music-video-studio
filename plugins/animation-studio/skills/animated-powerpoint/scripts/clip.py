@@ -24,7 +24,8 @@ Steps (each writes into the clip folder, a later step reuses the earlier results
   3d      three.js stage in headless Edge/Chrome -> frames_3d/mp_NNNN.png, stage.mp4      (toon-2d render_multiplane.py)
   final   look (film-finish apply_look.py) -> <name>.mp4, first/last frame PNG, contact sheet, in/out check
   sound   narration + sound effects on the event frames (sound.py, earshot) -> ton.wav, muxed into <name>.mp4
-Usage: uv run --no-project --with pillow --with numpy --with scipy --with scikit-image python clip.py clips/x/clip.json
+Usage: uv run --no-project --with pillow --with numpy --with scipy --with scikit-image [--with faster-whisper] python clip.py
+       clips/x/clip.json            (faster-whisper when the clip has narration: word times)
 """
 import argparse
 import json
@@ -325,8 +326,7 @@ def plan(C):
         talk = [lid for lid, ln in T.cfg.items() if ln.get("speaker") == n] + list(f.get("talk", []))
         if talk and n in keys:
             import mouth
-            if not (G[n]["dir"] / "mouth.json").exists():
-                mouth.make(G[n]["dir"])
+            mouth.ensure(G[n]["dir"])
             keys[n]["mouth"] = mouth.mouth_keys(G[n]["dir"], [(C.dir / T.cfg[lid]["audio"], T.line_at(lid),
                                                                T.cfg[lid].get("text")) for lid in talk],
                                                 fps=C.fps, cache=C.dir / "narration")
@@ -944,7 +944,10 @@ def main():
         elif s == "sound":
             if C.p.get("sound", True):
                 import sound
-                sound.mux(C.dir / f"{C.dir.name}.mp4", sound.make(C.dir, C.p, Times(C)))
+                T = Times(C)              # event-anchored cues need the figures' events of the plan step
+                T.events = {n: e for n, e in json.loads((C.dir / "plan.json").read_text(encoding="utf-8"))["events"]
+                            .items() if not n.startswith("_")}
+                sound.mux(C.dir / f"{C.dir.name}.mp4", sound.make(C.dir, C.p, T))
     print(f"  done in {time.time() - t0:.0f} s")
 
 

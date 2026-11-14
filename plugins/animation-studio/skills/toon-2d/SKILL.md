@@ -37,7 +37,7 @@ Scripts: `${CLAUDE_PLUGIN_ROOT}/skills/toon-2d/scripts/` (below just `scripts/`)
 | `scripts/blender_run.py script.py -- args` | run a script in headless Blender |
 | `assets/example_scene.py` | **"Pip and the Flower"** – complete 6 s scene: squash/stretch rig, blinking, mouth swap, spring antenna, flower blooming with overshoot, sparkles. Read it before writing a new scene |
 | `assets/templates/figure_scene.py` | an SVG figure (Fips) rigged with `wrap=`: hop, flap, head tilt, blink, beak, on the `park` set |
-| `assets/templates/blank_scene.py` | beat-list docstring + background + Pip from `characters/scripts/pip.py` |
+| `assets/templates/blank_scene.py` | beat-list docstring + background + Pip from `characters/scripts/pip_figure.py` |
 | `assets/blender_gp_example.py` | Grease Pencil Pip drawn on twos with pressure + boil, painted layers at depth, camera dolly |
 | `references/sif-format.md` | format gotchas, transform model, layer parameters, blend methods – read when adding a new layer type or when Synfig refuses a file |
 | `references/animation-craft.md` | the 12 principles as concrete keys (frame counts, squash values, take, settle, contact) – read when planning acting |
@@ -51,16 +51,20 @@ Characters (Tim, Lia, Computer, Pip, Fips, own SVG figures, rig convention) are 
 
 1. **Beats first.** Turn the idea into a beat list with frame ranges at 24 fps (`0-36 hops in`, `46-62 notices`,
    `72-86 take`) and write it as the docstring of `make_scene.py`. Short is good: 3–8 s.
-2. **Scene folder.** `python scripts/new_scene.py <folder> --from example|figure|blank`. Never write scenes into
-   the plugin. The `_toon.py` shim is generated per machine; regenerate it if the plugin moves.
+2. **Scene folder.** `python "${CLAUDE_PLUGIN_ROOT}/skills/toon-2d/scripts/new_scene.py" <folder> --from example|figure|blank`. Never write scenes into
+   the plugin. The `_toon.py` shim holds no path: it finds the plugin at run time (env `CLAUDE_PLUGIN_ROOT`, else
+   the machine config entry `animation_studio_root`, which new_scene.py stores and every plugin script moves to its
+   own plugin folder after an update). If it cannot, it stops and says how
+   to refresh (`new_scene.py <folder> --from none` keeps make_scene.py).
 3. **Rig with nested groups.** `position group (offset, lean angle, base scale)` → `squash group (scale about the
    feet)` → parts. Local origin at the feet (bottom centre) so squash keeps the character on the ground and lean
    pivots at the contact point. Eyes get their own group (origin at the eye centre) for blinks; secondary parts
    (antenna, tail, wings) a group with origin at their root.
 4. **One source of timing.** Key lists as Python data near the top (`Y_KEYS`, `SQ_KEYS`, `LEAN_KEYS` …), fed both
    to Synfig (`anim`) and to every simulation (`motion.approx`). Retiming = editing one list.
-5. **Render and look.** `uv run --no-project python make_scene.py`, then
-   `uv run --no-project --with pillow python scripts/render.py scene.sif --contact 0,15,36,...` (key poses; Pillow
+5. **Render and look.** `ANIMATION_STUDIO_ROOT="${CLAUDE_PLUGIN_ROOT}" uv run --no-project python make_scene.py` (passes this
+   plugin version to the scene; in PowerShell: `$env:ANIMATION_STUDIO_ROOT="${CLAUDE_PLUGIN_ROOT}"` first), then
+   `uv run --no-project --with pillow python "${CLAUDE_PLUGIN_ROOT}/skills/toon-2d/scripts/render.py" scene.sif --contact 0,15,36,...` (key poses; Pillow
    labels the tiles with frame numbers). Open the contact sheet with the Read tool: silhouette readable, nothing cut
    off by the frame, squash on contacts, characters big enough (zoom with `canvas(view=...)` rather than scaling
    everything). Renders take seconds – iterate. `--jobs 6` from ~100 frames on.
@@ -146,20 +150,20 @@ Config keys, overscan formula, camera angles, lift and the parallax rules: `refe
   only the log (no frames).
 - **3D morph** (`figure_3d.py`, Blender via the GPU lock): any rig SVG; frame 0 is flat in painter order, so the 2D
   drawing crossfades in without a jump (`flat_2d.png` is exported in the same framing). Run with
-  `uv run --no-project --with svgelements --with numpy --with scipy --with pillow python scripts/figure_3d.py fig3d.json`.
+  `uv run --no-project --with svgelements --with numpy --with scipy --with pillow python "${CLAUDE_PLUGIN_ROOT}/skills/toon-2d/scripts/figure_3d.py" fig3d.json`.
   Keys and limits: docstring of the script and `references/multiplane-and-comic.md` (last section).
 
 ## Blender Grease Pencil
 
 Choose Blender over Synfig when the look should be hand-drawn (variable line weight, boil, frame-by-frame on twos)
 or an artist will continue in Blender; Synfig stays better for tweened vector rigs.
-`uv run --no-project python scripts/blender_run.py ${CLAUDE_PLUGIN_ROOT}/skills/toon-2d/assets/blender_gp_example.py -- --layers <layers> --out <dir> [--still 36]`
+`uv run --no-project python "${CLAUDE_PLUGIN_ROOT}/skills/toon-2d/scripts/blender_run.py" "${CLAUDE_PLUGIN_ROOT}/skills/toon-2d/assets/blender_gp_example.py" -- --layers <layers> --out <dir> [--still 36]`
 (96 frames ~25 s with EEVEE; `.blend` saved for the artist). Pitfalls: `references/blender-grease-pencil.md`.
 
 ## Tested (reference tests, 2026-11-13)
 
 Rebuilt with these scripts and compared frame by frame (`compare_frames.py`): "Pip and the Flower" (example and a
-rebuild with `characters/pip.py`): identical, 145/145 frames; Fips (figure template): identical, 121/121; forest
+rebuild with `characters/pip_figure.py`): identical, 145/145 frames; Fips (figure template): identical, 121/121; forest
 clearing layers (seed 7): identical; 2.5D comic flight: 277/277 frames, mean difference 0.15/255 (GPU rounding);
 multiplane camera: 151/151, 0.16/255; Grease Pencil still: identical; Krita assembly: 6 layers → .kra + 2 exports
 in 41 s. Details in `animated-short/references/reference-tests.md`.

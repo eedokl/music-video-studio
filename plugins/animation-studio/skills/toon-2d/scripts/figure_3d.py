@@ -654,14 +654,14 @@ def blender_main(argv):
     bpy.ops.wm.save_as_mainfile(filepath=str(out / "figure_3d.blend"))
     if no_render:
         return
-    for p in out.glob("f.[0-9][0-9][0-9][0-9].png"):
-        p.unlink()
     if still is not None:
         sc.frame_set(still)
         sc.render.filepath = str(out / f"still_{still:04d}.png")
         bpy.ops.render.render(write_still=True)
         print("still:", sc.render.filepath)
         return
+    for p in out.glob("f.[0-9][0-9][0-9][0-9].png"):
+        p.unlink()
     sc.render.filepath = str(out / "f.")
     bpy.ops.render.render(animation=True)
     print(f"figure_3d: {f} frames -> {out}")

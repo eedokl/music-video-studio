@@ -19,6 +19,7 @@ From another skill: `import _studio; _studio.use("ai-video")`, then `import comf
 |---|---|---|
 | `comfy_url` | ComfyUI server (default `http://127.0.0.1:8188`) | all ComfyUI scripts |
 | `comfy_start` | script that starts ComfyUI (e.g. a `comfyui.cmd`) - optional; without it the user is asked to start it | night_run, `comfy.ensure()` |
+| `comfy_dir` | ComfyUI's base folder (holds `input/` and `output/`) - optional | night_run `--clean-comfy`, free-space check of ComfyUI's drive |
 | `face_landmarker` | MediaPipe `face_landmarker.task` | mouth.py, canon.py |
 | `realesrgan` | realesrgan-ncnn-vulkan executable | upscale.py (Lanczos fallback) |
 | `gpu_python` | CUDA venv with torch + transformers | estimate_depth.py (falls back to uv/CPU) |
@@ -42,11 +43,12 @@ Model files must be in ComfyUI's model folders (names in each script's docstring
 | `estimate_depth.py` | Depth Anything V2 Small depth maps (`run([images])` from any interpreter, runs in `gpu_python`) |
 | `clips.py` | clip conventions: `<clip>.json` (song_start, fps, delay_frames, lead_in, clip_start, tempo ...), `frame_index()` = the ONE placement rule, `ltx_fit()`/`s2v_frames()` lengths, `cut_audio()`, `quiet_start()`, `prepare_vocal()` |
 | `mouth.py` | lip measurement: mouth openness (MediaPipe 13/14 over 78/308) vs vocal curve (Rhubarb / level / mix / both), r for lags -6..+6, `rating()` for seed selection; `motion_check()` hidden cut / frozen / motion; `fit_placement()` entry frame + tempo for clips without own sound |
+| `cvio.py` | unicode-safe OpenCV file access: `imread`/`imwrite` (np.fromfile + imdecode / imencode + tofile), `video_capture` (non-ASCII paths on Windows) - use instead of `cv2.imread/imwrite/VideoCapture` |
 | `canon.py` | accent colour on the right side of the face (e.g. Claudia's streak), images and videos |
 | `mic_repair.py` | repairs start images that fail the mic check (boom on both cheeks / wrong cheek): `retouch` = wrong boom + capsule masked, OpenCV fill + FLUX texture refine on the mask only (rest pixel-identical); `qwen` = Qwen-Edit "change only the microphone" (several seeds); every result re-checked with canon.py, before/after sheet |
 | `humo.py` | HuMo 1.7B (17B refused on 16 GB): start image + vocals -> singing clip, 832x480 @25 fps, ~130 s per second; rescue for plosive lines, face static (`--dry-run`) |
 | `minimax.py` | MiniMax: `comfy` = local H3 with audio anchor (>= 124 frames, 1024x576 @24 fps, ~42 s per second); `cloud` = hosted Hailuo image-to-video (no audio), opt-in via env `MINIMAX_API_KEY`, dry run unless `--send` (paid) |
-| `night_run.py` | unattended run of a jobs.json: phases = one model each, GPU lock per phase, resume, retry after `/free`, hooks between phases (picks), `milestones.log`, `--dry-run` estimate |
+| `night_run.py` | unattended run of a jobs.json: phases = one model each, GPU lock per phase, resume, retry after `/free`, hooks between phases (picks), `milestones.log`, `--dry-run` estimate; outputs written under a temp name and renamed when complete; `--min-free-gb`, `--clean-comfy` |
 | `sheets.py` | contact sheets: `sheet()` start/middle/end per clip with notes; `shot_sheet()` 20/50/80 % per shot of a film |
 
 ## Rules (learned the hard way)

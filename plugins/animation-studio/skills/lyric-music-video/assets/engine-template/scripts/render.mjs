@@ -41,9 +41,9 @@ const localShell = () =>
     ['chrome-headless-shell-win64/chrome-headless-shell.exe', 'chrome-headless-shell-linux64/chrome-headless-shell',
       'chrome-headless-shell-mac-x64/chrome-headless-shell', 'chrome-headless-shell-mac-arm64/chrome-headless-shell']
       .map((p) => resolve(base, v, p))));
-const browserPath = [args.browser, process.env.CHROME, machine.chrome, ...localShell()].find((p) => p && existsSync(p));
+const browserPath = [args.browser, process.env.ANIMATION_STUDIO_CHROME, machine.chrome, ...localShell()].find((p) => p && existsSync(p));
 const ffmpegBin = [process.env.FFMPEG, machine.ffmpeg].find((p) => p && existsSync(p)) ?? ffmpegPath;
-if (!browserPath) throw new Error('No Chrome/Edge found: install chrome-headless-shell (see above), pass --browser <path> or set CHROME');
+if (!browserPath) throw new Error('No Chrome/Edge found: install chrome-headless-shell (see above), pass --browser <path> or set ANIMATION_STUDIO_CHROME');
 
 mkdirSync(dirname(out), { recursive: true });
 

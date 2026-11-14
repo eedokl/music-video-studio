@@ -12,7 +12,9 @@ user-invocable: false
 folders on every drive and stores what it finds in `~/.animation-studio/config.json` (outside the plugin, survives
 updates; override the file with `ANIMATION_STUDIO_CONFIG`). Without arguments it reports found / missing / optional
 with install hints; exit code 1 means something required is missing. Paths can be set by hand:
-`check_tools.py --set gpu_lock_dir=D:/tools hf_home=D:/hf-cache earshot=D:/tools/earshot.cmd`.
+`check_tools.py --set gpu_lock_dir=D:/tools hf_home=D:/hf-cache earshot=D:/tools/earshot.cmd` (unknown keys are
+refused). Environment overrides: `ANIMATION_STUDIO_<KEY>` (e.g. `ANIMATION_STUDIO_BROWSER`); the plain name only
+for unambiguous keys (`FFMPEG`, `SYNFIG`, `HF_HOME`, ... - see `config.py`), never `BROWSER`, `NODE`, `BLENDER`.
 
 **Never install anything without asking.** Show the user the missing lines, say what each tool is needed for, and
 ask; when they agree, install to the drive they keep tools on and store the path with `--set`. A missing optional
@@ -25,7 +27,7 @@ work goes on. The full list of tools and models is in the plugin's `TOOLS.md`.
 |---|---|
 | `config.py` | `config.need("synfig")` (stops with a clear message if missing), `config.get("earshot")`, `config.setup_env()` (model caches, ffmpeg on PATH), `config.lock_dir()`, `config.comfy_url()` |
 | `gpu_lock.py` | `acquire("job", model="comfy:ltx23")` before any AI model run: waits while another job holds the lock, flushes ComfyUI when the model changes; `python gpu_lock.py` shows who holds it. Never delete another job's lock. |
-| `encoding.py` | `h264()` ffmpeg options: x264 CRF 18 for anything shown or handed over; with `PREVIEW=1` NVENC for fast work-in-progress files |
+| `encoding.py` | `h264()` ffmpeg options: x264 CRF 18 for anything shown or handed over; with `PREVIEW=1` NVENC for fast work-in-progress files (probed once; x264 veryfast where there is no NVENC) |
 | `media.py` | `decode`, `duration`, `has_audio`, `voice_activity`, `check_video` ("" = 0 decode errors), `contact_sheet` (`python media.py sheet film.mp4 sheet.png`) |
 | `frames.py` | contact sheet at given times, labelled side-by-side comparison of two videos, SSIM score – for reference tests and reviews |
 | `sfx_mix.py` | `SfxMix(seconds, cache)` – the ONE sound-effect mixer (earshot bank): `sfx(t, id, args, db, pan, align="peak"|"start")`, `voice(path, t, db, pan)`, `write(wav, lowpass=, loudnorm=)`; soft 10 ms fades, pan law linear/equal, shared bank via config key `sfx_cache`. Used by film-finish `sounds.py`, animated-short `sfx_track.py`, animated-powerpoint `sound.py` |
@@ -33,6 +35,6 @@ work goes on. The full list of tools and models is in the plugin's `TOOLS.md`.
 
 ## Rules shared by all skills
 
-- One AI model on the GPU at a time (16 GB VRAM and 16 GB RAM do not hold two big models).
+- One AI model on the GPU at a time (on the reference machine 16 GB VRAM and 16 GB RAM do not hold two big models; see TOOLS.md "Tuned for the reference machine").
 - Only one session builds a project's final film files; verify every output with `check_video`.
 - Look at your own renders (contact sheets) before showing them to the user.

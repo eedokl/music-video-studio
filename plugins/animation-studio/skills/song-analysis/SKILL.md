@@ -11,9 +11,11 @@ Everything is measured on **song seconds** and written to `<project>/analysis/`.
 ## Project folder (`scripts/song_project.py`)
 
 `new_project.py <folder> --song s.mp3 [--lyrics t.txt] [--lead vocals.wav --backing backing.wav] [--from s --to s]
-[--lyrics-from "first sung line" --lyrics-to "last sung line"] [--language de|en|auto] [--name ...]`
+[--lyrics-from "first sung line" --lyrics-to "last sung line"] [--language de|en|auto] [--name ...] [--force]`
 creates `song.wav`, `stems/`, `lyrics.txt` and `project.json` (figures, narrator, announcements – each user skill
-adds its own keys). An excerpt must come with lyrics trimmed to the sung lines.
+adds its own keys). An excerpt must come with lyrics trimmed to the sung lines. On an existing project it never
+replaces different audio/lyrics silently: it stops, and `--force` replaces them and moves the old `analysis/` to
+`analysis.stale-<time>/` (project.json is never overwritten; a new template goes to project.new.json).
 Word triggers of all skills go through `song_project.word_matches(word, trigger)`: prefix (default, case-insensitive,
 edge punctuation stripped), `"=pro"` exact word, `"re:^verkauf(t)?$"` regex; `"(word"` only calls in brackets.
 `song_project.allowed(rule, section)` is the shared `"sections"` / `"not_sections"` filter, `Project.section_at(t)`

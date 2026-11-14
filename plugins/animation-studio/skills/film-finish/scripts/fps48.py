@@ -123,8 +123,11 @@ def main():
         enc.stdin.write(interp[i].tobytes() if i in interp else buf)
         i += 1
     enc.stdin.close()
-    enc.wait()
-    dec.wait()
+    rc_enc, rc_dec = enc.wait(), dec.wait()
+    if rc_enc or rc_dec or i == 0 or not tmp_out.exists():
+        tmp_out.unlink(missing_ok=True)
+        raise SystemExit(f"48 fps encode failed (encoder exit {rc_enc}, decoder exit {rc_dec}, {i} frames) - "
+                         f"{out.name} left unchanged")
     shutil.move(str(tmp_out), str(out))
     err = check_video(out)
     print(f"-> {out.name}: {2 * i} frames at {2 * fps} fps, {len(interp)} from RIFE, "

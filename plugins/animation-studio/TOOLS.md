@@ -1,8 +1,9 @@
 # Tools and models
 
 Everything the plugin's skills call, what it is used for, and what we recommend. Programs are found through
-`studio-core/scripts/check_tools.py` (environment variable → `~/.animation-studio/config.json` → PATH); nothing is
-installed without asking the user. Reference machine: Windows 11, Intel i5-14600K, 16 GB RAM, NVIDIA RTX 5060 Ti
+`studio-core/scripts/check_tools.py` (environment variable `ANIMATION_STUDIO_<KEY>` – plain `FFMPEG`, `SYNFIG`,
+`HF_HOME` ... only for the unambiguous keys listed in `config.py` → `~/.animation-studio/config.json` → PATH);
+nothing is installed without asking the user. Reference machine: Windows 11, Intel i5-14600K, 16 GB RAM, NVIDIA RTX 5060 Ti
 16 GB – timings below are from that machine.
 
 Legend: **required** – the plugin does not work without it · **recommended** – used by default when present ·
@@ -77,6 +78,18 @@ venv). The lyric-video engine pulls three.js, Vite and TypeScript through npm pe
 - **Model caches**: set `hf_home` / `torch_home` to a drive with space (models are 5–25 GB each).
 - **Licences**: label AI-generated content; company names only as neutral text, no logos; Claudia is an open
   character ("Claudia by anabology").
+
+## Tuned for the reference machine (check on yours)
+
+These defaults come from the machine the plugin was built and measured on (Windows 11, one NVIDIA GPU with 16 GB
+VRAM, 16 GB RAM, ComfyUI portable). They are not limits of the method - adjust them for your hardware:
+- `ai-video/scripts/night_run.py` load and time estimates per job kind, and `LTX_MAX_FRAMES` in `ltx.py`
+- `ai-video/scripts/humo.py` refuses the 17B model without `--allow-17b` (does not fit 16 GB)
+- checkpoint, LoRA and custom-node names inside every ComfyUI workflow (built in the ai-video wrapper scripts such as `comfy_image.py`, `comfy_video.py`, `ltx.py`, `humo.py`) -
+  they must match the files in your ComfyUI `models/` folders
+- 1280x720 as the working size of the song films (`film-finish` `build.py`, `fps48.py`, `overlays.py`,
+  `animated-music-video` scenes) - change all of them together
+- the "16 GB VRAM / 16 GB RAM: one model at a time" rule in studio-core (the GPU lock is useful on any machine)
 
 ## Installed on the reference machine but deliberately not used by the plugin
 

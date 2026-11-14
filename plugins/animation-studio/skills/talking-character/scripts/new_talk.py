@@ -5,7 +5,8 @@
 Speakers are matched to the bundled figures: tim, lia (SVG figures of the characters skill) and computer (a face on
 the set's screen). Any other speaker needs "svg" (own Inkscape figure, rig convention of the characters skill) or
 "kind": "screen", and a voice ("voices" entry with "design" + "sample_text") - the script stops and says so.
-Writes <folder>/project.json + dialogue.txt; the creative seed is new unless --seed is given.
+Writes <folder>/project.json + dialogue.txt; the creative seed is new unless --seed is given. An existing
+project.json (or a different dialogue.txt) is never overwritten without --force.
 """
 import argparse
 import json
@@ -34,10 +35,19 @@ def main():
     ap.add_argument("--seed", type=int)
     ap.add_argument("--name")
     ap.add_argument("--language", default="de")
+    ap.add_argument("--force", action="store_true",
+                    help="overwrite an existing project.json / dialogue.txt in the folder")
     a = ap.parse_args()
     d = Path(a.folder).resolve()
-    d.mkdir(parents=True, exist_ok=True)
     text = Path(a.script).read_text(encoding="utf-8") if a.script else a.text.replace("\\n", "\n")
+    old_dialogue = d / "dialogue.txt"
+    taken = [n for n in ("project.json",) if (d / n).exists()]
+    if old_dialogue.exists() and old_dialogue.read_text(encoding="utf-8") != text:
+        taken.append("dialogue.txt")
+    if taken and not a.force:
+        raise SystemExit(f"{d} already has {' and '.join(taken)} - edit it there, or re-run with --force to "
+                         "overwrite (figures, voices, direction, ideas and seed are then lost)")
+    d.mkdir(parents=True, exist_ok=True)
     (d / "dialogue.txt").write_text(text, encoding="utf-8")
     who = speakers(parse(text))
     if not who:

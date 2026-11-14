@@ -2,7 +2,8 @@
 
 Every GPU script calls, right after parsing its arguments:
     from gpu_lock import acquire;  acquire("comfy_image", model="comfy:flux")
-The call waits until no other job holds the lock and keeps it until the process ends.
+The call waits until no other job holds the lock and keeps it until the process ends (or release()).
+After max_wait (6 h) it raises gpu_lock.LockTimeout - catch it to skip a job instead of ending the run.
 The operating system also releases the lock if a job crashes or is killed - nothing stays stuck.
 
 If the model differs from the previous job's (e.g. FLUX -> Wan video -> depth map), ComfyUI is first asked to
@@ -78,10 +79,35 @@ def flush_comfy():
         return False
 
 
+class LockTimeout(RuntimeError):
+    """The GPU lock stayed taken longer than max_wait (another job runs long or is stuck). A normal exception, so a
+    caller that runs several jobs (night_run.py) can catch it and skip one phase; uncaught it ends the script."""
+
+
+_atexit_done = False
+
+
+def _use_model(name, model):
+    """This process holds the lock: record who uses it and flush ComfyUI if the model differs from the last job's."""
+    INFO.write_text(json.dumps({INFO_NAME: name, INFO_MODEL: model, INFO_PID: os.getpid(),
+                                INFO_SINCE: time.strftime("%H:%M:%S")}), encoding="utf-8")
+    model = model or name
+    try:
+        before = LAST.read_text(encoding="utf-8").strip()
+    except Exception:
+        before = ""
+    if before and before != model and flush_comfy():
+        print(f"[GPU lock] model change {before} -> {model}: ComfyUI memory flushed", file=sys.stderr, flush=True)
+    LAST.write_text(model, encoding="utf-8")
+
+
 def acquire(name, model=None, max_wait=6 * 3600):
-    """Get the lock (waits while it is taken), then flush ComfyUI if the model changed."""
-    global _handle
+    """Get the lock (waits while it is taken), then flush ComfyUI if the model changed.
+    Already held by this process: no waiting, but a different model still flushes ComfyUI and is recorded.
+    Raises LockTimeout after max_wait seconds."""
+    global _handle, _atexit_done
     if _handle is not None:
+        _use_model(name, model)
         return
     FOLDER.mkdir(parents=True, exist_ok=True)
     f = open(LOCK, "a+b")
@@ -97,22 +123,16 @@ def acquire(name, model=None, max_wait=6 * 3600):
                       f"since {i.get(INFO_SINCE, '?')}, PID {i.get(INFO_PID, '?')})", file=sys.stderr, flush=True)
                 reported = True
             if time.time() - t0 > max_wait:
-                raise SystemExit("[GPU lock] waited too long - is a job stuck? Status: python gpu_lock.py")
+                f.close()
+                raise LockTimeout(f"[GPU lock] waited {max_wait / 60:.0f} min - is a job stuck? Status: python gpu_lock.py")
             time.sleep(2)
     _handle = f
     if reported:
         print(f"[GPU lock] free after {time.time() - t0:.0f} s", file=sys.stderr, flush=True)
-    INFO.write_text(json.dumps({INFO_NAME: name, INFO_MODEL: model, INFO_PID: os.getpid(),
-                                INFO_SINCE: time.strftime("%H:%M:%S")}), encoding="utf-8")
-    model = model or name
-    try:
-        before = LAST.read_text(encoding="utf-8").strip()
-    except Exception:
-        before = ""
-    if before and before != model and flush_comfy():
-        print(f"[GPU lock] model change {before} -> {model}: ComfyUI memory flushed", file=sys.stderr, flush=True)
-    LAST.write_text(model, encoding="utf-8")
-    atexit.register(release)
+    _use_model(name, model)
+    if not _atexit_done:
+        atexit.register(release)
+        _atexit_done = True
 
 
 def release():

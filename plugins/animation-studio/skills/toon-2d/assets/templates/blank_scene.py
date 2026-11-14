@@ -14,14 +14,16 @@ import sys
 from pathlib import Path
 
 try:
-    import _toon  # noqa: F401  (made by new_scene.py)
-except ImportError:
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+    import _toon  # noqa: F401  (made by new_scene.py; stops with a refresh hint if the plugin is not found)
+except ModuleNotFoundError as e:
+    if e.name != "_toon":
+        raise
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))   # run in place inside the plugin
     import _studio
     _studio.use("toon-2d", "characters")
 
 from sif import V, R, anim, comp_vec, group, circle, rect, linear_gradient, hexc, canvas  # noqa: E402
-from pip import pip, blink  # noqa: E402
+from pip_figure import pip, blink  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 FPS, END = 24, 120

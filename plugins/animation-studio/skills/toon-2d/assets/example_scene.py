@@ -12,8 +12,8 @@ All main moves are keyframes (editable in Synfig Studio). Only the antenna (foll
 spring simulation and baked as one key per frame.
 
 Start a scene from it:  python new_scene.py <folder> --from example   (copies this file as make_scene.py)
-Run:    uv run --no-project python make_scene.py      -> pip_flower.sif
-Render: uv run --no-project python <toon-2d>/scripts/render.py pip_flower.sif --gif --contact 0,15,36,52,74,97,109,118,140
+Run:    uv run --no-project python make_scene.py [out.sif]   -> scene.sif next to make_scene.py (like the templates)
+Render: uv run --no-project python <toon-2d>/scripts/render.py scene.sif --gif --contact 0,15,36,52,74,97,109,118,140
 """
 import math
 import sys
@@ -21,8 +21,10 @@ from pathlib import Path
 
 try:
     import _toon  # noqa: F401  (scene folder made by new_scene.py: puts the toon-2d scripts on the path)
-except ImportError:
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+except ModuleNotFoundError as e:
+    if e.name != "_toon":
+        raise
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))   # run in place inside the plugin
 
 from motion import approx, hop_y, spring_follow, squash_keys  # noqa: E402
 from sif import (V, R, A, anim, comp_vec, group, circle, rect, linear_gradient,  # noqa: E402
@@ -226,6 +228,8 @@ def pip():
 
 if __name__ == "__main__":
     layers = background() + [flower()] + pip() + sparkles()
-    out = Path(sys.argv[1]) if len(sys.argv) > 1 else Path.cwd() / "pip_flower.sif"
+    here = Path(__file__).resolve().parent              # scene folder (has _toon.py); cwd when run inside the plugin
+    default = (here if (here / "_toon.py").exists() else Path.cwd()) / "scene.sif"
+    out = Path(sys.argv[1]) if len(sys.argv) > 1 else default
     out.write_text(canvas(layers, end=END, name="Pip and the Flower", view="-6 3.0 6 -3.75"), encoding="utf-8")
     print("written:", out)

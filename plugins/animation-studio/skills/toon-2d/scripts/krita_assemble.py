@@ -3,7 +3,8 @@
 Usage (normal Python - starts Krita's kritarunner itself, config key "krita"):
   uv run --no-project python krita_assemble.py <folder>/krita_set.json [--export-only]
 
-krita_set.json (paths relative to the JSON file):
+The config may have any name (e.g. room_set.json); it is passed to Krita via ANIMATION_STUDIO_KRITA_SET and never
+copied over another krita_set.json. Config format (paths relative to the JSON file):
   {"width": 1280, "height": 720, "kra": "room.kra",
    "layers": [{"file": "set/01_sky.png", "name": "Sky"},
               {"file": "set/02_wall.png", "name": "Wall"},
@@ -29,7 +30,8 @@ except ImportError:
 
 if IN_KRITA:
     HERE = os.getcwd().replace("\\", "/")
-    CFG = json.load(open(os.path.join(HERE, "krita_set.json"), encoding="utf-8"))
+    CFG = json.load(open(os.path.join(HERE, os.environ.get("ANIMATION_STUDIO_KRITA_SET", "krita_set.json")),
+                         encoding="utf-8"))
     log = open(os.path.join(HERE, "krita_log.txt"), "w", encoding="utf-8")
 
     def p(*a):
@@ -112,23 +114,27 @@ def launch():
     a = ap.parse_args()
     cfg_path = Path(a.config).resolve()
     folder = cfg_path.parent
-    if cfg_path.name != "krita_set.json":
-        shutil.copy(cfg_path, folder / "krita_set.json")
     runner = config.need("krita")              # kritarunner (Krita's command-line script runner)
     if Path(runner).name.lower().startswith("krita.") and (Path(runner).parent / "kritarunner.exe").exists():
         runner = str(Path(runner).parent / "kritarunner.exe")
+    logf = folder / "krita_log.txt"
+    logf.unlink(missing_ok=True)                 # a log from an earlier run must never count as success
     tmp = folder / "_krita_assemble_run.py"
     shutil.copy(Path(__file__), tmp)
+    env = dict(os.environ, ANIMATION_STUDIO_KRITA_SET=cfg_path.name)
     try:
-        subprocess.run([runner, "-s", "_krita_assemble_run", "-f", "export_only" if a.export_only else "main"],
-                       cwd=folder, timeout=a.timeout, capture_output=True)
+        r = subprocess.run([runner, "-s", "_krita_assemble_run", "-f", "export_only" if a.export_only else "main"],
+                           cwd=folder, timeout=a.timeout, capture_output=True, text=True, errors="replace", env=env)
     finally:
         tmp.unlink(missing_ok=True)
-    logf = folder / "krita_log.txt"
     text = logf.read_text(encoding="utf-8") if logf.exists() else ""
     print(text.strip())
-    if "done" not in text.splitlines()[-1:] and not text.rstrip().endswith("done"):
-        sys.exit("Krita did not finish - see krita_log.txt")
+    if not text.rstrip().endswith("done"):
+        tail = "\n".join((r.stderr or r.stdout or "").strip().splitlines()[-15:])
+        sys.exit(f"Krita did not finish (kritarunner exit code {r.returncode})"
+                 + (" - see krita_log.txt" if text else " - no krita_log.txt written") + (f"\n{tail}" if tail else ""))
+    if r.returncode:
+        print(f"note: kritarunner exited with code {r.returncode} although the script finished")
 
 
 if __name__ == "__main__" and not IN_KRITA:

@@ -8,6 +8,8 @@ Rows are split into several sheets of `per_sheet` rows (out_1.jpg, out_2.jpg, ..
 import sys
 from pathlib import Path
 
+from cvio import imread, video_capture  # noqa: E402  (same folder; unicode-safe cv2 file access)
+
 THUMB_W = 384
 
 
@@ -15,9 +17,9 @@ def _frames(path, n=3):
     import cv2
     path = Path(path)
     if path.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp"):
-        im = cv2.imread(str(path))
+        im = imread(path)
         return [im] if im is not None else []
-    cap = cv2.VideoCapture(str(path))
+    cap = video_capture(path)
     total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     out = []
     for u in ([0.05, 0.5, 0.95] if n == 3 else [i / max(n - 1, 1) for i in range(n)]):
@@ -64,7 +66,7 @@ def shot_sheet(video, shots, out, offset=0.0, us=(0.2, 0.5, 0.8), per_sheet=10):
         font = ImageFont.truetype("arial.ttf", 18)
     except OSError:
         font = ImageFont.load_default()
-    cap = cv2.VideoCapture(str(video))
+    cap = video_capture(video)
     fps = cap.get(cv2.CAP_PROP_FPS) or 24
     th = int(THUMB_W * 9 / 16)
     written = []

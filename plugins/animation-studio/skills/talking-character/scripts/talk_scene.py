@@ -495,7 +495,7 @@ def main():
     out_dir = P.dir / "scenes"
     out_dir.mkdir(exist_ok=True)
     sif = out_dir / "dialogue.sif"
-    sif.write_text(canvas([scene], end=N, name=P.get("name", "Dialogue"), view=view), encoding="utf-8")
+    sif.write_text(canvas([scene], fps=P.fps, end=N, name=P.get("name", "Dialogue"), view=view), encoding="utf-8")
     (P.analysis / "actions_dialogue.json").write_text(json.dumps(gestures_out, ensure_ascii=False), encoding="utf-8")
     print(f"-> {sif.relative_to(P.dir)}: {N} frames, figures {names}, gestures {len(gestures_out)}, "
           f"screen texts {len(screen_ev)}, camera {mode} ({max(len(shots) - 1, 0)} shots), styles "

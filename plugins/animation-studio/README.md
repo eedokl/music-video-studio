@@ -67,13 +67,9 @@ claude plugin install animation-studio@music-video-studio
 Or from a local copy: `claude plugin marketplace add <folder with .claude-plugin/marketplace.json>`, then install the
 same way (a local marketplace loads the plugin in place; edits apply after `/reload-plugins`).
 
-Then, once per machine:
-
-```
-python <plugin>/skills/studio-core/scripts/check_tools.py --setup
-```
-
-It finds the installed programs and writes `~/.animation-studio/config.json` (outside the plugin, so it survives
+Then, once per machine, ask Claude: **"set up animation-studio"**. Claude runs the studio-core tool check
+(`check_tools.py --setup`, from the installed plugin folder - you do not need to know where that is). It finds the
+installed programs and writes `~/.animation-studio/config.json` (outside the plugin, so it survives
 updates). Missing tools are listed with install hints – Claude asks before installing anything. Paths can also be set
 by hand (`--set key=value`) or with environment variables. See `TOOLS.md` for every program and model, what it is
 used for and what we recommend.
@@ -123,5 +119,13 @@ side-by-side strips at every event). Each skill's `references/reference-tests.md
 - FLUX lettering on painted images is not detected automatically – pick from the contact sheet.
 - Not exercised on the GPU in the tests: Wan2.2-S2V jobs, the Claudia live-stage version, Cycles brick renders.
 - Large libraries and models (LDraw, model weights) are not bundled; `check_tools.py` says where to get them.
+
+## Checking the plugin
+
+`python tests/smoke.py` (from the plugin folder; with `uv run --no-project --with numpy --with pillow --with svgelements`
+more scripts can be imported) compiles every script, runs `--help` on every CLI, checks that every flag a SKILL.md
+shows exists, that the `_studio.py` copies are identical, that no new module name collides between skills and that no
+machine path slipped in. Run it before every release and bump `version` in `.claude-plugin/plugin.json` - installed
+users only get an update when the version changes.
 
 See `CONVENTIONS.md` before adding or changing a skill.

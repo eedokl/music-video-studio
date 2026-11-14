@@ -145,6 +145,13 @@ def cmd_init(a):
     if max(durs) - min(durs) > 1.0:
         print(f"  warning: lengths differ ({', '.join(f'{d:.2f}' for d in durs)} s) - same timeline?")
     total = min(durs)
+    by_label = {l.lower(): i for l, i in zip(labels, ids)}
+    for opt in ("audio", "default"):                 # accept id or label; fail now, not at the cut
+        v = getattr(a, opt)
+        if v and v not in ids:
+            if v.lower() not in by_label:
+                raise SystemExit(f"--{opt} {v}: not a version (ids: {', '.join(ids)})")
+            setattr(a, opt, by_label[v.lower()])
     versions = []
     for i, f in enumerate(files):
         v = dict(id=ids[i], label=labels[i], file=rel(f, base))

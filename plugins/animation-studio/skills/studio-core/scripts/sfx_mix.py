@@ -17,7 +17,6 @@ animated-short sfx_track.py (frame cues) and animated-powerpoint sound.py (clips
   voices are still mixed.
 - write(): peak-limits to `limit` (0.89), optional low-pass and loudness normalisation, 48 kHz stereo 16-bit WAV.
 """
-import os
 import subprocess
 import tempfile
 from pathlib import Path
@@ -35,7 +34,7 @@ def earshot_launch():
     e = config.get("earshot")
     if not e:
         return None
-    return ["cmd", "/c", e] if os.name == "nt" and str(e).lower().endswith((".cmd", ".bat")) else [e]
+    return [e]                                         # run through config.cmdline (.cmd launchers)
 
 
 def fade(y, ms=10, fade_in=True, fade_out=True):
@@ -80,7 +79,7 @@ class SfxMix:
             tag = "".join("_" + x.replace(".", "").replace("-", "") for x in args)
         wav = self.cache / (sid.replace("/", "__") + tag + ".wav")
         if not wav.exists():
-            subprocess.run(self.ear + ["sfx", "render", sid, "-o", str(wav), "--sr", str(SR)] + args,
+            subprocess.run(config.cmdline(self.ear + ["sfx", "render", sid, "-o", str(wav), "--sr", str(SR)] + args),
                            capture_output=True, text=True, errors="replace")
         if not wav.exists():
             print(f"  sound '{sid}' not found - skipped (earshot sfx list)")

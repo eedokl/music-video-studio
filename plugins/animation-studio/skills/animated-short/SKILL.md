@@ -1,6 +1,6 @@
 ---
 name: animated-short
-description: "Make short classical (Disney-style) 2D cartoon scenes and animation exercises without a song – a bouncing ball, a flour sack, a take, Pip discovering a flower, Fips the bird chirping, a multiplane camera move through a painted forest, a 2.5D flight into a comic page, or any little gag with Tim, Lia, Pip, Fips or the user's own Inkscape figure – as editable Synfig scenes rendered to MP4/GIF with sound effects and the standard film look. Use this whenever the user wants an animated clip, a short scene, a character doing something (jump, walk, react, bounce, land, peck), an animation test or exercise of the 12 principles, or asks to \"animate\" anything in 2D – even if they don't mention Synfig. Also to change, retime or re-render such a scene (folders with short.json / make_scene.py + .sif). For songs use animated-music-video, for dialogue-driven scenes talking-character."
+description: "Make short classical 2D cartoon scenes and animation exercises without a song - a bouncing ball, a flour sack, a take, Pip finding a flower, Fips chirping, a multiplane move through a painted forest, a 2.5D flight into a comic page, or any gag with the bundled or the user's own figures - as editable Synfig scenes rendered to MP4/GIF with sound and the film look. Use whenever the user wants an animated clip, a character doing something (jump, walk, react, land), an exercise of the 12 principles, or asks to \"animate\" anything in 2D - even without saying Synfig; also to change or re-render such a scene (short.json / make_scene.py). Songs: animated-music-video; dialogue: talking-character."
 ---
 
 # Animated short
@@ -51,7 +51,7 @@ falling objects, contacts). Show the beat list to the user in one short block be
 ## 4. Build
 
 - Start from the template that fits: `example` (Pip and the Flower – code-drawn character, flower, sparkles),
-  `figure` (an SVG figure rigged with `wrap=`, park set), `blank` (Pip from `characters/pip.py` on a code-drawn
+  `figure` (an SVG figure rigged with `wrap=`, park set), `blank` (Pip from `characters/pip_figure.py` on a code-drawn
   meadow). Keep one key list per animated value at the top; feed simulations from the same lists.
 - Characters: `pip(...)` for Pip (antenna spring, `antenna_kicks` for hits), `figures.load("fips"|"tim"|"lia"|svg)` +
   `around(...)` for SVG figures, `computer(...)` for the Computer. Two characters touching: hold the carrier, bake the

@@ -16,7 +16,7 @@ Every file is decoded once (0 errors expected), its duration compared with the r
 stream checked. Files are rendered to *_tmp first; a file locked by a video player is kept under a new name.
 --look standard lays film-finish's paper + grain + vignette over the full file before the copies are made
 (off by default: a lyric video brings its own look; grain that changes every frame multiplies the file size).
-The browser: config "chrome" (check_tools.py --set chrome=PATH), env CHROME, or a chrome-headless-shell in
+The browser: config "chrome" (check_tools.py --set chrome=PATH, env ANIMATION_STUDIO_CHROME), or a chrome-headless-shell in
 %TEMP%/mvchrome or ~/.cache/puppeteer - downloaded there with npx only after the user agreed (INSTALL_BROWSER=1).
 Do not edit files of the project while a render runs (Vite reloads the page).
 """
@@ -45,7 +45,7 @@ def tool(name):
 
 
 def find_browser():
-    for p in (config.get("chrome"), os.environ.get("CHROME")):     # explicit choice for this skill
+    for p in (config.get("chrome"),):                             # explicit choice (config or ANIMATION_STUDIO_CHROME)
         if p and Path(p).exists():
             return p
     bases = [Path(tempfile.gettempdir()) / "mvchrome" / "chrome-headless-shell",
@@ -77,7 +77,7 @@ def ensure_browser(video):
                     "--path", str(dest)], cwd=video, check=True)
     b = find_browser()
     if not b:
-        raise SystemExit("headless Chrome still missing - pass CHROME=<chrome.exe> or check_tools.py --set chrome=PATH")
+        raise SystemExit("headless Chrome still missing - set ANIMATION_STUDIO_CHROME=<chrome.exe> or check_tools.py --set chrome=PATH")
     return b
 
 
@@ -99,7 +99,7 @@ def tsc(video):
 
 def run_render(P, out, fps=30, crf=20, t0=None, t1=None, query=None, width=1920, height=1080):
     video = video_dir(P)
-    env = dict(os.environ, FFMPEG=ffmpeg(), CHROME=ensure_browser(video))
+    env = dict(os.environ, FFMPEG=ffmpeg(), ANIMATION_STUDIO_CHROME=ensure_browser(video))
     out = Path(out).resolve()
     tmp = out.with_name(out.stem + "_tmp.mp4")
     tmp.unlink(missing_ok=True)
@@ -164,6 +164,13 @@ def main():
     outdir = P.dir / "out"
     outdir.mkdir(exist_ok=True)
     song = duration(P.song)
+    if a.what in ("sheet", "versions"):            # like every other path: relative to the project (cwd as fallback)
+        if not a.file:
+            raise SystemExit(f"{a.what} needs a video file, e.g. out/<title>.mp4")
+        f = Path(a.file)
+        a.file = str(f if f.is_absolute() or not (P.dir / f).exists() else P.dir / f)
+        if not Path(a.file).exists():
+            raise SystemExit(f"{a.file} not found (relative paths are read from the project folder)")
     if a.what == "check":
         tsc(video_dir(P))
     elif a.what == "sheet":

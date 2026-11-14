@@ -8,12 +8,16 @@ Start:  python review.py serve review.json [--port 0]     (prints the URL; port 
   GET  /film/<id>         a version (its light preview if there is one), with HTTP Range so seeking works
   GET  /film/cut          the last cut (small version if there is one)
   POST /api/cut           save the choice and start pick_cut.py;  GET /api/cut -> status
+POSTs must come from the page itself: Content-Type application/json (a cross-site form cannot send it without a CORS
+preflight, which this server never allows) and Host / Origin naming this server - other web pages cannot change the
+choice or start a cut.
 """
 import json
 import re
 import subprocess
 import sys
 import threading
+import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -106,7 +110,7 @@ def serve(rp, port=0, host="127.0.0.1"):
             if p in ("/", "/index.html"):
                 return self.file(PAGE, "text/html; charset=utf-8")
             if p.startswith("/film/"):
-                f = films(R).get(p[6:])
+                f = films(R).get(urllib.parse.unquote(p[6:]))      # the page sends encodeURIComponent(id)
                 return self.file(f, "video/mp4") if f else self.reply(404, {"error": "unknown version"})
             if p == "/api/review":
                 keys = ("title", "fps", "size", "duration", "audio", "default", "shot_source", "out")
@@ -121,7 +125,18 @@ def serve(rp, port=0, host="127.0.0.1"):
                 return self.reply(200, dict(state, exists=films(R)["cut"].exists()))
             self.reply(404, {"error": "unknown"})
 
+        def same_origin(self):
+            port = self.server.server_address[1]
+            allowed = {f"{h}:{port}" for h in ("127.0.0.1", "localhost", "[::1]", host)}
+            if self.headers.get("Host", "") not in allowed:
+                return False
+            origin = self.headers.get("Origin")
+            return origin is None or urllib.parse.urlsplit(origin).netloc in allowed
+
         def do_POST(self):
+            ctype = self.headers.get("Content-Type", "").split(";")[0].strip().lower()
+            if ctype != "application/json" or not self.same_origin():
+                return self.reply(403, {"error": "only the review page itself may post (application/json, same origin)"})
             n = int(self.headers.get("Content-Length", 0))
             try:
                 data = json.loads(self.rfile.read(n) or b"{}")

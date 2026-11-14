@@ -1,6 +1,6 @@
 ---
 name: lyric-music-video
-description: "Make a lyric music video from a song (wav/mp3) and its lyrics - kinetic typography and motion graphics in TypeScript + three.js where every letter lands exactly when it is sung, rendered frame-exact to MP4 (full quality, compressed, < 30 MB and ~12 MB mail versions). Transcribes and aligns the vocals with Whisper, snaps words to the real vocal onsets, drives flashes from riff hits, stretches held notes with the singer's voice, and invents a fresh visual identity with one scene per lyric idea. Use this whenever the user wants a lyric video, a typography / motion-graphics video for a song, a company or team song turned into a video, or a song that presents content (a web page, roles, a product, a story, slides) - even if they just attach an audio file and say \"make a video for this\". Not for cartoon characters singing (animated-music-video), brick films or AI-generated singers."
+description: "Make a lyric music video from a song and its lyrics - kinetic typography and motion graphics in TypeScript + three.js where every letter lands exactly when it is sung, rendered frame-exact to MP4 (full, compressed, < 30 MB, mail). Whisper-aligned words snapped to vocal onsets, flashes on riff hits, held notes stretched with the voice, a fresh visual identity with one scene per lyric idea. Use whenever the user wants a lyric video, a typography video for a song, a team or company song as a video, or a song that presents content (a page, roles, a product, slides) - even if they just attach an audio file. Not for singing cartoon characters, brick films or AI singers."
 ---
 
 # Lyric music video
@@ -131,7 +131,7 @@ Read `references/scene-catalog.md` (all past scenes, techniques, identities, lik
   With `--no-refine` (unrefined Whisper times) use ~0.2 s.
 - **Fonts**: wait for them in render mode (`document.fonts.load` in main.ts) - update the list with the fonts.
 - **Windows paths**: deep folders exceed MAX_PATH - keep PROJECT and the headless Chrome short (`%TEMP%/mvchrome`).
-- **Browser**: render.py takes config `chrome` / env `CHROME`, then an existing chrome-headless-shell (%TEMP%/mvchrome,
+- **Browser**: render.py takes config `chrome` / env `ANIMATION_STUDIO_CHROME`, then an existing chrome-headless-shell (%TEMP%/mvchrome,
   ~/.cache/puppeteer), and only then the machine's general `browser` (Edge). A full Edge/Chrome runs in new headless
   mode; on the reference machine Edge still exits at once ("Failed to launch the browser process: Code: 0", even
   outside the sandbox) - use chrome-headless-shell (download only with the user's OK, `INSTALL_BROWSER=1`).
@@ -158,4 +158,4 @@ Read `references/scene-catalog.md` (all past scenes, techniques, identities, lik
   role images) are not included - each README says what to supply.
 - Building blocks used: song-analysis (`analyze.py`, `track_read.py`, `refine_timing.py`, `hits.py`,
   `held_notes.py`, `sync_check.py`), studio-core (`config`, `creative`, `media`, `frames.py`), film-finish
-  (`build.encode_target` for the size-targeted copies, `apply_look.py` for `--look standard`).
+  (`encode.py` `encode_target` for the size-targeted copies, `apply_look.py` for `--look standard`).

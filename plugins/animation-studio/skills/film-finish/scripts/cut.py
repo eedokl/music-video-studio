@@ -2,7 +2,7 @@
 film.mp4 / film_small.mp4 / film_mail.mp4 (+ film.otio for Kdenlive, contact sheet, level report).
 
   uv run --no-project --with numpy --with pillow --with opentimelineio python cut.py cut.json [--version v2]
-        [--out-dir DIR] [--no-otio] [--sheet-only]
+        [--out-dir DIR] [--no-otio] [--no-versions]
 PREVIEW=1 in front = fast NVENC encodes for work-in-progress files.
 
 cut.json (paths relative to the JSON file):
@@ -589,10 +589,15 @@ def loudnorm(src, dst, target):
                            f"loudnorm=I={target}:TP=-1.5:LRA=11:print_format=json", "-f", "null", "-"],
                           capture_output=True, text=True, errors="replace").stderr
     j = json.loads(meas[meas.rfind("{"):meas.rfind("}") + 1])
-    gain = target - float(j["input_i"])        # one linear gain + a peak limiter: the dialogue/music balance stays
+    measured = float(j["input_i"])             # "-inf" for (near) silent sound
+    if not math.isfinite(measured) or measured < -70:
+        print(f"   loudness: sound is (nearly) silent ({j['input_i']} LUFS) - left at its level, not normalised")
+        gain = 0.0
+    else:
+        gain = target - measured               # one linear gain + a peak limiter: the dialogue/music balance stays
     af = f"volume={gain:.2f}dB,alimiter=limit=0.79:attack=5:release=60:level=disabled"     # limit -2 dBFS
     subprocess.run([ffmpeg(), "-y", "-v", "error", "-i", str(src), "-af", af, "-ar", str(SR), str(dst)], check=True)
-    return float(j["input_i"])
+    return measured if math.isfinite(measured) else None
 
 
 def sound(plan, tl, out_wav, bed_wav, cache):
@@ -620,7 +625,8 @@ def sound(plan, tl, out_wav, bed_wav, cache):
     if target is None or peak == 0:
         shutil.copy(raw, out_wav)
     else:
-        rep["loudness_in_lufs"] = round(loudnorm(raw, out_wav, float(target)), 1)
+        lufs = loudnorm(raw, out_wav, float(target))
+        rep["loudness_in_lufs"] = round(lufs, 1) if lufs is not None else None
         rep["loudness_target_lufs"] = float(target)
     return rep
 
@@ -768,8 +774,9 @@ def main():
     dur = total / fps
     if not a.no_versions:
         W, H = plan.get("size", [1280, 720])
-        for name, mb, w, ak in ((f"{prefix}_small", 29.0, 1280, 128), (f"{prefix}_mail", 12.0, 960, 64)):
-            h = int(round(w * H / W / 2) * 2)
+        for name, mb, side, ak in ((f"{prefix}_small", 29.0, 1280, 128), (f"{prefix}_mail", 12.0, 960, 64)):
+            s = min(1.0, side / max(W, H))                     # long side <= 1280 / 960, never upscaled (portrait)
+            w, h = int(round(W * s / 2) * 2), int(round(H * s / 2) * 2)
             target = cache / f"{name}_tmp.mp4"
             if film.stat().st_size < mb * 1e6:                  # already small enough (as build.py)
                 shutil.copy(film, target)

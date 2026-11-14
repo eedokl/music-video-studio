@@ -1,32 +1,40 @@
 """Machine configuration: where the external programs, caches and the GPU lock live.
 
 The skill ships without any machine paths. Lookup order for every entry:
-  1. environment variable (e.g. SYNFIG=/path/to/synfig)
+  1. environment variable ANIMATION_STUDIO_<KEY> (e.g. ANIMATION_STUDIO_SYNFIG=/path/to/synfig); for the unambiguous
+     keys in BARE_ENV also the plain name (FFMPEG, SYNFIG, HF_HOME, ...). Generic names such as BROWSER (often a
+     URL-opener script), NODE, CHROME, BLENDER, MELT, PIPER, SHADERS or RIFE are NOT read - use the prefixed form.
   2. the machine config file ~/.animation-studio/config.json (or the file named by ANIMATION_STUDIO_CONFIG),
      written by `check_tools.py --setup`; it lives outside the plugin so it survives plugin updates
   3. the program name on PATH
 If a required program is missing, `need()` stops with a clear message pointing to check_tools.py.
 
-Entries (env var = JSON key in lower case):
-  FFMPEG      ffmpeg with libx264 and PNG decoding         FFPROBE   ffprobe (optional, falls back to ffmpeg -i)
-  SYNFIG      synfig command-line renderer (1.4+)           INKSCAPE  inkscape 1.x (SVG -> paths)
-  RHUBARB     rhubarb lip sync                              EARSHOT   earshot launcher (optional: who sings, sounds)
-  GPU_PYTHON  python of a CUDA venv with torch, demucs, faster-whisper (optional, faster)
-  GPU_LOCK_DIR  folder of the shared GPU lock file (share it with other GPU pipelines on the machine)
-  HF_HOME / TORCH_HOME  model caches (optional; library defaults otherwise)
-  LDRAW_DIR   LDraw parts library (bricks)              BLENDER   blender (bricks, 3D gags)
-  More keys (face_landmarker, comfy_start, tts_python, piper, realesrgan, ...): see check_tools.py.
-  COMFY_URL   ComfyUI server to flush on a model change (optional, default http://127.0.0.1:8188)
+Programs (JSON key = lower case; env ANIMATION_STUDIO_<KEY>, plain name too where marked *):
+  ffmpeg*     ffmpeg with libx264 and PNG decoding         ffprobe*  ffprobe (optional, falls back to ffmpeg -i)
+  synfig*     synfig command-line renderer (1.4+)           inkscape* inkscape 1.x (SVG -> paths)
+  rhubarb*    rhubarb lip sync                              earshot*  earshot launcher (optional: who sings, sounds)
+  gpu_python* python of a CUDA venv with torch, demucs, faster-whisper (optional, faster)
+  blender, krita, node, browser, chrome, melt, realesrgan, rife, piper, tts_python ...: see check_tools.py
+Settings (not programs):
+  gpu_lock_dir*  folder of the shared GPU lock file (share it with other GPU pipelines on the machine)
+  hf_home* / torch_home*  model caches (optional; library defaults otherwise)
+  ldraw_dir*  LDraw parts library (bricks)              comfy_url*  ComfyUI server (default http://127.0.0.1:8188)
+  comfy_dir*  ComfyUI folder (optional: ai-video night_run.py --clean-comfy and the free-space check)
+  animation_studio_root  the plugin folder (env ANIMATION_STUDIO_ROOT) - read by toon-2d scene shims; written by
+              check_tools.py --setup and toon-2d new_scene.py
+  sfx_cache, comfy_start, font, rife_model, minimax_api_base, claudia_refs: see SETTINGS below.
 """
 import json
 import os
 import shutil
+import subprocess
 from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parent
 SKILL = SCRIPTS.parent
 ASSETS = SKILL / "assets"
 LOCAL = Path(os.environ.get("ANIMATION_STUDIO_CONFIG", Path.home() / ".animation-studio" / "config.json"))
+ENV_PREFIX = "ANIMATION_STUDIO_"
 
 PROGRAMS = {  # key: (names on PATH, required?, what for)
     "ffmpeg": (["ffmpeg"], True, "sound, cutting, encoding"),
@@ -43,6 +51,34 @@ PROGRAMS = {  # key: (names on PATH, required?, what for)
     "realesrgan": (["realesrgan-ncnn-vulkan"], False, "upscaling painted panels and slide figures"),
 }
 
+# settings that are not programs (folders, URLs, command lines, lists) - known keys for check_tools --set
+SETTINGS = {
+    "gpu_lock_dir": "folder of the shared GPU lock file",
+    "hf_home": "Hugging Face model cache",
+    "torch_home": "torch model cache",
+    "comfy_url": "ComfyUI server URL (default http://127.0.0.1:8188)",
+    "comfy_dir": "ComfyUI folder (input/output folders of the workflows)",
+    "comfy_start": "command or script that starts ComfyUI when it is not running",
+    "sfx_cache": "one earshot sound-effect bank folder shared by all projects",
+    "font": "TTF font for labels and contact sheets",
+    "rife_model": "RIFE model folder (default: rife-v4.6 next to the RIFE exe)",
+    "minimax_api_base": "MiniMax API base URL",
+    "claudia_refs": "reference images of Claudia (folder, or a.png;b.png)",
+    "animation_studio_root": "the plugin folder, read by toon-2d scene shims (env ANIMATION_STUDIO_ROOT)",
+}
+
+# documented, unambiguous keys whose plain upper-case environment name is read as well (after the prefixed one)
+BARE_ENV = {"ffmpeg", "ffprobe", "synfig", "inkscape", "rhubarb", "earshot", "gpu_python", "gpu_lock_dir",
+            "hf_home", "torch_home", "ldraw_dir", "comfy_url", "comfy_dir"}
+
+
+def env_names(key):
+    """Environment variables read for a key, in order."""
+    k = key.upper()
+    if k.startswith(ENV_PREFIX):                       # animation_studio_root -> ANIMATION_STUDIO_ROOT
+        return [k]
+    return [ENV_PREFIX + k] + ([k] if key in BARE_ENV else [])
+
 
 def _local():
     try:
@@ -53,7 +89,7 @@ def _local():
 
 def get(key):
     """Value of a config entry or None."""
-    v = os.environ.get(key.upper()) or _local().get(key)
+    v = next((os.environ[n] for n in env_names(key) if os.environ.get(n)), None) or _local().get(key)
     if v:
         return str(v)
     names = PROGRAMS.get(key, ([],))[0]
@@ -70,8 +106,18 @@ def need(key):
     if not v or (not Path(v).exists() and not shutil.which(v)):
         what = PROGRAMS.get(key, ([], True, ""))[2]
         raise SystemExit(f"'{key}' not found ({what}). Run `python {SCRIPTS / 'check_tools.py'} --setup`, "
-                         f"or set the environment variable {key.upper()}.")
+                         f"or set the environment variable {env_names(key)[0]}.")
     return v
+
+
+def cmdline(cmd):
+    """Argument list -> what subprocess.run needs. A Windows .cmd/.bat launcher (earshot) runs through
+    `cmd /d /s /c "<line>"`: with a plain ["cmd", "/c", ...] cmd.exe strips the wrong quotes as soon as the launcher
+    path contains a space and another argument is quoted."""
+    cmd = [str(c) for c in cmd]
+    if os.name == "nt" and cmd and cmd[0].lower().endswith((".cmd", ".bat")):
+        return f'cmd /d /s /c "{subprocess.list2cmdline(cmd)}"'
+    return cmd
 
 
 def setup_env():

@@ -18,7 +18,7 @@ from sif import V, group, circle, rect, hexc, canvas  # noqa: E402
 from svg2sif import emit  # noqa: E402
 from lipsync import mouth_layers  # noqa: E402
 from figures import FIGURES, load  # noqa: E402
-from pip import pip  # noqa: E402
+from pip_figure import pip  # noqa: E402
 from computer import computer  # noqa: E402
 
 FLOOR = -5.6

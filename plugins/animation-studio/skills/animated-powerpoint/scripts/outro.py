@@ -15,7 +15,7 @@ outro.json (paths relative to it):
    "sound": true}                  glockenspiel + ping on the wink (earshot)
 The wink is drawn from the slide itself: the eye is covered with the skin colour sampled around it, a squashed copy of
 the eye (half) or a happy ink arc (closed) is put on top - no redrawing of the figure.
-Outputs frames/f_NNNN.png, <name>.mp4 (+ sound), first.png/last.png, check.json.
+Outputs frames_outro/f_NNNN.png, <name>.mp4 (+ sound), first.png/last.png, check.json.
 Usage: uv run --no-project --with pillow --with numpy --with scipy python outro.py clips/finale/outro.json
 """
 import json
@@ -47,6 +47,9 @@ def eye_on_slide(fig_dir, k):
     t, (x0, y0) = fj["to_slide"], fj["crop"][:2]
     a = np.asarray(Image.open(fig_dir / "eyes.png"))[..., 3] > 128
     lab, n = ndi.label(a)
+    if not pj.get("eyes") or n == 0:
+        raise SystemExit(f"figure {fig_dir.name} has no pupils in parts.json / eyes.png - the outro winks one eye")
+    k = min(max(int(k), 0), len(pj["eyes"]) - 1)                # one-eyed figure: its only eye winks
     ex, ey = pj["eyes"][k]
     best = min(range(1, n + 1), key=lambda i: np.hypot(*(np.array(ndi.center_of_mass(lab == i))[::-1] - (ex, ey))))
     ys, xs = np.nonzero(lab == best)
@@ -118,7 +121,10 @@ def main():
     tc = P.get("title_color", [250, 249, 244])
     fb, fr = font(True, round(76 * H / 1080)), font(False, round(48 * H / 1080))
     first = Image.open(D / P["from_image"]).convert("RGB").resize((W, H)) if P.get("from_image") else None
-    out = D / "frames"
+    clash = [n for n in ("stage.json", "scene_stage.json", "intro_stage.json") if (D / n).exists()]
+    if clash:                       # <name>.mp4, stage.mp4, first/last.png, check.json would overwrite that clip's
+        sys.exit(f"{D} holds another clip ({clash[0]}) - give the outro its own folder, e.g. clips/finale/outro.json")
+    out = D / "frames_outro"        # not frames/: clip.py and scene.py keep their Synfig frames there
     if out.exists():
         shutil.rmtree(out)
     out.mkdir()

@@ -54,6 +54,11 @@ def relp(P, p):
     return Path(p).resolve().relative_to(P.dir).as_posix()
 
 
+def done(files):
+    """Without unfinished renders (night_run writes <name>.part.<ext> first, comfy.py encodes to <name>.encoding.mp4)."""
+    return [f for f in files if ".part." not in f.name and ".encoding." not in f.name]
+
+
 def side_of(s):
     return "image_right" if "behind" in (s.get("framing") or "").lower() else "image_left"
 
@@ -69,7 +74,7 @@ def pick_start(P, sel, log, rows, repair_mic=False):
             out[name] = s["start_image"]
             log.append(f"start {name}: given {s['start_image']}")
             continue
-        cands = sorted((P.dir / "ai" / "start").glob(f"{name}_v*.png"))
+        cands = done(sorted((P.dir / "ai" / "start").glob(f"{name}_v*.png")))
         if not cands:
             continue
         res = {c: canon.measure(c, claudia.STREAK, side_of(s)) or {} for c in cands}
@@ -80,6 +85,7 @@ def pick_start(P, sel, log, rows, repair_mic=False):
         if name in man:
             out[name] = man[name]
             log.append(f"start {name}: by hand {man[name]}")
+            save(P, sel)
             continue
         ok = [c for c in cands if res[c].get("streak") and not res[c].get("wrong") and not res[c].get("mic_both")]
         if not ok and repair_mic:
@@ -87,8 +93,11 @@ def pick_start(P, sel, log, rows, repair_mic=False):
             if fix:
                 import mic_repair
                 src = max(fix, key=lambda c: res[c].get("value", -1))
-                r = mic_repair.repair(src, P.dir / "ai" / "start" / "mic_repair", side_of(s),
-                                      edit_prompt=claudia.MIC_EDIT, edit_neg=claudia.MIC_EDIT_NEG, color=claudia.STREAK)
+                try:
+                    r = mic_repair.repair(src, P.dir / "ai" / "start" / "mic_repair", side_of(s),
+                                          edit_prompt=claudia.MIC_EDIT, edit_neg=claudia.MIC_EDIT_NEG, color=claudia.STREAK)
+                except (SystemExit, Exception) as ex:    # one broken repair must not lose the other shots' picks
+                    r = {"ok": False, "note": f"failed ({type(ex).__name__}: {str(ex)[:160]})"}
                 log.append(f"start {name}: mic repair of {src.name}: " + (r["method"] if r["ok"] else r.get("note", "failed")))
                 if r["ok"]:
                     dst = src.with_name(src.stem + "m.png")
@@ -104,12 +113,14 @@ def pick_start(P, sel, log, rows, repair_mic=False):
         log.append(f"start {name}: {best.name}" + ("" if ok else "  (NO variant passes: streak on the image left, one mic - check by eye, "
                                                          "or make new variants)") +
                    "  [" + ", ".join(f"{c.stem[-2:]} {res[c].get('value', -1):.2f}" for c in cands) + "]")
+        save(P, sel)                                  # per shot: a crash later keeps the picks made so far
 
 
 def letterbox(path):
     """FLUX sometimes paints cinema bars: dark full-width bands at the top and bottom."""
     import cv2
-    g = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
+    from cvio import imread
+    g = imread(path, cv2.IMREAD_GRAYSCALE)
     if g is None:
         return False
     h = g.shape[0]
@@ -126,7 +137,7 @@ def pick_broll(P, sel, log, rows):
         if s.get("start_image"):
             out[s["name"]] = s["start_image"]
             continue
-        cands = sorted((P.dir / "ai" / "broll").glob(f"{s['name']}_v*.png"))
+        cands = done(sorted((P.dir / "ai" / "broll").glob(f"{s['name']}_v*.png")))
         bars = {c: letterbox(c) for c in cands}
         rows += [(c, "LETTERBOX bars" if bars[c] else "") for c in cands]
         if s["name"] in man:
@@ -181,12 +192,16 @@ def pick_clips(P, sel, log, rows, curve):
                            + (f"  -> {', '.join(warn)}: re-render with another seed" if warn else ""))
             continue
         cands = sorted((P.dir / "ai" / "lipsync").glob(f"{name}_{tag}_s*.mp4")) + \
-            sorted((P.dir / "ai" / "s2v").glob(f"{name}_{tag}.mp4")) +             sorted((P.dir / "ai" / "infinitetalk").glob(f"{name}_{tag}.mp4")) +             sorted((P.dir / "ai" / "humo").glob(f"{name}_{tag}.mp4")) +             sorted((P.dir / "ai" / "minimax_h3").glob(f"{name}_{tag}.mp4"))
+            [f for d in ("s2v", "infinitetalk", "humo", "minimax_h3") for f in sorted((P.dir / "ai" / d).glob(f"{name}_{tag}.mp4"))]
+        cands = done(cands)
         if not cands:
             continue
         curves = curves or mouth.vocal_curves(P.dir, curve)
         rated = []
         for c in cands:
+            if not clips.meta_path(c).exists():       # unfinished render (killed before its json): not a candidate
+                log.append(f"  {c.parent.name + '/' + c.name:36s} skipped - no {clips.meta_path(c).name} (re-render it)")
+                continue
             meta = clips.read_meta(c)
             r = mouth.lip_score(c, s["from"], s["to"], curves, meta)
             score, lag, rl, closed = mouth.rating(r, "s2v" if meta.get("kind") == "s2v" else "ltx")
@@ -197,6 +212,8 @@ def pick_clips(P, sel, log, rows, curve):
                             f"score {score}{'  REJECTED' if closed else ''}  cuts {q['cuts']} frozen {q['frozen']}"))
             log.append(f"  {c.parent.name + '/' + c.name:36s} r0 {r['r0']}  r@{lag} {rl}  range {r['range']}  face {r['face']}  score {score}"
                        + ("  mouth closed" if closed else ""))
+        if not rated:
+            continue
         open_ = [x for x in rated if not x[4]] or rated
         score, c, lag, rl, closed, r = max(open_, key=lambda x: x[0])
         out[name] = {"file": relp(P, c), "lag": lag, "score": score, "r": rl, "r0": r["r0"], "range": r["range"]}

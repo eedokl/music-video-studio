@@ -65,7 +65,7 @@ def encode(pattern, mp4, fps=24, audio=None):
     if audio:
         tmp = Path(mp4).with_name(Path(mp4).stem + "_tmp.mp4")
         run([ff, "-y", "-loglevel", "error", "-i", mp4, "-i", Path(audio).resolve(),
-             "-c:v", "copy", "-c:a", "aac", "-b:a", "160k", "-shortest", tmp])
+             "-c:v", "copy", "-af", "apad", "-c:a", "aac", "-b:a", "160k", "-shortest", tmp])  # picture sets the length
         tmp.replace(mp4)
     return mp4
 
@@ -179,10 +179,13 @@ def main():
     if a.gif:
         print("GIF:", gif(pattern, sif.with_suffix(".gif"), a.fps))
     if a.contact and a.contact != "none":
-        nums = [f for f in pick_frames(a.contact, n) if f < n]
+        nums = [f for f in pick_frames(a.contact, n) if 0 <= f < n]
         out = Path(a.contact_out) if a.contact_out else sif.parent / "contact.png"
-        contact_sheet(pattern, out, nums)
-        print(f"contact sheet ({', '.join(map(str, nums))}):", out)
+        if not nums:
+            print(f"no contact sheet: none of the frames '{a.contact}' is in 0..{n - 1}")
+        else:
+            contact_sheet(pattern, out, nums)
+            print(f"contact sheet ({', '.join(map(str, nums))}):", out)
 
 
 if __name__ == "__main__":

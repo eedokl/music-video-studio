@@ -9,8 +9,11 @@
     comfy.fetch_frames(comfy.outputs(h, "70"), folder) # SaveImage node 70 -> folder/f.0000.png ...
 
 Config (studio-core config.py): comfy_url (default http://127.0.0.1:8188), comfy_start (optional: script that starts
-the server, e.g. a .cmd/.sh file; without it the user is asked to start ComfyUI).
+the server, e.g. a .cmd/.sh file; without it the user is asked to start ComfyUI), comfy_dir (optional: ComfyUI's base
+folder holding input/ and output/ - only needed for `clean_produced()` and the free-space check of the night run).
 No machine paths here: the input folder of ComfyUI is reached through its /upload API, never through the file system.
+Files this process creates in ComfyUI (uploads that did not exist before, SaveImage results) are recorded in
+`PRODUCED`; `clean_produced()` deletes exactly those (needs comfy_dir) - never anything else.
 """
 import json
 import mimetypes
@@ -29,6 +32,8 @@ import _studio  # noqa: E402
 _studio.use()
 import config  # noqa: E402
 import gpu_lock  # noqa: E402
+
+PRODUCED = []       # (kind "input"/"output", subfolder, file name) created in ComfyUI by this process
 
 
 def url():
@@ -60,10 +65,11 @@ def ensure(wait=900):
     start = config.get("comfy_start")
     if not start:
         raise SystemExit(f"ComfyUI does not answer at {url()}. Start it, or store its start script once with "
-                         f"`check_tools.py --set comfy_start=<script>` (environment variable COMFY_START).")
+                         f"`check_tools.py --set comfy_start=<script>` (environment variable ANIMATION_STUDIO_COMFY_START).")
     print(f"[comfy] not running - starting {Path(start).name} (minimised)", file=sys.stderr, flush=True)
     if os.name == "nt":
-        subprocess.Popen(["cmd", "/c", "start", "/min", "ComfyUI", start], cwd=str(Path(start).parent))
+        # start's first quoted argument is the window TITLE - without it the script name would be read as the title
+        subprocess.Popen(f'cmd /c start "ComfyUI" /min "{start}"', cwd=str(Path(start).parent))
     else:
         subprocess.Popen([start], cwd=str(Path(start).parent), start_new_session=True,
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -104,6 +110,8 @@ def upload(path, name=None):
     """Copy a local file (image or audio) into ComfyUI's input folder -> the name for LoadImage/LoadAudio."""
     path = Path(path)
     name = name or path.name
+    base = comfy_dir()
+    existed = base is None or (base / "input" / name).exists()
     b = "----comfy" + uuid.uuid4().hex
     ctype = mimetypes.guess_type(name)[0] or "application/octet-stream"
     head = (f'--{b}\r\nContent-Disposition: form-data; name="image"; filename="{name}"\r\n'
@@ -111,6 +119,8 @@ def upload(path, name=None):
     tail = f'\r\n--{b}\r\nContent-Disposition: form-data; name="overwrite"\r\n\r\ntrue\r\n--{b}--\r\n'.encode()
     r = call("/upload/image", raw=head + path.read_bytes() + tail, ctype=f"multipart/form-data; boundary={b}", timeout=300)
     d = json.loads(r)
+    if not existed:
+        PRODUCED.append(("input", d.get("subfolder") or "", d["name"]))
     return (d.get("subfolder") + "/" if d.get("subfolder") else "") + d["name"]
 
 
@@ -134,11 +144,56 @@ def wait(pid, timeout=3 * 3600, poll=2.0):
             if st.get("completed") or h.get("outputs"):
                 return h
         time.sleep(poll)
-    raise TimeoutError(f"ComfyUI job {pid} not finished after {timeout} s")
+    cancel(pid)
+    raise TimeoutError(f"ComfyUI job {pid} not finished after {timeout} s - cancelled")
+
+
+def cancel(pid):
+    """Take a job out of ComfyUI's queue, or interrupt it when it is the one running (never touches other jobs)."""
+    try:
+        q = json.loads(call("/queue", timeout=30))
+        if any(len(x) > 1 and x[1] == pid for x in q.get("queue_pending", [])):
+            call("/queue", {"delete": [pid]}, timeout=30)
+        if any(len(x) > 1 and x[1] == pid for x in q.get("queue_running", [])):
+            call("/interrupt", {"prompt_id": pid}, timeout=30)   # older ComfyUI: interrupts the running job
+        print(f"[comfy] job {pid} cancelled after its timeout", file=sys.stderr, flush=True)
+    except Exception as ex:
+        print(f"[comfy] could not cancel job {pid}: {ex}", file=sys.stderr, flush=True)
 
 
 def run(wf, timeout=3 * 3600):
-    return wait(submit(wf), timeout)
+    h = wait(submit(wf), timeout)
+    for o in h.get("outputs", {}).values():
+        for items in o.values():
+            for i in items if isinstance(items, list) else []:
+                if isinstance(i, dict) and i.get("type") == "output" and i.get("filename"):
+                    PRODUCED.append(("output", i.get("subfolder") or "", i["filename"]))
+    return h
+
+
+def comfy_dir():
+    v = config.get("comfy_dir")
+    return Path(v) if v and Path(v).is_dir() else None
+
+
+def clean_produced():
+    """Delete the input/output files this process created in ComfyUI (recorded in PRODUCED). -> (files, bytes)."""
+    base = comfy_dir()
+    if base is None:
+        return 0, 0
+    n = size = 0
+    while PRODUCED:
+        kind, sub, name = PRODUCED.pop()
+        root = (base / kind).resolve()
+        f = (root / sub / name).resolve()
+        if f.is_relative_to(root) and f.is_file():
+            try:
+                size += f.stat().st_size
+                f.unlink()
+                n += 1
+            except OSError:
+                pass
+    return n, size
 
 
 def outputs(h, node=None, kind="images"):
@@ -164,10 +219,14 @@ def fetch_frames(items, folder):
 
 
 def frames_to_mp4(folder, out, fps, crf=15):
+    """Encode to a temp name, then rename: a kill during the encode never leaves a truncated `out`."""
     from media import ffmpeg
+    out = Path(out)
+    tmp = out.with_name(out.stem + ".encoding" + out.suffix)
     subprocess.run([ffmpeg(), "-y", "-v", "error", "-framerate", str(fps), "-i", str(Path(folder) / "f.%04d.png"),
-                    "-c:v", "libx264", "-crf", str(crf), "-preset", "medium", "-pix_fmt", "yuv420p", str(out)], check=True)
-    return Path(out)
+                    "-c:v", "libx264", "-crf", str(crf), "-preset", "medium", "-pix_fmt", "yuv420p", str(tmp)], check=True)
+    os.replace(tmp, out)
+    return out
 
 
 def short_error(text):

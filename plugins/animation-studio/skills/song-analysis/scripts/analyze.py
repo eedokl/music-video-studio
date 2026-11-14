@@ -133,10 +133,10 @@ def step_gender(P, step=0.5, window=1.0):
         subprocess.run([ffmpeg(), "-y", "-v", "error", "-ss", str(s), "-t", str(window), "-i", str(track), "-ac", "1",
                         str(tmp / f"c_{int(s * 100):06d}.wav")], check=True)
     res = {}
-    launch = ["cmd", "/c", ear] if ear.lower().endswith((".cmd", ".bat")) else [ear]
     for key, query in (("m", "a man singing, male vocals"), ("f", "a woman singing, female vocals")):
         out = tmp / f"{key}.json"
-        subprocess.run(launch + ["rank", query, str(tmp), "--json", "--out", str(out)], check=True, capture_output=True)
+        subprocess.run(config.cmdline([ear, "rank", query, str(tmp), "--json", "--out", str(out)]), check=True,
+                       capture_output=True)
         res[key] = {x["name"]: x for x in json.loads(out.read_text(encoding="utf-8"))["results"]}
     track_d = []
     for s in starts:

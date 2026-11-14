@@ -37,7 +37,6 @@ import config  # noqa: E402
 import creative  # noqa: E402
 from song_project import Project  # noqa: E402
 
-HERE = Path(__file__).resolve().parent
 STRENGTHS = [1.0, 0.85, 1.0, 0.7]
 MEDIAPIPE = ["uv", "run", "--no-project", "--python", "3.12", "--with", "mediapipe", "--with", "opencv-python-headless",
              "--with", "numpy", "--with", "pillow", "python"]
@@ -230,7 +229,9 @@ def main():
         print("Prompt problems:\n  " + "\n  ".join(problems))
         if not a.ignore_checks:
             raise SystemExit("fix the brief (or --ignore-checks) - jobs.json not written")
-    hook = MEDIAPIPE + [str(HERE / "pick.py"), "auto", str(P.dir)]
+    # no absolute paths in jobs.json: night_run expands ${CLAUDE_PLUGIN_ROOT} at run time and runs hooks in the
+    # project folder (the jobs file's folder), so the hook survives plugin updates and moved projects
+    hook = MEDIAPIPE + ["${CLAUDE_PLUGIN_ROOT}/skills/claudia-music-video/scripts/pick.py", "auto", "."]
     d = {"phases": ["flux", "qwen_edit", "depth", "ltx", "s2v", "infinitetalk", "humo", "minimax_h3", "wan"], "selection": "selection.json",
          "hooks": {"after:flux": hook, "after:qwen_edit": hook + ["--repair-mic"]}, "jobs": jobs}
     (P.dir / "jobs.json").write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")

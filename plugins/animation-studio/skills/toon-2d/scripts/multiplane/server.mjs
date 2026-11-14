@@ -23,7 +23,10 @@ async function body(req) {
 }
 
 const server = http.createServer(async (req, res) => {
-  const url = decodeURIComponent(req.url.split('?')[0]);
+  let url = req.url.split('?')[0];
+  try {
+    url = decodeURIComponent(url);                // inside the try: a stray '%' must not crash the render
+  } catch { /* keep the raw path */ }
   try {
     if (req.method === 'POST' && url.startsWith('/save/')) {
       const name = path.basename(url);
@@ -44,7 +47,10 @@ const server = http.createServer(async (req, res) => {
     const base = url.startsWith('/_mp/') ? HERE : ROOT;
     const rel = url.startsWith('/_mp/') ? url.slice(5) : url.slice(1);
     const file = path.resolve(base, rel);
-    if (!file.startsWith(base)) throw new Error('outside root');
+    const back = path.relative(base, file);          // not startsWith(base): /scene2 would pass for /scene
+    if (!back || back === '..' || back.startsWith('..' + path.sep) || path.isAbsolute(back)) {
+      throw new Error('outside root');
+    }
     const data = await readFile(file);
     res.writeHead(200, { 'Content-Type': TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream' });
     res.end(data);

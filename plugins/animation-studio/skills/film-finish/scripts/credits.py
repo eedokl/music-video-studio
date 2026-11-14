@@ -264,8 +264,7 @@ def earshot_sound(P, sid):
     bank.mkdir(exist_ok=True)
     wav = bank / (sid.replace("/", "__") + ".wav")
     if not wav.exists():
-        launch = ["cmd", "/c", ear] if ear.lower().endswith((".cmd", ".bat")) else [ear]
-        subprocess.run(launch + ["sfx", "render", sid, "-o", str(wav), "--sr", str(SR)], capture_output=True)
+        subprocess.run(config.cmdline([ear, "sfx", "render", sid, "-o", str(wav), "--sr", str(SR)]), capture_output=True)
         if not wav.exists():
             print(f"  sound '{sid}' not in the earshot bank - skipped (earshot sfx list)")
             return None

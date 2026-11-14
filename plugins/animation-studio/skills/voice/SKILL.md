@@ -37,6 +37,8 @@ Force one with `--engine` or the environment variable `TTS_ENGINE=system`.
    VoiceDesign, writes `voices/candidates.json` (Whisper score, pitch, length) and takes the clearest as
    `voices/<who>.wav`. Let the user listen; `voice.py pick <who> <k> [--to skill]` changes the choice.
    Without a reference, the first `speak()` designs one automatically (2 candidates) into the project.
+   The plugin ships the chosen references of tim, lia and computer only (no candidate takes); the narrator and new
+   characters get their reference designed on first use (needs Qwen3-TTS; otherwise the fallback engines speak).
 3. **Every line is cloned** from that reference with the Base model (seeded: same seed = same take). The project
    folder's `voices/<who>.wav` wins over the skill's; the skill ships tim, lia and computer.
 

@@ -9,7 +9,7 @@ rebuild | difference ×4, plus the mean absolute difference 0–255 and the shar
 | Test | Reference project | Built with | Frames (ref / plugin) | Result |
 |---|---|---|---|---|
 | Pip and the Flower, example | `experiments/04_synfig_scene` (pip_flower.mp4) | `short.py new --template example`, `render.py` | 145 / 145 | identical at f0,15,36,52,74,97,109,118,140 (mean 0.00; f52: 0.03 – antenna spring rounding) |
-| Pip and the Flower, rebuild with `characters/pip.py` | same | `pip(...)` + set/flower/sparkles of the example | 145 / 145 | identical (same numbers) |
+| Pip and the Flower, rebuild with `characters/pip_figure.py` | same | `pip(...)` + set/flower/sparkles of the example | 145 / 145 | identical (same numbers) |
 | Fips chirps | `scenes/fips` | template `figure`, `figures.load("fips")`, set `park` | 121 / 121 | identical at 12 key frames (mean 0.00) |
 | Forest clearing layers | `scenes/lichtung/layers` | `paint_clearing.py --seed 7` | 6 / 6 PNGs | identical |
 | 2.5D comic flight | `scenes/comic_25d` (comic.mp4) | `paint_clearing.py`, `comic_page.py`, `render_multiplane.py --page comic25d` | 277 / 277 | mean 0.15 (GPU rounding), changed 0.01 %; all 15 panel/page images identical |

@@ -51,12 +51,8 @@ def main():
             run(FINISH / "overlays.py", "dialogue", "--project", d)
         elif ov.exists():
             ov.unlink()
-    if "sounds" in todo:
-        snd = d / "analysis" / "sounds.wav"
-        if P.get("sounds", True):
-            run(FINISH / "sounds.py", d)
-        elif snd.exists():
-            snd.unlink()
+    if "sounds" in todo:                              # sounds.py handles "sounds": false itself (removes a stale track)
+        run(FINISH / "sounds.py", d)
     if "film" in todo:
         run(FINISH / "build.py", "film", "--project", d)
     if "check" in todo:

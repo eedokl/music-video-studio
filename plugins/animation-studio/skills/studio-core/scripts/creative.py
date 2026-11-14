@@ -16,6 +16,7 @@ or an idea fixes the choice.
 """
 import hashlib
 import json
+import os
 import random
 import time
 
@@ -24,16 +25,35 @@ def _data(P):
     return P.p if hasattr(P, "p") else P
 
 
-def _save(P):
-    if hasattr(P, "file"):
-        P.file.write_text(json.dumps(P.p, ensure_ascii=False, indent=1), encoding="utf-8")
+def _update_file(P, change):
+    """Apply change(dict) to project.json as it is on disk NOW (not the whole in-memory copy: another step may
+    have changed other keys since P was loaded) and write it atomically. Returns the disk dict (None: no file)."""
+    f = getattr(P, "file", None)
+    if f is None:
+        return None
+    try:
+        disk = json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
+    except ValueError:
+        raise SystemExit(f"{f} is not valid JSON - fix it before the seed / ideas can be stored")
+    change(disk)
+    tmp = f.with_name(f.name + ".tmp")
+    tmp.write_text(json.dumps(disk, ensure_ascii=False, indent=1), encoding="utf-8")
+    os.replace(tmp, f)
+    return disk
 
 
 def seed(P):
     d = _data(P)
     if "seed" not in d:
-        d["seed"] = int(time.time()) % 100000
-        _save(P)
+        if hasattr(P, "file"):
+            new = int(time.time()) % 100000
+            disk = _update_file(P, lambda j: j.setdefault("seed", new))
+            d["seed"] = disk.get("seed", new)          # another step may have stored one meanwhile
+        else:
+            # plain dict: nothing to store it in - a time-based seed would give a new take on every run, so derive
+            # a stable one from the name; put "seed" into the JSON yourself for another take
+            d["seed"] = int(hashlib.sha256(str(d.get("name", "")).encode()).hexdigest()[:8], 16) % 100000
+            print(f"   creative: no \"seed\" in this config - using {d['seed']} (add \"seed\" to its JSON for another take)")
     return int(d["seed"])
 
 
@@ -48,8 +68,9 @@ def pick(P, salt, options):
 
 def add_idea(P, by, idea, where="", status="planned"):
     d = _data(P)
-    d.setdefault("ideas", []).append({"by": by, "idea": idea, "where": where, "status": status})
-    _save(P)
+    entry = {"by": by, "idea": idea, "where": where, "status": status}
+    d.setdefault("ideas", []).append(entry)
+    _update_file(P, lambda j: j.setdefault("ideas", []).append(entry))
 
 
 def ideas(P, where=None):

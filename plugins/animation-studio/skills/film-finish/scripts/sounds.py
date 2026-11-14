@@ -6,7 +6,8 @@ Sources, so every sound lands on its frame:
   - text gags (analysis/gags.json): a soft pop when the lettering pops up
   - toon-2d breakout.py writes analysis/actions_breakout_<panel>.json (climb, splash, jump, landing, coins) - read
     like any actions file
-  - project.json "sounds": one rule per entry, each with "sfx", "level" (dB, default -14), "pan" (-1..1), and
+  - project.json "sounds" (true / missing = only the sources above, false = no sound-effect track): a list with
+    one rule per entry, each with "sfx", "level" (dB, default -14), "pan" (-1..1), and
       {"word": "limit"}                       start of every matching word (prefix | "=exact" | "re:regex"), >= 1 s apart
       {"at": 217.3}                           a song second
       {"marker": "final chorus"}              a marker of analysis/markers.json (its line start)
@@ -36,6 +37,15 @@ POP = ("ui_pop/blip", -20)
 
 def main():
     P = Project(sys.argv[1] if len(sys.argv) > 1 else ".")
+    rules = P.get("sounds", [])
+    if rules is False:                                # "sounds": false = no sound-effect track at all
+        (P.analysis / "sounds.wav").unlink(missing_ok=True)
+        print('project.json "sounds": false - no sound-effect track (the film keeps the song only)')
+        return
+    if rules in (True, None):                         # "sounds": true = the default (gestures, gags), no extra rules
+        rules = []
+    elif isinstance(rules, dict):
+        rules = [rules]
     mix = SfxMix(len(decode(P.song, 8000)) / 8000, cache=P.cache / "sfx_bank", pan_law="equal")
     if not mix.ear:
         print("earshot is not installed - no sound-effect track (the film keeps the song only)")
@@ -56,7 +66,7 @@ def main():
     sheet = P.sheet()
     words, lines = sheet["words"], sheet["lines"]
     first_word = lambda pre: next((w["t"] for w in words if word_matches(w["word"], pre)), None)
-    for r in P.get("sounds", []):
+    for r in rules:
         times = []
         if r.get("word"):
             last = -99

@@ -27,6 +27,7 @@ _studio.use("song-analysis", "ai-video")
 import clips  # noqa: E402
 import creative  # noqa: E402
 import typo  # noqa: E402
+from cvio import imread, video_capture  # noqa: E402
 from media import duration  # noqa: E402
 from song_project import Project  # noqa: E402
 
@@ -62,7 +63,7 @@ class ClipSource:
     def __init__(self, path, lag=0):
         self.meta = clips.read_meta(path)
         self.lag = lag
-        cap = cv2.VideoCapture(str(path))
+        cap = video_capture(path)
         self.fr = []
         while True:
             ok, f = cap.read()
@@ -79,8 +80,11 @@ class ClipSource:
 class StillSource:
     """Still with a slow camera move; near parts (depth map) move more than far ones."""
     def __init__(self, path, depth, mv):
-        self.img = cv2.cvtColor(cv2.imread(str(path)), cv2.COLOR_BGR2RGB).astype(np.float32)
-        dep = cv2.imread(str(depth), cv2.IMREAD_GRAYSCALE) if depth and Path(depth).exists() else None
+        bgr = imread(path)
+        if bgr is None:
+            raise RuntimeError(f"cannot read {path}")
+        self.img = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB).astype(np.float32)
+        dep = imread(depth, cv2.IMREAD_GRAYSCALE) if depth and Path(depth).exists() else None
         if dep is None:
             dep = np.full(self.img.shape[:2], 128, np.uint8)
         self.dep = cv2.resize(dep, (self.img.shape[1], self.img.shape[0])).astype(np.float32) / 255.0
@@ -162,7 +166,8 @@ def main():
             src, desc = source(P, s, sel)
         except Exception as ex:                      # broken clip -> card, logged
             src, desc = None, f"card (error: {ex})"
-        n = round((s["to"] - s["from"]) * P.fps)
+        f0 = round(s["from"] * P.fps)                # absolute rounding: the pieces add up to the song (no drift)
+        n = round(s["to"] * P.fps) - f0
         out = P.dir / "scenes" / s["name"]
         shutil.rmtree(out, ignore_errors=True)
         out.mkdir(parents=True)
@@ -171,7 +176,7 @@ def main():
             desc = f"typo {s['typo'].get('kind')}"
         base_card = card(s) if src is None and not typo_only else None
         for fi in range(n):
-            t = s["from"] + fi / P.fps
+            t = (f0 + fi) / P.fps
             u = fi / max(n - 1, 1)
             img = src.frame(u, t) if src is not None else (None if typo_only else base_card.copy())
             if s.get("typo"):

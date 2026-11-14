@@ -36,6 +36,7 @@ import _studio  # noqa: E402
 _studio.use()
 import clips  # noqa: E402
 import config  # noqa: E402
+from cvio import video_capture  # noqa: E402
 
 FPS = 24
 OPEN = dict(X=0.0, A=0.0, B=0.3, C=0.6, D=1.0, E=0.7, F=0.35, G=0.25, H=0.5)
@@ -63,7 +64,7 @@ def mouth_curve(video, cache=True):
                                         running_mode=vision.RunningMode.VIDEO, num_faces=1)
     vals = []
     with vision.FaceLandmarker.create_from_options(opts) as lm:
-        cap = cv2.VideoCapture(str(video))
+        cap = video_capture(video)
         fps = FPS     # timestamps as in the reference analysis (1000/24 per frame, also for 16/25 fps clips): with the
         i = 0         # clip's real fps MediaPipe tracks differently (S2V shot 14: r 0.514 instead of the logged 0.53)
         while True:
@@ -90,7 +91,7 @@ def motion_check(video):
     at 160x88. cuts = jumps > 6 levels AND > 4x the median (a hidden scene cut); frozen = a run of >= 12 frames below
     0.6 (the picture stops); motion = mean difference (moving B-roll below ~3 reads as a still)."""
     import cv2
-    cap = cv2.VideoCapture(str(video))
+    cap = video_capture(video)
     prev, d = None, []
     while True:
         ok, f = cap.read()
@@ -202,7 +203,7 @@ def fit_placement(clip, t0, t1, curves, tempos=(0.9, 0.95, 1.0, 1.05, 1.1), step
     v = mouth_curve(clip)
     if fps is None:
         import cv2
-        fps = cv2.VideoCapture(str(clip)).get(cv2.CAP_PROP_FPS) or FPS
+        fps = video_capture(clip).get(cv2.CAP_PROP_FPS) or FPS
     v = np.where(np.isnan(v), np.nanmedian(v), v)
     f0, f1 = int(round(t0 * FPS)), int(round(t1 * FPS))
     n = f1 - f0

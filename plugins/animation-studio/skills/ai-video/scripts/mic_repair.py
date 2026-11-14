@@ -36,6 +36,7 @@ import numpy as np
 import _studio  # noqa: E402
 _studio.use()
 import canon  # noqa: E402
+from cvio import imread, imwrite  # noqa: E402
 
 COLOR = "#D97757"
 # generic edit text; character skills pass their own identity-keeping prompt (e.g. claudia.MIC_EDIT)
@@ -144,9 +145,9 @@ def _refine(bgr_filled, mask, seed, prompt=REFINE, denoise=0.8, n_seeds=4):
     crop, mcrop = bgr_filled[y0:y0 + s, x0:x0 + s], mask[y0:y0 + s, x0:x0 + s]
     S = int(np.clip(round(2 * s / 64) * 64, 512, 1024))        # ~2x: enough detail, no blur mismatch
     tmp = Path(tempfile.mkdtemp(prefix="mic_repair_"))
-    cv2.imwrite(str(tmp / "crop.png"), cv2.resize(crop, (S, S), interpolation=cv2.INTER_LANCZOS4))
+    imwrite(tmp / "crop.png", cv2.resize(crop, (S, S), interpolation=cv2.INTER_LANCZOS4))
     soft = cv2.GaussianBlur(cv2.dilate(mcrop * 255, np.ones((5, 5), np.uint8)), (0, 0), 3)
-    cv2.imwrite(str(tmp / "mask.png"), cv2.resize(soft, (S, S)))
+    imwrite(tmp / "mask.png", cv2.resize(soft, (S, S)))
     comfy.ensure()
     comfy.lock("mic_repair", "comfy:flux")
     img, msk = comfy.upload(tmp / "crop.png", f"mic_repair_{seed}_crop.png"), comfy.upload(tmp / "mask.png", f"mic_repair_{seed}_mask.png")
@@ -174,7 +175,7 @@ def _refine(bgr_filled, mask, seed, prompt=REFINE, denoise=0.8, n_seeds=4):
         wf["5"]["inputs"]["seed"] = seed + k
         h = comfy.run(wf, timeout=900)
         comfy.fetch(comfy.outputs(h)[0], tmp / f"out{k}.png")
-        rep = cv2.resize(cv2.imread(str(tmp / f"out{k}.png")), (s, s), interpolation=cv2.INTER_AREA)
+        rep = cv2.resize(imread(tmp / f"out{k}.png"), (s, s), interpolation=cv2.INTER_AREA)
         score = float(np.abs(cv2.GaussianBlur(rep.astype(np.float32), (0, 0), sig) - ref)[mk].mean())
         if best is None or score < best[0]:
             best = (score, rep)
@@ -229,13 +230,13 @@ def repair(src, out_dir, side="image_left", methods=("retouch", "qwen"), seeds=3
     elif passes(before):
         res.update(ok=True, out=str(src), method="none (already canon)", after=before)
     else:
-        bgr = cv2.imread(str(src))
+        bgr = imread(src)
         best = None
 
         def judge(img, how):
             nonlocal best
             p = out_dir / f"{src.stem}_try{len(res['tries']) + 1}.png"
-            cv2.imwrite(str(p), img)
+            imwrite(p, img)
             m = canon.measure(p, color, side)
             res["tries"].append(dict(file=p.name, method=how, canon=m))
             print(f"[mic_repair] {src.name}: {how} -> {_short(m)}")
@@ -251,33 +252,37 @@ def repair(src, out_dir, side="image_left", methods=("retouch", "qwen"), seeds=3
         t0 = time.time()
         try:
             for meth in methods:
-                if meth == "retouch" and before.get("mic_both") and not before.get("mic_missing"):
-                    img, _ = retouch(bgr, side, refine)
-                    if img is not None and judge(img, "retouch" + ("+flux" if refine else " (telea)")):
-                        break
-                if meth == "qwen":
-                    import qwen_edit
-                    other = "right" if side == "image_left" else "left"
-                    prompt = edit_prompt or EDIT.format(side=side.split("_")[1], other=other)
-                    done = False
-                    for k in range(seeds):
-                        q = out_dir / f"{src.stem}_qwen{k + 1}.png"
-                        h, w = bgr.shape[:2]
-                        qwen_edit.edit([src], prompt, q, w // 16 * 16, h // 16 * 16, base_seed + k, edit_neg)
-                        qi = cv2.imread(str(q))
-                        if qi.shape[:2] != bgr.shape[:2]:
-                            qi = cv2.resize(qi, (w, h), interpolation=cv2.INTER_LANCZOS4)
-                        if judge(qi, f"qwen seed {base_seed + k}"):
-                            done = True
+                try:
+                    if meth == "retouch" and before.get("mic_both") and not before.get("mic_missing"):
+                        img, _ = retouch(bgr, side, refine)
+                        if img is not None and judge(img, "retouch" + ("+flux" if refine else " (telea)")):
                             break
-                        mq = res["tries"][-1]["canon"] or {}
-                        if mq.get("mic_both") and not mq.get("mic_missing") and mq.get("streak"):
-                            img, _ = retouch(qi, side, refine, seed=base_seed + k)
-                            if img is not None and judge(img, f"qwen seed {base_seed + k} + retouch"):
+                    if meth == "qwen":
+                        import qwen_edit
+                        other = "right" if side == "image_left" else "left"
+                        prompt = edit_prompt or EDIT.format(side=side.split("_")[1], other=other)
+                        done = False
+                        for k in range(seeds):
+                            q = out_dir / f"{src.stem}_qwen{k + 1}.png"
+                            h, w = bgr.shape[:2]
+                            qwen_edit.edit([src], prompt, q, w // 16 * 16, h // 16 * 16, base_seed + k, edit_neg)
+                            qi = imread(q)
+                            if qi.shape[:2] != bgr.shape[:2]:
+                                qi = cv2.resize(qi, (w, h), interpolation=cv2.INTER_LANCZOS4)
+                            if judge(qi, f"qwen seed {base_seed + k}"):
                                 done = True
                                 break
-                    if done:
-                        break
+                            mq = res["tries"][-1]["canon"] or {}
+                            if mq.get("mic_both") and not mq.get("mic_missing") and mq.get("streak"):
+                                img, _ = retouch(qi, side, refine, seed=base_seed + k)
+                                if img is not None and judge(img, f"qwen seed {base_seed + k} + retouch"):
+                                    done = True
+                                    break
+                        if done:
+                            break
+                except (SystemExit, Exception) as ex:      # one failing method (ComfyUI down, model error): next one
+                    res["tries"].append(dict(method=meth, error=f"{type(ex).__name__}: {str(ex)[:300]}"))
+                    print(f"[mic_repair] {src.name}: {meth} failed ({type(ex).__name__}: {str(ex)[:120]})")
         finally:
             try:
                 import comfy
@@ -291,7 +296,8 @@ def repair(src, out_dir, side="image_left", methods=("retouch", "qwen"), seeds=3
                 best[0].replace(b)
                 res["best"] = b.name
             res["note"] = "no attempt passes the canon check - make new start-image variants (or pick by eye)"
-    info_f.write_text(json.dumps(res, indent=1, default=float), encoding="utf-8")
+    if res["ok"] or not any("error" in t for t in res["tries"]):   # a failed method is retried on the next call
+        info_f.write_text(json.dumps(res, indent=1, default=float), encoding="utf-8")
     return res
 
 
@@ -301,10 +307,10 @@ def sheet(results, out):
     from PIL import Image, ImageDraw
     rows = []
     for r in results:
-        a = cv2.imread(r["src"])
-        b = cv2.imread(r["out"] or str(Path(r["src"]).parent / "missing")) if r.get("out") else None
+        a = imread(r["src"])
+        b = imread(r["out"]) if r.get("out") else None
         if b is None and r.get("best"):
-            b = cv2.imread(str(Path(r["out_dir"]) / r["best"])) if r.get("out_dir") else None
+            b = imread(Path(r["out_dir"]) / r["best"]) if r.get("out_dir") else None
         L = _landmarks(a)
         if L is not None:
             x0, y0 = L.min(0)

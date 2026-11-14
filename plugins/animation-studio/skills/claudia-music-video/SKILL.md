@@ -98,7 +98,8 @@ run again for that shot (`--only s05`), new clips get new names.
 Weak shots (score < 0.2): 2 more seeds with a stronger mouth sentence (`variants.seeds` 4), another start image, or
 B-roll instead; loud choruses and shouted calls ("Hey! Hey!" live on the backing stem): `--curve mix`.
 S2V/InfiniteTalk clips are 832x480: `"$A/upscale.py" clip.mp4 clip_720p.mp4` (Real-ESRGAN) before the cut if they
-look soft (render_shots otherwise scales with Lanczos).
+look soft (render_shots otherwise scales with Lanczos). The clip's json is copied to `clip_720p.json`; use it with
+`selection.json["manual"]["clip"]["s07"] = {"file": "ai/s2v/s07_v2_720p.mp4", "lag": <lag of the original pick>}`.
 
 ## 6. Cut
 

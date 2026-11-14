@@ -1,6 +1,6 @@
 ---
 name: characters
-description: "Building block of the animation-studio plugin: the cast of the cartoon skills and how to rig them – Tim, Lia (SVG figures with lip-sync mouths), the Computer (a face on a screen), Pip (code-drawn pear-shaped hero with spring antenna) and Fips (SVG bird) – with figure sheets, the SVG rig convention (group ids, pivot circles, feet point), Python builders (pip.py, computer.py, figures.py) and the steps to add a new figure drawn in Inkscape. Used by animated-short, animated-music-video, talking-character and the other cartoon skills."
+description: "Building block of the animation-studio plugin: the cast of the cartoon skills and how to rig them – Tim, Lia (SVG figures with lip-sync mouths), the Computer (a face on a screen), Pip (code-drawn pear-shaped hero with spring antenna) and Fips (SVG bird) – with figure sheets, the SVG rig convention (group ids, pivot circles, feet point), Python builders (pip_figure.py, computer.py, figures.py) and the steps to add a new figure drawn in Inkscape. Used by animated-short, animated-music-video, talking-character and the other cartoon skills."
 user-invocable: false
 ---
 
@@ -8,14 +8,14 @@ user-invocable: false
 
 ![cast](assets/figure_sheet.png) – `assets/figure_sheet.png`: Tim, Lia, Computer, Pip, Fips in rest pose on one floor
 line at their scene scale. Regenerate (or check a new figure) with
-`uv run --no-project --with svgelements python ${CLAUDE_PLUGIN_ROOT}/skills/characters/scripts/figure_sheet.py --out <dir> [--add my.svg] [--pivots]`.
+`uv run --no-project --with svgelements python "${CLAUDE_PLUGIN_ROOT}/skills/characters/scripts/figure_sheet.py" --out <dir> [--add my.svg] [--pivots]`.
 
 Scripts (`${CLAUDE_PLUGIN_ROOT}/skills/characters/scripts/`) are importable in any scene made with
 `toon-2d/scripts/new_scene.py` (`import _toon` puts them on the path), or with `_studio.use("toon-2d", "characters")`.
 
 | Script | What |
 |---|---|
-| `pip.py` | `pip(end, x_keys, y_keys, sq_keys, lean_keys, hops, ground, size, eye_keys, look_keys, mouth_open, mouth_cues, antenna_kicks, flip)` → `[shadow, Pip]`; `blink(frames)` |
+| `pip_figure.py` | `pip(end, x_keys, y_keys, sq_keys, lean_keys, hops, ground, size, eye_keys, look_keys, mouth_open, mouth_cues, antenna_kicks, flip)` → `[shadow, Pip]`; `blink(frames)` |
 | `computer.py` | `computer(rect, blink, bounce, mouth_cues, face_on, look_keys)` → screen frame + screen + face layers |
 | `figures.py` | `FIGURES` (bundled SVGs + feet + scale), `load(name or svg, work_dir)` → (root, pivots), `around(PIV, part, kids, angle=/scale=)`, `blink_keys(frames)` |
 | `figure_sheet.py` | the sheet above, `--pivots` marks every pivot red |
@@ -44,7 +44,7 @@ lip-sync mouth, dark-blue screen `#1d3b5c` in a frame `#1c1f26`. Everything scal
 `room`/`stage` define one under `"screen"`). Acting: blink, a squash bounce on beats, look keys move the pupils;
 `face_on` hides the face while the screen shows text (big words, a terminal line).
 
-### Pip (`scripts/pip.py`, drawn in code)
+### Pip (`scripts/pip_figure.py`, drawn in code)
 The hero of the exercises: orange pear-shaped body (`#fbb53f`, ink `#3b2418`), cream belly, pink cheeks, two big
 white eyes (centres ±0.42, 2.12 local), smile or "O" mouth, an antenna with a red ball that follows through on a
 spring. Local body 2.95 high; `size=0.62` ≈ 1.8 units tall. Rig: `Pip` (offset, lean, size) > `Squash` (about the

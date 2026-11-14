@@ -24,6 +24,7 @@ import numpy as np
 
 import _studio  # noqa: E402
 _studio.use()
+from cvio import imread, video_capture  # noqa: E402
 from mouth import landmarker_model  # noqa: E402
 
 _lm = None
@@ -99,7 +100,7 @@ def measure(path, color="#D97757", side="image_left"):
     import cv2
     path = Path(path)
     if path.suffix.lower() in (".mp4", ".mov", ".mkv", ".webm"):
-        cap = cv2.VideoCapture(str(path))
+        cap = video_capture(path)
         n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         res = []
         for u in (0.2, 0.5, 0.8):
@@ -112,7 +113,7 @@ def measure(path, color="#D97757", side="image_left"):
             return dict(face=False, value=-1.0, streak=False, wrong=False, frames=len(res))
         worst = min(faces, key=lambda r: r["value"])
         return dict(worst, frames=len(res), faces=len(faces), streak_frames=sum(r["streak"] for r in faces))
-    bgr = cv2.imread(str(path))
+    bgr = imread(path)
     if bgr is None:
         return None
     return measure_bgr(bgr, color, side)

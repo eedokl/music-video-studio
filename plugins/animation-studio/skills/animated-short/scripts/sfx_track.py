@@ -60,7 +60,8 @@ def main():
         v = Path(a.video)
         dst = v.with_name(v.stem + "_sfx.mp4")
         subprocess.run([config.need("ffmpeg"), "-y", "-loglevel", "error", "-i", str(v), "-i", str(out), "-map", "0:v",
-                        "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", str(dst)], check=True)
+                        "-map", "1:a", "-c:v", "copy", "-af", "apad", "-c:a", "aac", "-b:a", "192k", "-shortest",
+                        str(dst)], check=True)          # apad: silence pads the track, the picture sets the length
         print("->", dst)
 
 

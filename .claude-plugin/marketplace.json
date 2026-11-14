@@ -1,8 +1,16 @@
 {
  "name": "music-video-studio",
- "owner": {"name": "music-video-studio"},
+ "owner": {
+  "name": "eedokl"
+ },
+ "metadata": {
+  "description": "Claude Code plugins for making music videos and short animated films on your own machine."
+ },
  "plugins": [
-  {"name": "animation-studio", "source": "./plugins/animation-studio",
-   "description": "Animated music videos and more from shared building blocks."}
+  {
+   "name": "animation-studio",
+   "source": "./plugins/animation-studio",
+   "description": "Animated music videos and more from shared building blocks."
+  }
  ]
 }

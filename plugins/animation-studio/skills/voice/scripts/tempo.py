@@ -25,6 +25,7 @@ Python:
 """
 import argparse
 import json
+import re
 import subprocess
 import sys
 import wave
@@ -40,11 +41,20 @@ from media import ffmpeg  # noqa: E402
 EDGE = 0.05
 
 
+def _native_rate(path):
+    r = subprocess.run([ffmpeg(), "-i", str(path)], capture_output=True, text=True, errors="replace").stderr
+    m = re.search(r"Audio:.*?(\d+) Hz", r)
+    return int(m.group(1)) if m else 48000
+
+
 def read(path):
-    with wave.open(str(path)) as w:
-        sr, ch, n = w.getframerate(), w.getnchannels(), w.getnframes()
-        raw = w.readframes(n)
-        width = w.getsampwidth()
+    try:
+        with wave.open(str(path)) as w:
+            sr, ch, n = w.getframerate(), w.getnchannels(), w.getnframes()
+            raw = w.readframes(n)
+            width = w.getsampwidth()
+    except (wave.Error, EOFError):                     # 32-bit float WAV, mp3, ...: the wave module cannot read it
+        sr, width = _native_rate(path), None
     if width != 2:                                     # anything else: let ffmpeg convert
         raw = subprocess.run([ffmpeg(), "-v", "error", "-i", str(path), "-ac", "1", "-f", "s16le", "-ar", str(sr), "-"],
                              capture_output=True, check=True).stdout

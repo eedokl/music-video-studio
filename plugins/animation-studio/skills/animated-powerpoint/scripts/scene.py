@@ -20,6 +20,7 @@ Python (full control, per-frame values from your own code):
 JSON (same keys): scene.py clips/s03/scene.json  ->  {"end": 189, "layers": [...], "overlays": [...],
     "figures": {"fritz": {"x": 1.0, "y": -2.55, "z": 0.25, "scale": 0.45, "keys": {...}}}, "camera": [...],
     "steam": [{"x": .., "y": .., "z": ..}], "sprites": [...], "narration": [...], "sounds": [...]}
+    build() writes the generated per-frame stage config to <scene>/scene_stage.json (never over your scene.json).
 Keys per figure (frames): eyes [(f,(dx,dy))], blink [(f,h)], head/<part name> [(f,deg)], sq [(f,(sx,sy))],
 tilt [(f,deg)] (over the feet), spin, pos [(f,(x,y))] (Synfig units; hops), mouth [(f,stage 0..7)].
 Helpers: nod(), slow_nod(), breathe(), babble() (silent talking: changing mouth stages), steps() (hop/walk cycle:
@@ -41,6 +42,7 @@ import clip as CL  # noqa: E402
 import config  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
+STAGE_MP4 = "scene_stage.mp4"                        # stage video of build()/render() (from scene_stage.json)
 smooth, keyed = A.smooth, A.keyed
 
 
@@ -206,7 +208,7 @@ class Scene:
 
     def sound(self, at, sfx, args=(), level=-20, pan=0.0, align="peak"):
         """align="peak": the loudest moment of the effect sits on the frame (default); "start": the file starts there
-        (swells, blooms, risers) - resolved here by measuring the effect's peak, accurate to half a frame."""
+        (swells, blooms, risers)."""
         self.p["sounds"].append({"at": at, "sfx": sfx, "args": list(args), "level": level, "pan": pan, "align": align})
 
     def figure(self, name, x, y, z=0.25, scale=0.45, order=10, keys=None, idle=True, billboard=False, shadow=False,
@@ -226,7 +228,7 @@ class Scene:
 
     def post(self, fn):
         """fn(frame, PIL RGB image) -> image, applied to every rendered frame before the look: counters, captions,
-        colour grading, split screens (see split_frame). Frames go to frames_post/, scene.mp4 is re-encoded."""
+        colour grading, split screens (see split_frame). Frames go to frames_post/, scene_stage.mp4 is re-encoded."""
         self.posts.append(fn)
 
     def mouth_rest(self, name):
@@ -310,8 +312,7 @@ class Scene:
             talk = [ln["id"] for ln in self.p["narration"] if ln.get("speaker") == n] + f["talk"]
             if talk:
                 import mouth
-                if not (g["dir"] / "mouth.json").exists():
-                    mouth.make(g["dir"])
+                mouth.ensure(g["dir"])
                 mk = mouth.mouth_keys(g["dir"], [(self.dir / self.T.cfg[t]["audio"], self.T.line_at(t),
                                                   self.T.cfg[t].get("text")) for t in talk], fps=self.fps,
                                       cache=self.dir / "narration")
@@ -366,7 +367,7 @@ class Scene:
                             **({"tint": f["tint"]} if f["tint"] else {}), **({"rim": f["rim"]} if f["rim"] else {})}
                         for n, f in self.figs.items()},
                "frames": frames}
-        (self.dir / "scene.json").write_text(json.dumps(cfg), encoding="utf-8")
+        (self.dir / "scene_stage.json").write_text(json.dumps(cfg), encoding="utf-8")
         lines = {ln["id"]: {"at": self.T.line_at(ln["id"]), "audio": ln["audio"], "level": ln.get("level", 0)}
                  for ln in self.p["narration"]}
         (self.dir / "plan.json").write_text(json.dumps({"end": end, "events": {}, "narration": lines, "variants": {}},
@@ -396,13 +397,13 @@ class Scene:
         if "3d" in steps:
             shutil.copy(HERE.parent / "assets" / "scene25d.html", self.dir / "scene25d.html")
             subprocess.run([sys.executable, str(_studio.skill_dir("toon-2d") / "scripts" / "render_multiplane.py"),
-                            str(self.dir / "scene.json"), "--page", "/scene25d.html", "--contact", "none",
+                            str(self.dir / "scene_stage.json"), "--page", "/scene25d.html", "--contact", "none",
                             "--startup", "180", "--timeout", str(max(1800, 6 * (self.end + 1)))], check=True)
         if "post" in steps and self.posts:
             self.apply_post()
         name = self.dir / f"{self.dir.name}.mp4"
         if "final" in steps:
-            finish(self.dir / "scene.mp4", name, self.p["look"])
+            finish(self.dir / STAGE_MP4, name, self.p["look"])   # render_multiplane names it after the config
         if "sound" in steps and (self.p["narration"] or self.p["sounds"]):
             import sound
             sound.mux(name, sound.make(self.dir, self.sound_spec(), self.T))
@@ -423,17 +424,13 @@ class Scene:
             for fn in self.posts:
                 im = fn(f, im)
             im.save(out / f"mp_{f:04d}.png")
-        encode(out, self.dir / "scene.mp4", self.fps)
+        encode(out, self.dir / STAGE_MP4, self.fps)
 
     def sound_spec(self, offset=0):
-        """Narration + sound cues with resolved frames (align="start" turned into the peak frame)."""
+        """Narration + sound cues with resolved frames; "align" is passed on (the mixer places a "start" cue by its
+        first sample, a "peak" cue by its loudest moment - no extra shift here)."""
         P = dict(self.p)
-        P["sounds"] = []
-        for x in self.p["sounds"]:
-            f = self.T(x["at"]) + offset
-            if x.get("align") == "start":
-                f += peak_frames(self.dir.parent.parent / "cache" / "sfx", x["sfx"], x.get("args", []), self.fps)
-            P["sounds"].append({**x, "at": f})
+        P["sounds"] = [{**x, "at": self.T(x["at"]) + offset} for x in self.p["sounds"]]
         return P
 
 
@@ -450,18 +447,6 @@ def finish(raw, out, look="standard"):
                         str(raw), "-o", str(out), "--look", look], check=True)
     else:
         shutil.copy(raw, out)
-
-
-_PEAKS = {}
-
-
-def peak_frames(cache, sfx, args, fps):
-    """Frames from the start of an earshot effect to its loudest moment (0 when earshot is missing)."""
-    key = (sfx, tuple(args))
-    if key not in _PEAKS:
-        import sound
-        _PEAKS[key] = sound.Mix(1, fps, cache).peak_frames(sfx, args)
-    return _PEAKS[key]
 
 
 def split_frame(main, side, t, side_left=True, divider=(52, 50, 47), ink=(20, 20, 22)):
@@ -491,10 +476,11 @@ def split_frame(main, side, t, side_left=True, divider=(52, 50, 47), ink=(20, 20
 
 def join(folder, scenes, look="standard", fps=24):
     """One clip from several rendered scenes played one after the other (hard cuts; transitions belong into the
-    scenes): frames -> <folder>/frames_3d, look -> <folder>/<name>.mp4, narration + sounds of all parts on one track."""
+    scenes): frames -> <folder>/frames_joined, look -> <folder>/<name>.mp4, narration + sounds of all parts on one track.
+    (Not frames_3d: a joined scene may live in the join folder itself, its frames must survive.)"""
     import sound
     folder = Path(folder).resolve()
-    out = folder / "frames_3d"
+    out = folder / "frames_joined"
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)

@@ -165,6 +165,11 @@ def align_lyrics(rec, lyrics, fps):
             for k in range(min(i2 - i1, j2 - j1)):
                 times[i1 + k] = (rec[j1 + k]["start"], rec[j1 + k]["end"], "recognized" if tag == "equal" else "aligned")
     known = [i for i, t in enumerate(times) if t]
+    if lw and not known:
+        # nothing recognized (silent take, VAD dropped everything): placeholder times, 0.3 s per word, all
+        # "estimated" - callers see 0 recognized words and retry / pick another pass instead of crashing
+        print(f"warning: none of the {len(lw)} lyric words was recognized - placeholder word times")
+        times = [(0.3 * i, 0.3 * i + 0.3, "estimated") for i in range(len(lw))]
     for i, t in enumerate(times):                       # distribute gaps between known words
         if t or not known:
             continue

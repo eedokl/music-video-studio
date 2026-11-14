@@ -58,8 +58,9 @@ def _walk(shapes, tf=lambda x, y: (x, y), sc=(1.0, 1.0)):
 
 def powerpoint_export(pptx, jobs, width, height):
     """jobs: [(slide_no, out_png, hide_names, master)] -> slide images through PowerPoint COM (read-only)."""
+    q = lambda p: str(Path(p).resolve()).replace("'", "''")     # single-quoted PowerShell string ("Bob's deck")
     lines = ["$ErrorActionPreference = 'Stop'", "$app = New-Object -ComObject PowerPoint.Application",
-             f"$p = $app.Presentations.Open('{Path(pptx).resolve()}', -1, 0, 0)"]
+             f"$p = $app.Presentations.Open('{q(pptx)}', -1, 0, 0)"]
     for n, out, hide, master in jobs:
         names = ",".join("'" + h.replace("'", "''") + "'" for h in hide) or "''"
         lines += [f"$s = $p.Slides.Item({n})", f"$hide = @({names})", "$off = @()",
@@ -68,7 +69,7 @@ def powerpoint_export(pptx, jobs, width, height):
                   "  elseif ($sh.Type -eq 6) { foreach ($g in $sh.GroupItems) {",
                   "    if ($hide -contains $g.Name -and $g.Visible) { $g.Visible = 0; $off += $g } } } }",
                   f"$s.DisplayMasterShapes = {-1 if master else 0}",
-                  f"$s.Export('{Path(out).resolve()}', 'PNG', {width}, {height})",
+                  f"$s.Export('{q(out)}', 'PNG', {width}, {height})",
                   "foreach ($sh in $off) { $sh.Visible = -1 }", "$s.DisplayMasterShapes = -1"]
     lines += ["$p.Close()", "if ($app.Presentations.Count -eq 0) { $app.Quit() }"]
     ps = Path(tempfile.mkdtemp()) / "export.ps1"

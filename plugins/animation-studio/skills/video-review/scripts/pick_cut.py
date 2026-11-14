@@ -130,8 +130,11 @@ def segments_from_review(R, choice):
     segs = []
     for s in R["shots"]:
         c = choice.get(str(s["nr"]), choice.get(s["nr"]))
-        if isinstance(c, int) or (isinstance(c, str) and c.isdigit()):
-            c = ids[int(c) - 1]
+        if c not in ids and (isinstance(c, int) or (isinstance(c, str) and c.isdigit())):   # legacy 1-based index
+            c = ids[int(c) - 1] if 1 <= int(c) <= len(ids) else None
+        elif c is not None and c not in ids:
+            print(f"  warning: shot {s['nr']}: unknown version '{c}' - default {default} used", file=sys.stderr)
+            c = None
         segs.append((first_frame(s["start"], fps) if segs else 0, c or default))
     return segs
 
@@ -145,7 +148,7 @@ def load_choice(path):
 def small_version(src, out, dur, mb=29.0):
     """< mb MB copy (1280 wide max) via film-finish's two-pass target encoder."""
     _studio.use("film-finish")
-    from build import encode_target
+    from encode import encode_target
     w, h, _, _ = probe(src)
     if Path(src).stat().st_size < mb * 1e6:
         import shutil

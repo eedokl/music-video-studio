@@ -27,12 +27,17 @@ Anything two user skills need goes into a building block – never copy code bet
   Examples (lyrics, gag texts, German songs) may stay German.
 - No absolute paths and nothing outside the plugin in any file. Scripts find sibling skills with the per-skill
   helper `scripts/_studio.py`:  `import _studio; _studio.use("song-analysis", "toon-2d")` (studio-core is always
-  added) and `_studio.skill_dir("toon-2d")` for assets.
+  added) and `_studio.skill_dir("toon-2d")` for assets. `_studio.py` is identical in every skill (edit
+  studio-core's copy, copy it to all skills); it keeps the skill's own `scripts/` first on `sys.path`. Do not add a
+  module whose name already exists in another skill (`tests/smoke.py` fails on new duplicates).
 - External programs and machine paths only through `studio-core/scripts/config.py`: `config.need("synfig")`,
   `config.get("earshot")`. They come from environment variables or the machine config
   `~/.animation-studio/config.json` written by `check_tools.py --setup` / `--set key=value`.
 - In SKILL.md, call scripts as `python "${CLAUDE_PLUGIN_ROOT}/skills/<skill>/scripts/x.py"` (substituted by Claude
-  Code when the skill loads). Run them with `uv run --no-project --with <pkgs> python ...`.
+  Code when the skill loads - ONLY in SKILL.md; in references/ and other files write
+  "`skills/<skill>/scripts/x.py` of this plugin" or refer to the SKILL.md command). Always quote the path.
+  Run them with `uv run --no-project --with <pkgs> python ...`.
+- Before a release: `python tests/smoke.py`, then bump `version` in `.claude-plugin/plugin.json`.
 
 ## Shared machinery
 

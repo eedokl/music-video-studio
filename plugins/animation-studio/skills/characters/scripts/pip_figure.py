@@ -3,7 +3,7 @@
 Pip is drawn in Synfig layers directly from Python (no SVG). One call builds the whole rig from timing lists:
 
     import _studio; _studio.use("toon-2d", "characters")
-    from pip import pip
+    from pip_figure import pip
     layers = pip(end=144, x_keys=X, y_keys=Y, sq_keys=SQ, lean_keys=LEAN, hops=HOPS, ground=-2.6,
                  eye_keys=EYES, look_keys=LOOK, mouth_open=[(0, 0), (72, 1), (92, 0)])
     # -> [shadow, Pip group]; put them into the canvas layer list (shadow under Pip)

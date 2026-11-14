@@ -55,7 +55,9 @@ earshot) → `build.py film` (look, film.mp4 / film_small / film_mail, 0 decode 
 project.json keys (besides the song-analysis ones): `script`, `recording`, `figures` {name: {svg | kind: screen,
 voice, place, size, mouth, follow, arms, hands}}, `voices` (overrides, see voice skill), `set`, `view`,
 `camera` (`auto` | `static` | `cuts`), `close_zoom`, `direction` {lead_in, gap, jitter, quick, slow, interrupts,
-tail}, `subtitles` (true), `sounds` (true), `pronounce`, `look`.
+tail}, `subtitles` (true), `sounds` (optional: gesture sounds are on without it; `false` switches them off; a
+list of extra rules as in film-finish `sounds.py`, e.g. `"sounds": [{"sfx": "ui_pop/blip", "word": "hallo"}]`),
+`pronounce`, `look`.
 
 Own figure: Inkscape SVG with the rig convention of the characters skill (groups `kopf`, `auge_l/r`,
 `pupille_l/r`, optional `arm_l/r`, `brauen`; pivots `pivot_<part>`; `pivot_mund` where the mouth goes; feet at

@@ -14,6 +14,12 @@ into ONE box (panel windows from the comic page's camera keys - "comic", or foun
 "kind": "panels" (a hard cut per line anyway), else "couplet". A box stays until the next one starts (short
 cross-fade, no empty gap - the lyric never vanishes while e.g. a figure breaks out of the page).
 The rendered frames are kept in scenes/<section>_raw/ (first run moves them there), so re-running never stacks boxes.
+scenes/<section>_raw/composited.json records a CONTENT hash of every composite written to scenes/<section>/; each
+composite is saved under a temp name, logged in composited.partial, and only then renamed to f.NNNN.png - so every
+frame visible under its final name is known, even after a pass killed at any moment.
+Only a frame in scenes/<section>/ whose content this pass never wrote means the external renderer made a new take -
+then the new frames replace the stale raw copy. Copying, zipping or checking out the project (new mtimes) changes
+nothing; an interrupted pass is simply composited again from the raw originals.
 Narrator inset over externally rendered sections (section "kind": "external" + "inset", e.g. a multiplane intro or a
 comic flight): scene.py renders only the round inset as a transparent Synfig track into scenes/<section>_inset/ and
 this pass lays it over the raw frames (under nothing, over the caption box) - so any renderer's frames get the inset.
@@ -21,6 +27,9 @@ Usage: uv run --no-project --with pillow python captions.py <section> [--project
        (scene.py --render calls it for sections with "caption")
 """
 import argparse
+import hashlib
+import json
+import os
 import shutil
 from pathlib import Path
 
@@ -130,6 +139,45 @@ def caption_events(P, A):
     return out, fnt, spec
 
 
+MANIFEST = "composited.json"
+PARTIAL = "composited.partial"
+
+
+def _hash(path):
+    return hashlib.blake2b(path.read_bytes(), digest_size=16).hexdigest()
+
+
+def _known(raw):
+    """Content hashes of every composite a pass of this script wrote (finished manifest + log of an interrupted pass),
+    or None when there is no record in the hash format (no manifest, or the older size+mtime one)."""
+    known, have = set(), False
+    try:
+        m = json.loads((raw / MANIFEST).read_text(encoding="utf-8"))
+        if m and all(isinstance(v, str) for v in m.values()):
+            known |= set(m.values())
+            have = True
+    except (OSError, ValueError, AttributeError):
+        pass
+    try:
+        known |= {h for h in (raw / PARTIAL).read_text(encoding="utf-8").split() if h}
+        have = True
+    except OSError:
+        pass
+    return known if have else None
+
+
+def _fresh_render(frames, raw):
+    """True when scenes/<name>/ holds a frame this script never wrote (a re-render by the external renderer) -
+    then the raw copy is stale. Frames of an interrupted pass are in composited.partial and do not count."""
+    now = sorted(frames.glob("f.*.png"))
+    if not now:
+        return False
+    known = _known(raw)
+    if known is None:                                   # no hash record (older run): only a frame-count change shows
+        return len(now) != len(list(raw.glob("f.*.png")))
+    return any(_hash(f) not in known for f in now)
+
+
 def apply(P, name):
     """Post pass over scenes/<name>/: caption box (section "caption") and/or the narrator inset track
     (scenes/<name>_inset/, written by scene.py for "kind": "external" sections with "inset")."""
@@ -138,6 +186,9 @@ def apply(P, name):
     raw = P.dir / "scenes" / f"{name}_raw"
     inset_dir = P.dir / "scenes" / f"{name}_inset"
     use_inset = bool(A.get("inset")) and A.get("kind") == "external" and any(inset_dir.glob("f.*.png"))
+    if raw.exists() and _fresh_render(frames, raw):
+        print(f"   scenes/{name}/ was re-rendered - replacing the stale scenes/{name}_raw/")
+        shutil.rmtree(raw)
     if not raw.exists():
         if not any(frames.glob("f.*.png")):
             raise SystemExit(f"scenes/{name}/ has no frames - render the scene first")
@@ -152,43 +203,59 @@ def apply(P, name):
     boxc = spec.get("box", "#fff3b0")
     rh = int(fnt.size * 1.4)
     n = 0
-    for src in sorted(raw.glob("f.*.png")):
-        f = int(src.stem.split(".")[1])
-        img = Image.open(src).convert("RGBA")
-        for f0, f1, rows, wf, place in events:
-            a0, a1 = f0, f1                              # held until the next box: 3-frame cross-fade, no gap
-            if not (a0 <= f < a1):
-                continue
-            alpha = min(1.0, (f - a0 + 1) / 3, (a1 - f) / 3)
-            bw = int(max(fnt.getlength(r) for r in rows)) + 44
-            bh = rh * len(rows) + 22
-            bx = {"top_left": 30, "bottom_left": 30, "top": (W - bw) // 2, "top_right": W - bw - 30,
-                  "bottom_right": W - bw - 30}.get(place, 30)
-            by = H - bh - 120 if place.startswith("bottom") else 28
-            layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-            d = ImageDraw.Draw(layer)
-            d.rounded_rectangle((bx, by, bx + bw, by + bh), 6, fill=boxc + "e6", outline=ink, width=3)
-            gl = Image.new("RGBA", (W, H), (0, 0, 0, 0))   # ghost words on their own layer (ImageDraw doesn't blend)
-            gd = ImageDraw.Draw(gl)
-            k = 0
-            for ri, row in enumerate(rows):
-                x = bx + 22
-                for w in row.split():
-                    if wf[k] - 1 <= f:
-                        d.text((x, by + 8 + ri * rh), w, font=fnt, fill=ink)
-                    elif ghost > 0:                      # words still to come stand faintly, so the box is never empty
-                        gd.text((x, by + 8 + ri * rh), w, font=fnt, fill=ink + "%02x" % int(255 * ghost))
-                    x += fnt.getlength(w + " ")
-                    k += 1
-            layer.alpha_composite(gl)
-            if alpha < 1:
-                layer.putalpha(layer.getchannel("A").point(lambda v: int(v * max(alpha, 0))))
-            img.alpha_composite(layer)
-        ins = inset_dir / src.name
-        if use_inset and ins.exists():
-            img.alpha_composite(Image.open(ins).convert("RGBA"))
-        img.convert("RGB").save(frames / src.name)
-        n += 1
+    written = {}
+    for t in frames.glob(".tmp.f.*.png"):                # half-written composites of an interrupted pass
+        t.unlink(missing_ok=True)
+    with open(raw / PARTIAL, "a", encoding="utf-8") as log:   # opened before the first composite
+        for src in sorted(raw.glob("f.*.png")):
+            f = int(src.stem.split(".")[1])
+            img = Image.open(src).convert("RGBA")
+            for f0, f1, rows, wf, place in events:
+                a0, a1 = f0, f1                              # held until the next box: 3-frame cross-fade, no gap
+                if not (a0 <= f < a1):
+                    continue
+                alpha = min(1.0, (f - a0 + 1) / 3, (a1 - f) / 3)
+                bw = int(max(fnt.getlength(r) for r in rows)) + 44
+                bh = rh * len(rows) + 22
+                bx = {"top_left": 30, "bottom_left": 30, "top": (W - bw) // 2, "top_right": W - bw - 30,
+                      "bottom_right": W - bw - 30}.get(place, 30)
+                by = H - bh - 120 if place.startswith("bottom") else 28
+                layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+                d = ImageDraw.Draw(layer)
+                d.rounded_rectangle((bx, by, bx + bw, by + bh), 6, fill=boxc + "e6", outline=ink, width=3)
+                gl = Image.new("RGBA", (W, H), (0, 0, 0, 0))   # ghost words on their own layer (ImageDraw doesn't blend)
+                gd = ImageDraw.Draw(gl)
+                k = 0
+                for ri, row in enumerate(rows):
+                    x = bx + 22
+                    for w in row.split():
+                        if wf[k] - 1 <= f:
+                            d.text((x, by + 8 + ri * rh), w, font=fnt, fill=ink)
+                        elif ghost > 0:                      # words still to come stand faintly, so the box is never empty
+                            gd.text((x, by + 8 + ri * rh), w, font=fnt, fill=ink + "%02x" % int(255 * ghost))
+                        x += fnt.getlength(w + " ")
+                        k += 1
+                layer.alpha_composite(gl)
+                if alpha < 1:
+                    layer.putalpha(layer.getchannel("A").point(lambda v: int(v * max(alpha, 0))))
+                img.alpha_composite(layer)
+            ins = inset_dir / src.name
+            if use_inset and ins.exists():
+                img.alpha_composite(Image.open(ins).convert("RGBA"))
+            # a frame only ever appears under its final name AFTER its hash is logged: save under a name that
+            # "f.*.png" does not match, log, then rename - a kill at any point leaves no unlogged f.NNNN.png
+            tmp = frames / f".tmp.{src.name}"
+            img.convert("RGB").save(tmp, format="PNG")
+            written[src.name] = _hash(tmp)
+            log.write(written[src.name] + "\n")
+            log.flush()
+            os.fsync(log.fileno())
+            os.replace(tmp, frames / src.name)
+            n += 1
+    tmp = raw / (MANIFEST + ".tmp")
+    tmp.write_text(json.dumps(written), encoding="utf-8")
+    tmp.replace(raw / MANIFEST)
+    (raw / PARTIAL).unlink(missing_ok=True)
     print(f"-> scenes/{name}/: {n} frames with {len(events)} caption boxes" + (", narrator inset" if use_inset else "")
           + f" (originals in scenes/{name}_raw/)")
 

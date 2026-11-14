@@ -16,17 +16,35 @@ The look is NOT baked into the hand-off clips: apply it once at the end of manua
 """
 import argparse
 import subprocess
+from fractions import Fraction
 from pathlib import Path
 
 import _studio  # noqa: E402
 _studio.use("song-analysis")
 import config  # noqa: E402
-from build import clip, sound_track  # noqa: E402
+from build import H, W, clip, frame_count, sound_track  # noqa: E402
 from song_project import Project  # noqa: E402
+
+MELT_PROFILES = {Fraction(24000, 1001): "atsc_720p_2398", 24: "atsc_720p_24", 25: "atsc_720p_25",
+                 Fraction(30000, 1001): "atsc_720p_2997", 30: "atsc_720p_30", 50: "atsc_720p_50",
+                 Fraction(60000, 1001): "atsc_720p_5994", 60: "atsc_720p_60"}
 
 
 def media_path(p):
     return str(Path(p).resolve()).replace("\\", "/")
+
+
+def melt_profile(fps, folder):
+    """MLT profile matching the project fps: a stock 720p profile, else a profile file written to `folder`
+    (e.g. 48 fps) - a wrong profile would play the frame-counted timeline at the wrong speed."""
+    f = next((k for k in MELT_PROFILES if abs(float(k) - float(fps)) < 0.002), Fraction(fps).limit_denominator(1001))
+    if f in MELT_PROFILES and (W, H) == (1280, 720):
+        return MELT_PROFILES[f]
+    p = Path(folder) / f"melt_profile_{W}x{H}_{f.numerator}_{f.denominator}.txt"
+    p.write_text(f"description={W}x{H} {float(f):g} fps\nframe_rate_num={f.numerator}\nframe_rate_den={f.denominator}\n"
+                 f"width={W}\nheight={H}\nprogressive=1\nsample_aspect_num=1\nsample_aspect_den=1\n"
+                 f"display_aspect_num=16\ndisplay_aspect_den=9\ncolorspace=709\n", encoding="utf-8")
+    return str(p)
 
 
 def main():
@@ -48,8 +66,8 @@ def main():
     for i, s in enumerate(secs):
         c, n = clip(P, s["name"])
         end = min(s["to"], secs[i + 1]["from"]) if i + 1 < len(secs) else s["to"]
-        shots.append({"path": c, "name": s["name"], "start": round((s["from"] - t0) * fps),
-                      "dur": round((end - s["from"]) * fps)})
+        shots.append({"path": c, "name": s["name"], "start": frame_count(t0, s["from"], fps),
+                      "dur": frame_count(s["from"], end, fps)})          # same frames as build.py film
     film_len = shots[-1]["start"] + shots[-1]["dur"]
     audio = sound_track(P)
 
@@ -82,7 +100,7 @@ def main():
 
     melt = config.get("melt")
     if melt and Path(melt).exists():
-        cmd = [melt, "-profile", "atsc_720p_24" if fps == 24 else "atsc_720p_25"]
+        cmd = [melt, "-profile", melt_profile(fps, P.cache)]
         cursor = 0
         for i, sh in enumerate(shots):
             if sh["start"] > cursor:

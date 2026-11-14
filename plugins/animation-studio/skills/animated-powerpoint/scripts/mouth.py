@@ -262,6 +262,17 @@ def rhubarb_cues(wav, text=None, cache=None):
     return json.loads(out.read_text(encoding="utf-8"))["mouthCues"]
 
 
+def ensure(fig_dir):
+    """Cut the mouth stages on first use; stop with a hint when the figure has no "mouth" block in parts.json
+    (parts.py --auto never writes one) - instead of a FileNotFoundError on mouth.json later."""
+    d = Path(fig_dir)
+    if not (d / "mouth.json").exists():
+        make(d)
+    if not (d / "mouth.json").exists():
+        raise SystemExit(f"figure '{d.name}' speaks but has no mouth stages: add a \"mouth\" block to "
+                         f"{d / 'parts.json'} (kinds open | line | beak, see mouth.py), or drop its \"speaker\"/\"talk\"")
+
+
 def mouth_keys(fig_dir, lines, fps=24, lead=1, cache=None):
     """lines: [(wav, start_frame, text or None)] -> [(frame, stage)] (the mouth one frame early reads in sync).
     Rest = the original drawing; X inside a line = slightly open for open grins; long pauses go back to rest."""

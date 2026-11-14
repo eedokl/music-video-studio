@@ -51,6 +51,19 @@ def rhubarb(wav, out_json, cache, pad=0.3):
     return [(max(t, -pad), s) for t, s in cues]
 
 
+def after(who, cs, voice_end):
+    """Mouth cues of a chunk from the end of the same figure's previous chunk on: the Rhubarb padding cue (rest
+    shape up to 0.3 s before the voice) would otherwise land inside the previous chunk and shut the mouth mid-word.
+    The last cue before that point is kept, moved onto it."""
+    lim = voice_end.get(who)
+    if lim is None:
+        return cs
+    early, keep = [c for c in cs if c[0] < lim], [c for c in cs if c[0] >= lim]
+    if early and (not keep or keep[0][0] > lim):
+        keep.insert(0, (lim, early[-1][1]))
+    return keep
+
+
 def write_wav(path, y):
     voice.write_wav(path, y, SR)
 
@@ -76,7 +89,7 @@ def spoken_lines(P, entries, a):
             out = lines_dir / f"{li:02d}_{ci}_{e['who']}.wav"
             k = f"{li}:{ci}"
             if k in cache and cache[k].get("sig") == sig and out.exists():
-                results[(li, ci)] = cache[k]
+                results[(li, ci)] = {**cache[k], "out": str(out)}      # this folder, even if the project moved
                 continue
             todo.append({"who": vname, "text": c["text"], "out": str(out)})
             keys.append((li, ci, sig))
@@ -87,7 +100,7 @@ def spoken_lines(P, entries, a):
         for (li, ci, sig), r in zip(keys, res):
             r["sig"] = sig
             results[(li, ci)] = r
-            cache[f"{li}:{ci}"] = r
+            cache[f"{li}:{ci}"] = {**r, "out": Path(r["out"]).relative_to(P.dir).as_posix()}
     cache_f.write_text(json.dumps(cache, ensure_ascii=False, indent=1), encoding="utf-8")
     return results
 
@@ -113,14 +126,27 @@ def main():
         rec = P.path(P["recording"])
         subprocess.run([ffmpeg(), "-y", "-v", "error", "-i", str(rec), "-ac", "1", "-ar", str(SR), str(P.song)], check=True)
         spoken = [e for e in entries if e["kind"] == "line"]
-        text = "\n".join(voice.spoken(e["text"], P.get("pronounce")) for e in spoken)
+        said = [voice.spoken(e["text"], P.get("pronounce")) for e in spoken]
+        # Whisper numbers only the lines with words: a direction-only line ("Lia: (nod)") must not shift the rest
+        heard_no = {}
+        for li, s in enumerate(said):
+            if s.strip():
+                heard_no[li] = len(heard_no)
+        text = "\n".join(s for s in said if s.strip())
         h = voice.hear([(P.song, text)], P.get("language", "de"))[str(P.song)]
         print(f"recording: Whisper similarity to the script {h['score']}")
         all_cues = [(max(t, 0.0), s) for t, s in rhubarb(P.song, P.analysis / "recording_mouth.json", P.cache)]
         y = decode(P.song, SR)
         total = len(y) / SR
         for li, e in enumerate(spoken):
-            ws = [w for w in h["words"] if w["line"] == li]
+            if li not in heard_no:                         # direction only: acts right after the previous line
+                at = round(lines_out[-1]["end"] + 0.12, 3) if lines_out else 0.0
+                ev = [{**{k: v for k, v in x.items() if k != "at_word"}, "t": at} for c in e["chunks"]
+                      for x in c["events"]]
+                lines_out.append({"who": e["who"], "text": e["text"], "t": at, "end": at, "words": [], "events": ev,
+                                  "chunks": []})
+                continue
+            ws = [w for w in h["words"] if w["line"] == heard_no[li]]
             if not ws:
                 continue
             t0, t1 = ws[0]["t"], ws[-1]["end"]
@@ -134,7 +160,8 @@ def main():
             lines_out.append({"who": e["who"], "text": e["text"], "t": t0, "end": t1, "words": words, "events": ev,
                               "chunks": [{"t": t0, "end": t1, "text": e["text"], "file": str(P.song.name)}]})
         for t, s in all_cues:                              # each mouth cue belongs to the line it falls into
-            owner = next((l["who"] for l in lines_out if l["t"] - 0.12 <= t <= l["end"] + 0.15), None)
+            owner = next((l["who"] for l in lines_out if l["words"] and l["t"] - 0.12 <= t <= l["end"] + 0.15),
+                         None)
             for k in names:
                 cues[k].append((t, s if k == owner else "X"))
         for k in names:
@@ -148,6 +175,7 @@ def main():
         res = spoken_lines(P, entries, a)
         t, first = max(float(D["lead_in"]) - voice.PAD[0], 0.0), True       # lead_in / tail are measured to the voice
         placed = []                                         # (start, file, who)
+        voice_end = {}                                      # who -> end of that figure's last chunk file
         for li, e in enumerate(entries):
             if e["kind"] == "pause":
                 t += e["seconds"]
@@ -182,7 +210,8 @@ def main():
                     line["events"].append({**{k: v for k, v in x.items() if k != "at_word"}, "t": et})
                 mj = P.cache / f"mouth_{Path(r['out']).stem}.json"
                 cs = rhubarb(r["out"], mj, P.cache)
-                cues[e["who"]] += [(round(t + ct, 3), s) for ct, s in cs]
+                cues[e["who"]] += after(e["who"], [(round(t + ct, 3), s) for ct, s in cs], voice_end)
+                voice_end[e["who"]] = round(t + dur, 3)
                 line["words"] += ws
                 line["chunks"].append({"t": round(t, 3), "end": round(t + dur, 3), "text": c["text"],
                                        "file": Path(r["out"]).relative_to(P.dir).as_posix(), "engine": r["engine"],

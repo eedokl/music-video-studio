@@ -20,7 +20,7 @@ Everything is a **pure function of song time**, which is what makes the MP4 expo
 | `src/world3d.ts` | 3D modes (storm, city, network, globe, vault, tunnel) – recolour constants at the top per video |
 | `src/util.ts` | `mk`, `prog`, `easeOut`, `easeInOut`, `easeOutBack`, `hash`, `popStyle`, `slideIn`, `typed` |
 | `src/audio.ts` | Playback for the live version |
-| `scripts/render.mjs` | Export (browser + ffmpeg from env CHROME/FFMPEG or the machine config). Options: `--fps 30 --width 1920 --height 1080 --crf 18 --from S --to S --out out/x.mp4 --query staticgrain` |
+| `scripts/render.mjs` | Export (browser + ffmpeg from env ANIMATION_STUDIO_CHROME / FFMPEG or the machine config). Options: `--fps 30 --width 1920 --height 1080 --crf 18 --from S --to S --out out/x.mp4 --query staticgrain` |
 
 ## Scene API (scenes.ts)
 ```ts

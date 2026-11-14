@@ -159,7 +159,7 @@ def image(desc, path, tl=(-8, 4.5), br=(8, -4.5)):
     path = str(path).replace("\\", "/")
     return f'''<layer type="import" active="true" version="0.1" desc="{_esc(desc)}">
 <param name="tl">{V(*tl)}</param><param name="br">{V(*br)}</param>
-<param name="filename"><string>{path}</string></param>
+<param name="filename"><string>{_esc(path)}</string></param>
 </layer>
 '''
 
@@ -221,7 +221,7 @@ def canvas(layers, w=1280, h=720, fps=24, end=120, name="Scene", view="-8 4.5 8 
 <canvas version="1.2" width="{w}" height="{h}" xres="2834.645669" yres="2834.645669"
   gamma-r="1" gamma-g="1" gamma-b="1" view-box="{view}" antialias="1"
   fps="{fps}" begin-time="0f" end-time="{end}f" bgcolor="0.5 0.5 0.5 1">
-<name>{name}</name>
+<name>{_esc(name)}</name>
 {"".join(layers)}
 </canvas>
 '''

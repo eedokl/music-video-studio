@@ -43,7 +43,7 @@ bigger values, fewer frames.
   (+5…+8°) and settles (−2°, 0).
 - Follow-through on appendages: `motion.spring_follow` driven by the root's real path. Swing too timid → raise
   `gain_*`; too floppy → raise `freq` or `damping`. A hit on the appendage itself (a peck, a flick): add a decaying
-  wobble on top (`characters/pip.py`: `antenna_kicks=[(frame, degrees)]`, ~3 Hz, half-life ~8 frames).
+  wobble on top (`characters/pip_figure.py`: `antenna_kicks=[(frame, degrees)]`, ~3 Hz, half-life ~8 frames).
 - Overlapping action: stagger parts by 1–3 frames (eyes lead, body, then antenna/tail/wings).
 
 ## Contact between two moving things

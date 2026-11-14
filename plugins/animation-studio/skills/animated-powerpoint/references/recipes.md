@@ -14,7 +14,8 @@ project/
   clips/<scene>/voice/*.wav      the voice lines (talking-character / TTS / recorded)
   clips/<scene>/set/*.png        painted sets (back layer 1920x1088 + an optional front/table layer)
 uv run --no-project --with pillow --with numpy --with scipy --with scikit-image --with faster-whisper \
-   python "${CLAUDE_PLUGIN_ROOT}/skills/animated-powerpoint/recipes/<recipe>.py" clips/<scene> [--plan]
+   python "<plugin>/skills/animated-powerpoint/recipes/<recipe>.py" clips/<scene> [--plan]
+   (`<plugin>` = the plugin folder - the same root the commands in animated-powerpoint/SKILL.md use)
 ```
 `--plan` only plans (word times, Synfig files, events.json) – check the events, then run without it
 (Synfig → light maps → three.js → post → look → sound; `<scene>.mp4` + `ton.wav` + `events.json`).

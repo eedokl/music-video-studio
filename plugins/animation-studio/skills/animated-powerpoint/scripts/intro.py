@@ -98,6 +98,26 @@ class Intro:
         return self.deck_file.parent / s["clean"]
 
 
+def title_word(ws, k0, target):
+    """(first, last) Whisper word index of a title word from index k0 on: the same word, several heard words that
+    join into it ("A." "I." -> "AI"), or a heard word that starts with it; None when it is not in the line."""
+    from narration import norm
+    if not target:
+        return None
+    for i in range(k0, len(ws)):
+        joined = ""
+        for j in range(i, min(i + 4, len(ws))):
+            joined += norm(ws[j]["w"]).replace("'", "")
+            if joined == target.replace("'", ""):
+                return i, j
+            if not target.replace("'", "").startswith(joined):
+                break
+    for i in range(k0, len(ws)):
+        if norm(ws[i]["w"]).startswith(target):
+            return i, i
+    return None
+
+
 def plan_and_textures(I):
     P, T, tex = I.p, I.T, I.dir / "tex"
     tex.mkdir(exist_ok=True)
@@ -134,12 +154,19 @@ def plan_and_textures(I):
             res = T.words(st["line"])
             import narration
             at = T.line_at(st["line"])
-            k0 = 0
+            k0, ws = 0, res["words"]
             for w in words:
-                k = next(i for i in range(k0, len(res["words"])) if narration.norm(res["words"][i]["w"]) == narration.norm(w))
-                title_times.append(at + round(res["words"][k]["s"] * I.fps))
-                t_title_end = at + round(res["words"][k]["e"] * I.fps)
-                k0 = k + 1
+                hit = title_word(ws, k0, narration.norm(w))
+                if hit is None:                  # not heard: 8 frames after the previous title word
+                    print(f"  title word '{w}' not found in the line '{' '.join(x['w'] for x in ws)}' - placed by time")
+                    t = (title_times[-1] + 8) if title_times else at
+                    title_times.append(t)
+                    t_title_end = t + 8
+                    continue
+                a, b = hit
+                title_times.append(at + round(ws[a]["s"] * I.fps))
+                t_title_end = at + round(ws[b]["e"] * I.fps)
+                k0 = b + 1
         else:
             title_times = [S1 + 30 + 8 * i for i in range(len(words))]
             t_title_end = title_times[-1] + 8

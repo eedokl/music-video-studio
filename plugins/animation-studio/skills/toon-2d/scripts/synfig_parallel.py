@@ -46,7 +46,7 @@ def main():
     a = ap.parse_args()
     if not (a.width and a.height):                      # take the size from the canvas, never stretch
         head = Path(a.sif).read_text(encoding="utf-8", errors="replace")[:4000]
-        mw, mh = re.search(r'<canvas[^>]*width="(\d+)"', head), re.search(r'<canvas[^>]*height="(\d+)"', head)
+        mw, mh = re.search(r'<canvas[^>]*\bwidth="(\d+)"', head), re.search(r'<canvas[^>]*\bheight="(\d+)"', head)
         a.width = a.width or (int(mw.group(1)) if mw else 1280)
         a.height = a.height or (int(mh.group(1)) if mh else 720)
     synfig = config.need("synfig")

@@ -13,7 +13,7 @@ It is optional. Builds never depend on it: the look ships as frames, and the iri
 
 The package is not bundled. `shaders_render.py --install` prints what it downloads (shaders@4.0.6 + typegpu,
 typed-binary, tinyest, tsover-runtime, ~40 MB) and runs `npm install` into the folder of the config key `shaders`
-(default `~/.animation-studio/shaders`; set with `check_tools.py --set shaders=DIR` or env `SHADERS`). Needs Node.js
+(default `~/.animation-studio/shaders`; set with `check_tools.py --set shaders=DIR` or env `ANIMATION_STUDIO_SHADERS`). Needs Node.js
 (config `node`) and Edge or Chrome with WebGPU (config `browser`, fallback `chrome`).
 
 ## Jobs
@@ -26,7 +26,7 @@ python shaders_render.py gallery --image scenes/intro/f.0100.png --out gallery [
 python shaders_render.py catalog --out catalog                         # full catalogue of the installed version
 ```
 
-Run with `uv run --no-project --with numpy --with pillow python "${CLAUDE_PLUGIN_ROOT}/skills/film-finish/scripts/shaders_render.py" ...`.
+Run with `uv run --no-project --with numpy --with pillow python "<plugin>/skills/film-finish/scripts/shaders_render.py" ...` (`<plugin>` = the plugin folder, as in the film-finish SKILL.md commands).
 
 - **look**: a preset in `look.json` format: `{"components": [...], "frames": 24, "description": "..."}`. The first
   component is normally a white `SolidColor`; everything else darkens/tints it, because the overlay is

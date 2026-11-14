@@ -42,9 +42,15 @@ W, H = 1280, 720
 HERE = Path(__file__).resolve().parent
 
 
+def frame_count(t_from, t_to, fps):
+    """Frames of a piece from song second t_from to t_to: absolute rounding, so pieces laid end to end never drift
+    against the continuous sound (per-piece round((to - from) * fps) accumulates errors)."""
+    return round(t_to * fps) - round(t_from * fps)
+
+
 def look(P, raw, out):
     if P.get("look", "standard") in (None, "none"):
-        os.replace(raw, out)
+        shutil.copyfile(raw, out)          # copy, not move: popup.py and others reuse cache/film_raw.mp4
         return
     subprocess.run([sys.executable, str(HERE / "apply_look.py"), str(raw), "-o", str(out), "--look", P.get("look", "standard")],
                    check=True)
@@ -81,18 +87,31 @@ def clip(P, name):
     """Scene + overlays, silent -> clips/<name>.mp4 with exactly the section's frame count."""
     A = P.section(name)
     frames = P.dir / "scenes" / name
-    if not any(frames.glob("f.*.png")):
+    nums = sorted(int(f.name[2:-4]) for f in frames.glob("f.*.png") if f.name[2:-4].isdigit())
+    if not nums:
         raise SystemExit(f"scenes/{name}/ has no frames - render the scene first")
-    n = round((A["to"] - A["from"]) * P.fps)
+    n = frame_count(A["from"], A["to"], P.fps)
+    have = next((k for k, v in enumerate(nums) if v != nums[0] + k), len(nums))   # ffmpeg stops at the first gap
+    # one frame short is tolerated (renderers that counted round((to - from) * fps)): the last frame is held once
+    if have < n - 1:
+        raise SystemExit(f"scenes/{name}/ has {have} usable frames (f.{nums[0]:04d} on"
+                         f"{', gap after f.%04d' % (nums[0] + have - 1) if have < len(nums) else ''}), the section "
+                         f"{A['from']}-{A['to']} s needs {n} at {P.fps} fps - re-render the scene (every later section "
+                         f"would slide against the sound)")
+    if have > n + 1:
+        print(f"   note: scenes/{name}/ has {have} frames, the section uses the first {n} (from/to changed?)")
     out = P.dir / "clips" / f"{name}.mp4"
     out.parent.mkdir(exist_ok=True)
     ov = P.dir / "overlays" / f"{name}.mov"
     fresh_overlay(P, name, A, ov)
-    cmd = [ffmpeg(), "-y", "-v", "error", "-framerate", str(P.fps), "-i", str(frames / "f.%04d.png")]
+    cmd = [ffmpeg(), "-y", "-v", "error", "-framerate", str(P.fps), "-start_number", str(nums[0]),
+           "-i", str(frames / "f.%04d.png")]
+    hold = "tpad=stop_mode=clone:stop=1"
     if ov.exists():
-        cmd += ["-i", str(ov), "-filter_complex", "[0:v][1:v]overlay=0:0:eof_action=pass,format=yuv420p[v]", "-map", "[v]"]
+        cmd += ["-i", str(ov), "-filter_complex",
+                f"[0:v]{hold}[s];[s][1:v]overlay=0:0:eof_action=pass,format=yuv420p[v]", "-map", "[v]"]
     else:
-        cmd += ["-vf", "format=yuv420p"]
+        cmd += ["-vf", f"{hold},format=yuv420p"]
     subprocess.run(cmd + ["-frames:v", str(n), "-an", *h264(), str(out)], check=True)
     return out, n
 
@@ -137,7 +156,7 @@ def title_frames(P, t):
     import math
     from PIL import Image
     fps = P.fps
-    n = round((t["to"] - t["from"]) * fps)
+    n = frame_count(t["from"], t["to"], fps)
     fade = max(1, round(float(t.get("fade_out", 0.75)) * fps))
     spr = title_sprite(t)
     y = t["y"] if isinstance(t.get("y"), (int, float)) else TITLE_Y.get(t.get("place", "top"), 170)
@@ -193,13 +212,16 @@ def film(P):
     t_start = secs[0]["from"]
     inputs, parts, pos = [], [], t_start
     for i, a in enumerate(secs):
-        if a["from"] > pos + 0.5 / fps:                     # gap -> black
-            parts.append(f"color=c=black:s={W}x{H}:r={fps}:d={a['from'] - pos:.4f}[g{len(parts)}]")
+        gap = frame_count(pos, a["from"], fps)
+        if gap > 0:                                         # gap -> black, exactly `gap` frames
+            parts.append(f"color=c=black:s={W}x{H}:r={fps}:d={(gap + 1) / fps:.4f},trim=end_frame={gap},"
+                         f"setpts=PTS-STARTPTS[g{len(parts)}]")
         c, n = clip(P, a["name"])
         k = inputs.count("-i")
         inputs += ["-i", str(c)]
         end = min(a["to"], secs[i + 1]["from"]) if i + 1 < len(secs) else a["to"]
-        parts.append(f"[{k}:v]trim=end_frame={round((end - a['from']) * fps)},setpts=PTS-STARTPTS,fps={fps}[g{len(parts)}]")
+        parts.append(f"[{k}:v]trim=end_frame={frame_count(a['from'], end, fps)},setpts=PTS-STARTPTS,fps={fps}"
+                     f"[g{len(parts)}]")
         pos = end
     graph = ";".join(parts) + ";" + "".join(f"[g{i}]" for i in range(len(parts))) + f"concat=n={len(parts)}:v=1:a=0[v0]"
     last = "v0"
@@ -220,9 +242,9 @@ def film(P):
                   f"setpts=PTS+{t['from'] - t_start:.3f}/TB[ti];[{last}][ti]overlay=0:0:eof_action=pass[vt]")
         last = "vt"
     graph += f";[{last}]format=yuv420p[v]"
-    dur = pos - t_start
+    dur = frame_count(t_start, pos, fps) / fps          # the picture's exact length; frame 0 = song frame round(t_start*fps)
     k = inputs.count("-i")
-    inputs += ["-ss", f"{t_start:.3f}", "-t", f"{dur:.3f}", "-i", str(sound_track(P))]
+    inputs += ["-ss", f"{round(t_start * fps) / fps:.4f}", "-t", f"{dur:.4f}", "-i", str(sound_track(P))]
     raw = P.cache / "film_raw.mp4"
     cut = P.cache / "film_cut.mp4"                    # the untouched cut - transitions are always computed from it
     subprocess.run([ffmpeg(), "-y", "-v", "error", *inputs, "-filter_complex", graph, "-map", "[v]", "-map", f"{k}:a",

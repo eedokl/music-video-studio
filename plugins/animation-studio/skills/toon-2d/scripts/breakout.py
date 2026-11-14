@@ -248,20 +248,28 @@ def render_still(sif_text, path):
     return path
 
 
+def cached_still(sif_text, path):
+    """render_still unless path exists and was rendered from exactly this .sif text (figure/fit/size changes
+    change the text, so the cache never serves a stale sprite)."""
+    sif = path.with_suffix(".sif")
+    if path.exists() and sif.exists() and sif.read_text(encoding="utf-8") == sif_text:
+        return path
+    return render_still(sif_text, path)
+
+
 def sprites(C, F):
-    """Rest pose and the fitted part alone, rendered in the clip canvas (cached)."""
+    """Rest pose and the fitted part alone, rendered in the clip canvas (cached per .sif text)."""
     from svg2sif import emit
     rest = C.work / "rest.png"
     fit_png = C.work / "fit_part.png"
-    if not rest.exists():
-        render_still(F.canvas(emit(F.root), 0, "rest"), rest)
+    cached_still(F.canvas(emit(F.root), 0, "rest"), rest)
     part = C.c.get("fit", "kopf")
-    if not fit_png.exists():
-        node = F.root.find(part) if part != "all" else None
-        if node is None:
-            shutil.copy(rest, fit_png)
-        else:
-            render_still(F.canvas(emit(node) if node.items else [], 0, "fit"), fit_png)
+    node = F.root.find(part) if part != "all" else None
+    if node is None:
+        shutil.copy(rest, fit_png)
+        fit_png.with_suffix(".sif").unlink(missing_ok=True)
+    else:
+        cached_still(F.canvas(emit(node) if node.items else [], 0, "fit"), fit_png)
     return rest, fit_png
 
 
@@ -346,7 +354,7 @@ def step_track(C, F):
     rest, fit_png = sprites(C, F)
     part_alpha = np.asarray(Image.open(fit_png).convert("RGBA").getchannel("A"))
     attached_end = max([ph["b"] for ph in C.phases if ph["action"] in ATTACHED] + [C.start + 1])
-    t0 = int(C.c.get("track_from", C.start - 12))
+    t0 = max(0, int(C.c.get("track_from", C.start - 12)))      # flight frames start at mp_0000
     raw, guess = {}, None
     for f in range(t0, attached_end + 1):
         m, box = diff_mask(C, f)

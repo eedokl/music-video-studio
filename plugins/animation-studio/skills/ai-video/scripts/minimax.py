@@ -16,7 +16,7 @@
              never written into logs, json or jobs);
            - without --send the request is only built and shown (key redacted, image as size) = dry run;
            - with --send every call costs credits and the start image + prompt leave the machine: ask the user first.
-         Endpoint base: config key `minimax_api_base` (env MINIMAX_API_BASE), default https://api.minimax.io;
+         Endpoint base: config key `minimax_api_base` (env ANIMATION_STUDIO_MINIMAX_API_BASE), default https://api.minimax.io;
          flow: POST /v1/video_generation -> task_id; GET /v1/query/video_generation?task_id= until Success -> file_id;
          GET /v1/files/retrieve?file_id= -> download_url. Model: --cloud-model (default MiniMax-Hailuo-02). Check the
          current MiniMax API documentation before the first real call (names/prices change).

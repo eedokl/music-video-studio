@@ -4,7 +4,7 @@ a brick set per section (varied with the creative seed), the "bricks" options bl
   uv run --no-project python setup.py [<project>] [--sections "verse:0-19.5,chorus:19.5-40"] [--set room]
          [--cameo mann:silhouette] [--look tim=rocker] [--seed 4711]
 Without --sections the existing sections stay (new_project.py makes one section "all").
-Sets: room | stage | rooftop. Looks: see bricks-3d/assets/cast.json. Never overwrites choices already in project.json
+Sets: room | stage | rooftop | house | arena | cloud (bricks-3d layouts.SETS). Looks: see bricks-3d/assets/cast.json. Never overwrites choices already in project.json
 except the ones given on the command line.
 """
 import argparse

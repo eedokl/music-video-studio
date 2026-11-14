@@ -82,7 +82,10 @@ def cmd_finish(a):
     if sif is None:
         sys.exit("no .sif in the folder - run make_scene.py first")
     sif = (S.dir / sif).resolve() if not sif.is_absolute() else sif
-    run([sys.executable, TOON / "render.py", sif, "--contact", a.contact or "auto", "--jobs", str(a.jobs)])
+    contact = a.contact or "auto"
+    sheet = sif.parent / "contact.png"
+    sheet.unlink(missing_ok=True)                    # never ship a contact sheet of an earlier render
+    run([sys.executable, TOON / "render.py", sif, "--contact", contact, "--jobs", str(a.jobs)])
     video = sif.with_suffix(".mp4")
     cues = Path(a.cues) if a.cues else (S.dir / "sfx_cues.json")
     if cues.exists():
@@ -100,10 +103,14 @@ def cmd_finish(a):
     subprocess.run([ff, "-y", "-loglevel", "error", "-i", str(out), "-vf",
                     "fps=12,scale=480:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=128[p];[b][p]paletteuse",
                     str(final / f"{name}.gif")], check=True)
-    shutil.copy(sif.parent / "contact.png", final / "contact.png")
+    if sheet.exists():
+        shutil.copy(sheet, final / "contact.png")
+    else:
+        (final / "contact.png").unlink(missing_ok=True)
     S.p["final"] = str(out.relative_to(S.dir))
     S.save()
-    print("final:", out, "| gif:", final / f"{name}.gif", "| contact:", final / "contact.png")
+    print("final:", out, "| gif:", final / f"{name}.gif",
+          "| contact:", final / "contact.png" if sheet.exists() else f"none (--contact {contact})")
 
 
 def main():

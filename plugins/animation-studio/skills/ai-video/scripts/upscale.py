@@ -14,6 +14,8 @@ Measured: S2V close-up 832x480 -> 1280x720, 61 frames in 2.5 min, ~5x sharper th
 skin detail (Claudia's freckles): judge faces by eye.
 CLI: uv run --no-project --with numpy --with pillow python upscale.py in.png|in.mp4 out [--factor 4] [--model photo]
        [--width 1280 --height 720]   (videos: target size; frames are upscaled x4 by the network, then resized)
+Videos keep their frames and fps, so the clip's meta (<clip>.json: song_start, fps, delay_frames ...) is copied to
+<out>.json (+ "upscaled_from", width, height) - the upscaled clip can replace the original in selection.json.
 """
 import argparse
 import shutil
@@ -107,9 +109,23 @@ def upscale_video(src, dst, width=1280, height=720, model="photo", fps=None):
         vf = f"scale={width}:{height}:flags=lanczos" + ("" if net else ",unsharp=5:5:0.8")
         subprocess.run([ffmpeg(), "-y", "-v", "error", "-framerate", str(rate), "-i", str(frames / "f%05d.png"), "-vf", vf,
                         "-c:v", "libx264", "-crf", "15", "-pix_fmt", "yuv420p", str(dst)], check=True)
+        _copy_meta(src, dst, width, height)
         return Path(dst), ("realesrgan" if net else "lanczos")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+def _copy_meta(src, dst, width, height):
+    """Same frames, same fps: the clip meta (clips.py) stays valid for the upscaled file."""
+    import json
+    m = Path(src).with_suffix(".json")
+    if m.exists() and Path(src).with_suffix(".json") != Path(dst).with_suffix(".json"):
+        try:
+            d = json.loads(m.read_text(encoding="utf-8"))
+        except ValueError:
+            return
+        d.update(upscaled_from=Path(src).name, width=width, height=height)
+        Path(dst).with_suffix(".json").write_text(json.dumps(d, indent=1, ensure_ascii=False), encoding="utf-8")
 
 
 def _fps(src):

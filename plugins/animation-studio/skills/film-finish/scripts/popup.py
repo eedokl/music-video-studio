@@ -170,8 +170,8 @@ def pop_sound(P):
     pop = P.cache / "sfx_bank" / "ui_pop__blip.wav"
     if ear and not pop.exists():
         pop.parent.mkdir(exist_ok=True)
-        launch = ["cmd", "/c", ear] if ear.lower().endswith((".cmd", ".bat")) else [ear]
-        subprocess.run(launch + ["sfx", "render", "ui_pop/blip", "-o", str(pop), "--sr", "48000"], capture_output=True)
+        subprocess.run(config.cmdline([ear, "sfx", "render", "ui_pop/blip", "-o", str(pop), "--sr", "48000"]),
+                       capture_output=True)
     return pop if pop.exists() else None
 
 

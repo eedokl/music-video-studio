@@ -18,7 +18,7 @@ Usage (run with: uv run --no-project --with numpy --with pillow python shaders_r
   shaders_render.py catalog --out DIR
   shaders_render.py --install            (one-time, only after the user agreed: npm install of shaders@4.0.6)
 
-The npm package is NOT bundled. It lives in the folder of the config key "shaders" (env SHADERS, or
+The npm package is NOT bundled. It lives in the folder of the config key "shaders" (env ANIMATION_STUDIO_SHADERS, or
 `check_tools.py --set shaders=DIR`; default ~/.animation-studio/shaders), or --shaders-dir DIR; that folder holds
 node_modules/shaders. Programs: config "node" (node + npm), "browser" (Edge/Chrome; "chrome" as fallback).
 
@@ -114,7 +114,7 @@ def install(d):
     r = subprocess.run([npm, "install", "--no-audit", "--no-fund"], cwd=d)
     if r.returncode != 0 or not package_ok(d):
         raise SystemExit("npm install failed")
-    print(f"ok - set it once with: check_tools.py --set shaders={d}  (or env SHADERS)")
+    print(f"ok - set it once with: check_tools.py --set shaders={d}  (or env ANIMATION_STUDIO_SHADERS)")
 
 
 def need_package(d):

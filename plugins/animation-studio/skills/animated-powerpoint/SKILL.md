@@ -1,6 +1,6 @@
 ---
 name: animated-powerpoint
-description: "Bring the characters of a presentation to life – take the figures and elements from a PowerPoint (pptx), PDF or slide images and animate them in classic cartoon style, looking exactly as drawn on the slide (same ink line, colours, accents); they step out of the flat slide into a 2.5D room (the slide bulges and lets go, they turn round and lit, land, gesture, a name tag pops) and the clip fits back into the deck (same aspect and resolution, starts on the exact slide, optional loop that ends on it again); several figures each with their own entrance (jump, flutter, hesitant hop, getting stuck), narration with tags on the spoken word, sound effects, a deck intro with flipping slides, an outro with a wink, scenes where the slide figures act and talk (lip sync) in painted sets. Use this whenever the user wants an animated slide, characters from a deck \"coming alive\", a presentation intro/teaser/explainer built from slide art, a mascot from a slide that moves, or a video to drop into PowerPoint – even if they only attach a pptx/PDF and say \"make them move\"."
+description: "Bring the figures of a presentation to life: take characters from a pptx, PDF or slide images and animate them in classic cartoon style, exactly as drawn (same line and colours). They step out of the slide into a 2.5D room, land, gesture and talk with lip sync; narration, sound, a deck intro, an outro and painted-set scenes; the clip fits back into the deck (same size, starts and can end on the slide). Use whenever the user wants an animated slide, deck characters \"coming alive\", a presentation intro/teaser/explainer from slide art, a moving mascot, or a video to drop into PowerPoint - even if they only attach a pptx/PDF and say \"make them move\"."
 ---
 
 # Animated PowerPoint – figures step out of the slide
@@ -12,7 +12,8 @@ Building blocks: toon-2d (`sif.py`, `render.py`/`synfig_parallel.py`, `render_mu
 film-finish (`apply_look.py`), studio-core (config, gpu_lock, creative seed). Dialogue: see the end.
 
 Scripts: `${CLAUDE_PLUGIN_ROOT}/skills/animated-powerpoint/scripts/`. Run with
-`uv run --no-project --with pillow --with numpy --with scipy [--with python-pptx --with pymupdf] [--with scikit-image] python <script>`.
+`uv run --no-project --with pillow --with numpy --with scipy [--with python-pptx --with pymupdf] [--with scikit-image]`
+`[--with faster-whisper] python <script>` (`faster-whisper` whenever a clip or scene has narration: word times for tags, gestures and lip sync).
 Work in a project folder outside the plugin: `deck/`, `figures/`, `clips/<name>/`, `project.json` (seed + ideas).
 
 ## Workflow

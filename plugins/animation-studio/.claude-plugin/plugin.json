@@ -1,8 +1,12 @@
 {
  "name": "animation-studio",
  "description": "Animated music videos, brick films, lyric videos, photorealistic AI singer videos, animated slides, talking characters and short 2D scenes - built from shared building blocks (song analysis, 2D rigs, 3D bricks, AI video, voices, film finishing).",
+ "version": "0.2.0",
  "author": {
-  "name": "animation studio"
+  "name": "eedokl"
  },
- "version": "0.1.0"
+ "license": "MIT",
+ "repository": "https://github.com/eedokl/music-video-studio",
+ "homepage": "https://github.com/eedokl/music-video-studio/tree/main/plugins/animation-studio",
+ "keywords": ["animation", "music-video", "lyric-video", "synfig", "blender", "brick-film", "lip-sync", "comfyui", "text-to-speech"]
 }
