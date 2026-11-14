@@ -19,7 +19,7 @@ Then look at figures/<name>/parts_check.png (parts in colours, guide polygons, p
    "split_fill": false}     true: a fill area that runs into a polygon is split along it (limb fill joined to the body)
 Method (learned on the ai_efficiency deck): ink (dark, unsaturated) vs. fill; each fill region goes to the polygon
 it mostly lies in; shared ink lines go to the FRONT part; the soft edge to the nearest part; hidden pieces under
-joints are grown as white fill with an ink contour (only deeper than 10 px under the occluder, so they never show
+joints are grown in the part's own fill colour with an ink contour (only deeper than 10 px under the occluder, so they never show
 in the rest pose); every back part runs 6 px under the front parts (no see-through seam when lit).
 Outputs: <part>.png (full crop size, RGBA), rig.json (pivots, feet, foot blobs, centre, Synfig view), parts_check.png,
 and the fidelity check: the parts stacked in the rest pose vs. original.png.
@@ -185,9 +185,11 @@ def cut(fig_dir, cfg):
         m = label == k
         part = np.zeros((H, W, 4), np.float32)
         part[m] = img[m]
+        fills = img[m & core & ~ink, :3]                 # the part's own fill colour for its hidden pieces (user
+        fill_rgb = np.median(fills, axis=0) if len(fills) > 50 else white   # test: a blue arm got a white wedge)
         for ext, ink_amt in exts.get(pname, []):
             f = ext & ~m
-            part[f, :3] = white * (1 - ink_amt[f, None]) + ink_rgb * ink_amt[f, None]
+            part[f, :3] = fill_rgb * (1 - ink_amt[f, None]) + ink_rgb * ink_amt[f, None]
             part[f, 3] = 1
         if pname in holes:
             f = holes[pname] & ~m

@@ -13,7 +13,7 @@ parts.json "mouth" (coordinates in original.png pixels, like the polygons):
   {"kind": "open",  "upper": [[x, y], ...], "lower": [[x, y], ...]}
         an open grin: the mouth below the upper lip is squashed COLUMN BY COLUMN under the lip line (squashing the
         whole mouth would tear the curved upper edge from the lip); rest = 1.0 (the original grin)
-  {"kind": "line",  "x": [x0, x1], "band": [y0, y1], "depth": 72}
+  {"kind": "line",  "x": [x0, x1], "band": [y0, y1], "depth": 100}   depth optional, default half of x1 - x0
         a closed smile line: a dark mouth opens under the topmost ink line, only inside the head, closing 24 px before
         the corner (no hook into the chin line); from 0.55 with a light tongue; rest = 0 (closed)
   {"kind": "beak",  "poly": [[x, y], ...], "hinge_x": 402, "tip_x": 320, "lift": 62}
@@ -107,7 +107,8 @@ def cut_line(cfg, head, s_px):
     ink = (head[..., 3] > 0.5) & (lum < 0.45)
     xa, xb = cfg["x"]
     y0, y1 = cfg["band"]
-    depth0 = cfg.get("depth", 72)
+    depth0 = cfg.get("depth") or round(0.5 * (xb - xa))     # default: half the mouth width (a fixed 72 px gave a
+    #                                                      wide mouth only a slit when open - user test)
     top = np.full(W, np.nan)
     for x in range(xa, xb + 1):
         ys = np.nonzero(ink[y0:y1, x])[0]
