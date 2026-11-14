@@ -149,10 +149,21 @@ if __name__ == "__main__":
         contact_sheet(s.video, s.out, s.cols, s.rows, s.width, start=s.start, end=s.end)
     elif len(sys.argv) in (4, 5) and sys.argv[1] == "frame":
         out = sys.argv[4] if len(sys.argv) == 5 else "frame.png"
-        t = float(sys.argv[3])
-        subprocess.run([ffmpeg(), "-y", "-v", "error", "-ss", f"{t:.4f}", "-i", sys.argv[2], "-frames:v", "1", out],
-                       check=True)
         fps = video_fps(sys.argv[2]) or FPS
+        last = max(0.0, duration(sys.argv[2]) - 1.0 / fps)        # the container length ends after the last frame
+        t = min(max(0.0, float(sys.argv[3])), last)
+        if t < float(sys.argv[3]):
+            print(f"({sys.argv[3]} s is after the last frame - taking the last frame at {t:.2f} s)")
+        pre = max(0.0, t - 2.0)                                     # fast seek before, exact seek while decoding
+        for tt in (t, t - 1.0 / fps, t - 2.0 / fps):                  # the audio may outlast the picture a little
+            Path(out).unlink(missing_ok=True)
+            subprocess.run([ffmpeg(), "-y", "-v", "error", "-ss", f"{pre:.4f}", "-i", sys.argv[2],
+                            "-ss", f"{max(0.0, tt - pre):.4f}", "-frames:v", "1", out], check=True)
+            if Path(out).exists():
+                t = tt
+                break
+        else:
+            raise SystemExit(f"no frame at {t:.2f} s in {sys.argv[2]}")
         print(f"{out}: frame {int(round(t * fps))} ({t:.2f} s), {'x'.join(map(str, video_size(out)))}")
     elif len(sys.argv) == 4 and sys.argv[1] == "compare":
         print(compare(sys.argv[2], sys.argv[3]))
