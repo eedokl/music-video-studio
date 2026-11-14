@@ -28,6 +28,9 @@ Run every script with `uv run <script>.py`: each declares its own pinned package
 - **Reference images of Claudia** (the plugin ships none, the start images need two): her face with mic and clip +
   a close-up with the one streak and the clip - the user's own (claudia.gallery sheets, download only with their OK,
   or stills of an earlier Claudia film). Put them into the project and set project.json `"character_refs"`.
+  **Check the references by eye before the run:** the mic boom must run along HER RIGHT cheek (image left, the streak
+  side) - Qwen copies the mic from image 1, so a reference with the mic on her left cheek gives wrong mics in most
+  start images (user tests: a claudia.gallery sheet had it there; the Europe 2031 film's references had it right).
 - Check the machine once: `python "${CLAUDE_PLUGIN_ROOT}/skills/studio-core/scripts/check_tools.py"`; this skill also
   needs config `face_landmarker`, `claudia_refs` (or project `character_refs`), optionally `comfy_start`.
 

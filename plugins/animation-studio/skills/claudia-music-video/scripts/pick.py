@@ -113,7 +113,11 @@ def pick_start(P, sel, log, rows, repair_mic=False):
                     log.append(f"start {name}: {dst.name} is a mic repair - look at the cheek/jaw on sheet_start.jpg (the retouch "
                                "can leave a patch where the boom crossed the hair edge); reject it in selection.json manual if so")
                     ok = [dst] if mic_repair.passes(res[dst]) else []
-        best = max(ok, key=lambda c: res[c].get("value", -1)) if ok else cands[0]
+        # no variant passes: the least wrong one (streak present > streak on the right side > one mic > value), not
+        # simply the first file name (user test: the fallback took the start image WITHOUT her streak)
+        least_wrong = lambda c: (bool(res[c].get("streak")), not res[c].get("wrong"), not res[c].get("mic_both"),  # noqa: E731
+                                 res[c].get("value", -1))
+        best = max(ok, key=lambda c: res[c].get("value", -1)) if ok else max(cands, key=least_wrong)
         out[name] = relp(P, best)
         log.append(f"start {name}: {best.name}" + ("" if ok else "  (NO variant passes: streak on the image left, one mic - check by eye, "
                                                          "or make new variants)") +
@@ -209,14 +213,17 @@ def pick_clips(P, sel, log, rows, curve):
                 continue
             meta = clips.read_meta(c)
             r = mouth.lip_score(c, s["from"], s["to"], curves, meta)
-            score, lag, rl, closed = mouth.rating(r, "s2v" if meta.get("kind") == "s2v" else "ltx")
+            score, lag, rl, mouth_shut = mouth.rating(r, "s2v" if meta.get("kind") == "s2v" else "ltx")
             q = mouth.motion_check(c)
-            closed = closed or bool(q["cuts"] or q["frozen"])   # hidden scene cut / picture stops: reject
+            # the reason is logged as it is (user test: "mouth closed" stood for every rejection, also hidden cuts)
+            why = [w for w, bad in (("mouth closed", mouth_shut), (f"{q['cuts']} hidden cut(s)?", q["cuts"]),
+                                    ("frozen picture", q["frozen"])) if bad]
+            closed = bool(why)                            # rejected: hidden scene cut / picture stops / mouth shut
             rated.append((score, c, lag, rl, closed, r))
             rows.append((c, f"r0 {r['r0']}  best {r['r_best']}@{r['lag']}  range {r['range']}  face {r['face']}  "
-                            f"score {score}{'  REJECTED' if closed else ''}  cuts {q['cuts']} frozen {q['frozen']}"))
+                            f"score {score}{'  REJECTED: ' + ', '.join(why) if why else ''}"))
             log.append(f"  {c.parent.name + '/' + c.name:36s} r0 {r['r0']}  r@{lag} {rl}  range {r['range']}  face {r['face']}  score {score}"
-                       + ("  mouth closed" if closed else ""))
+                       + (("  " + ", ".join(why)) if why else ""))
         if not rated:
             continue
         open_ = [x for x in rated if not x[4]] or rated

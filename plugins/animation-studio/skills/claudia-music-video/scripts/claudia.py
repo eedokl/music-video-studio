@@ -171,10 +171,19 @@ def lipsync_prompt(s, wardrobe, look_vid, line):
             f"{s.get('camera', 'Static camera').capitalize()}, cinematic photographic 35mm film look, {look_vid}.")
 
 
-def sing_mood(look, rng):
-    """(manner, action) for a singing shot without its own: picked by the seed from the look's SING_MOODS."""
-    opts = SING_MOODS.get(look) or SING_MOODS["studio"]
-    return rng.choice(opts)
+SING_MOODS_ANY = [("into the camera", "a slight sway of the head"), ("softly", "she tilts her head, small movements"),
+                  ("with conviction", "a small nod on the beat"), ("calmly into the lens", "she breathes in, her bangs move"),
+                  ("with energy", "she leans forward slightly, her hair swings"),
+                  ("quietly", "she looks down, then up into the lens")]
+
+
+def sing_mood(look, rng, used=()):
+    """(manner, action) for a singing shot without its own: the look's SING_MOODS first, then SING_MOODS_ANY, never a
+    movement already used in this film while there are others (user test: three shots got the same movement)."""
+    opts = list(SING_MOODS.get(look, [])) + SING_MOODS_ANY
+    fresh = [o for o in opts if o[1] not in used] or opts
+    own = [o for o in fresh if o in SING_MOODS.get(look, [])]
+    return rng.choice(own or fresh)
 
 
 def moving_prompt(motion, camera, look_vid):

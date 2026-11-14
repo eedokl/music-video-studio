@@ -154,7 +154,8 @@ def main():
                       "marker": mk, "technique": tech, "engine": engine, "framing": framing, "camera": cam, "look": lk,
                       "lyrics": sung, "idea": "", "action": "", "set": "", "set_short": "", "subject": "", "motion": ""})
         if tech == "lipsync":                        # mood + a small movement from the look (V1 of the Europe 2031 run:
-            shots[-1]["manner"], shots[-1]["action"] = claudia.sing_mood(lk, creative.rng(P, f"mood:{name}"))  # the brief may change them
+            used = {x.get("action") for x in shots[:-1]}
+            shots[-1]["manner"], shots[-1]["action"] = claudia.sing_mood(lk, creative.rng(P, f"mood:{name}"), used)  # the brief may change them
         for idea in creative.ideas(P, name):                 # ideas already recorded for this shot (user ideas win)
             if idea.get("by") == "user" or not shots[-1]["idea"]:
                 shots[-1]["idea"] = idea["idea"]
