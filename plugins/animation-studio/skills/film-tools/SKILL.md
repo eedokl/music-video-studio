@@ -8,8 +8,15 @@ description: "Quick finishing jobs on any existing video, no project needed: the
 Small finishing jobs on videos that already exist – from any source, not only from this plugin. For whole films
 (music videos, shorts, slides …) use the matching user skill; it calls the same tools at its end.
 
-All commands: `uv run "${CLAUDE_PLUGIN_ROOT}/skills/<block>/scripts/<script>.py" ...` (each script declares its own
-packages). First use on a new machine: `python "${CLAUDE_PLUGIN_ROOT}/skills/studio-core/scripts/check_tools.py" --setup`.
+How the commands run:
+- `uv run` for scripts that need Python packages: each declares exact versions in its header (`dependencies = [...]`).
+  `apply_look.py` needs none; `encode.py` needs numpy, `cut.py` / `shaders_render.py` numpy + pillow (+ opentimelineio).
+  On the very first run uv downloads missing packages once into its cache – ask the user before that first run if
+  the cache may be empty; after that it works offline (`uv run --offline ...`).
+- plain `python` for `media.py` and `check_tools.py`: they need no packages beyond the standard library.
+- Setup: run `python "${CLAUDE_PLUGIN_ROOT}/skills/studio-core/scripts/check_tools.py" --setup` only when
+  `~/.animation-studio/config.json` does not exist yet, or a script stops with "'ffmpeg' not found" – otherwise the
+  setup has already run. `check_tools.py` without `--setup` only reports what is found.
 
 ## Recipes
 
@@ -32,5 +39,8 @@ nobody listened to the sound).
 ## Rules
 
 - Never overwrite the input; write next to it with a suffix.
+- An existing output IS overwritten without asking (`apply_look.py -o`, `encode.py`'s `_small` / `_mail` / own
+  suffix; a file locked by a player gets a time-stamped name instead). If that name already exists and may matter,
+  pick a new one (`-o in_look_v2.mp4`, `--suffix _web2`) or ask.
 - Label AI-made content when the video contains any (see the user skill that made it).
 - Nothing is installed or downloaded without asking the user.
