@@ -123,6 +123,7 @@ DECK = {                                              # animated-powerpoint clip
     "layers": {"type": (LIST,), "items": DICT}, "overlays": {"type": (LIST,), "items": DICT},
     "sprites": {"type": (LIST,), "items": DICT}, "steam": {"type": (LIST,), "items": DICT},
     "background": {"type": (STR,)}, "name": {"type": (STR,)},
+    "lang": {"type": (STR,), "doc": "language of the narration for the word times, e.g. \"de\" (default: detected)"},
 }
 SCHEMAS = {"song": SONG, "talk": TALK, "short": SHORT, "deck": DECK}
 FAMILY = {"animated-music-video": "song", "bricks-music-video": "song", "claudia-music-video": "song",

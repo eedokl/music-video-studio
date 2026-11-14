@@ -1,3 +1,9 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
+# ///
 """Creative seed: variation that is reproducible, plus a log of the ideas a film is built on.
 
 Every project.json carries
@@ -13,15 +19,32 @@ or an idea fixes the choice.
     r = creative.rng(P, "dance:tim:chorus")          # random.Random
     style = creative.pick(P, "dance:tim", ["bounce", "step", "twist"])
     creative.add_idea(P, "ai", "Tim hides behind the desk at 'Limit'", "verse1")
+P may also be the path of a project.json (or of its folder). From the command line:
+    python creative.py seed <project.json>                       print the seed (stores a new one if missing)
+    python creative.py idea <project.json> ai "Robo waves at 'Hallo'" [where]    record an idea
 """
 import hashlib
 import json
 import os
 import random
 import time
+from pathlib import Path
+
+
+class _File:
+    """A project.json given as a path: the same interface as a loaded project (.file, .p)."""
+    def __init__(self, path):
+        f = Path(path)
+        self.file = f / "project.json" if f.is_dir() else f
+        self.p = json.loads(self.file.read_text(encoding="utf-8")) if self.file.exists() else {}
+
+
+def _proj(P):
+    return _File(P) if isinstance(P, (str, os.PathLike)) else P
 
 
 def _data(P):
+    P = _proj(P)
     return P.p if hasattr(P, "p") else P
 
 
@@ -43,6 +66,7 @@ def _update_file(P, change):
 
 
 def seed(P):
+    P = _proj(P)
     d = _data(P)
     if "seed" not in d:
         if hasattr(P, "file"):
@@ -67,6 +91,7 @@ def pick(P, salt, options):
 
 
 def add_idea(P, by, idea, where="", status="planned"):
+    P = _proj(P)
     d = _data(P)
     entry = {"by": by, "idea": idea, "where": where, "status": status}
     d.setdefault("ideas", []).append(entry)
@@ -74,4 +99,18 @@ def add_idea(P, by, idea, where="", status="planned"):
 
 
 def ideas(P, where=None):
+    P = _proj(P)
     return [i for i in _data(P).get("ideas", []) if where is None or i.get("where") in (where, "", "all")]
+
+
+if __name__ == "__main__":
+    import sys
+    a = sys.argv[1:]
+    if len(a) >= 2 and a[0] == "seed":
+        print(seed(a[1]))
+    elif len(a) >= 4 and a[0] == "idea":
+        add_idea(a[1], a[2], a[3], a[4] if len(a) > 4 else "")
+        print(f"idea recorded in {_File(a[1]).file}")
+    else:
+        print(__doc__)
+        sys.exit(2)

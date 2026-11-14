@@ -309,8 +309,7 @@ def mouth_keys(fig_dir, lines, fps=24, lead=1, cache=None):
 
 if __name__ == "__main__":
     import argparse
-    ap = argparse.ArgumentParser(description="Cut the mouth stages of a raster slide figure (parts.json \"mouth\" "
-                                 "block: kinds open / line / beak - see the top of this file).")
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("figure", help="figure folder, e.g. figures/robo")
     ap.add_argument("--clean", action="store_true", help="also remove white soft-edge flecks outside the outline")
     a = ap.parse_args()

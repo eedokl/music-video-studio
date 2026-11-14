@@ -28,7 +28,7 @@ Work in a project folder outside the plugin: `deck/`, `figures/`, `clips/<name>/
 1. **Interview + creative brief.** Which deck and slide(s)? Which figures step out, who just watches? Where will
    the clip play (after the slide = start on the slide; as a loop on the slide = `"ending": "return"`)? Text on the
    tags (name + role from the slide)? Read the slide text and notes (`deck.json`) and invent ideas from *this* deck
-   (a gesture that fits the role, who reacts to whom, an ending); record them with `creative.add_idea`. User ideas win.
+   (a gesture that fits the role, who reacts to whom, an ending); record them: `python "<plugin>/skills/studio-core/scripts/creative.py" idea project.json ai "..." [where]`. User ideas win.
    The decks can be internal: everything stays local, nothing is uploaded.
 2. **Import the deck** – `deck.py deck.pptx --slides 5 --out deck` (or a PDF, or slide images).
    PowerPoint (COM, read-only) exports `slide_NN.png`, `clean_NN.png` (no logo/footer/page number from the master,
@@ -46,7 +46,9 @@ Work in a project folder outside the plugin: `deck/`, `figures/`, `clips/<name>/
    has a joint line (sleeve cuff, wing outline), `split_fill: true` when a limb's fill is joined to the body,
    `eye_blob` when pupils touch glasses, `ext` for hidden pieces under joints. Re-run `parts.py figures/<name>`.
    Accept when the rest pose matches the original (printed: mean < 0.5/255 in the silhouette; the rest are soft-edge
-   pixels) and the colours in `parts_check.png` follow real lines. Safe angles are small (head ±5°, arm ±9°, tail ±8°).
+   pixels) and the colours in `parts_check.png` follow real lines. Safe angles are small (head ±5°, arm ±9°, tail ±8°). An arm that is a separate piece in the drawing (a robot's
+   arm, a sleeve with its own outline) can swing more: figure `"gesture_scale": 2.5` in clip.json multiplies the arm
+   angles (wave, fist, take-off) - check a frame strip of the gesture for a torn joint.
 5. **Write the clip** – `clips/<name>/clip.json` (see `clip.py --help`): slide, figures with
    `"action": "step_out" | "watch"`, `style` (`jump` | `flutter` for winged figures | `hop` hesitant | `stuck` heavy
    figure that jams in the slide – see "Styles"), `start`, `tag` + `tag_at`, `gesture` (`fist` | `wave` | `nod` |

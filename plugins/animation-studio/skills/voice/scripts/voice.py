@@ -397,10 +397,32 @@ def design(who, entry, project_dir=None, n=2, language="de", seed=1):
     info_f.write_text(json.dumps(info, ensure_ascii=False, indent=1), encoding="utf-8")
     ref = vdir / f"{who}.wav"
     if not ref.exists():
-        bestr = max(raws, key=lambda r: info[r.name]["score"] or 0)
+        bestr = best_candidate(raws, info, entry["design"])
         shutil.copy(bestr, ref)
         print(f"  -> {ref} (from {bestr.name}; listen and change with `voice.py pick {who} <k>`)")
     return ref
+
+
+_MALE = re.compile(r"\b(male|man|men|boy|guy|gentleman|baritone|bass|m\u00e4nnlich\w*|mann|herr|tenor)\b", re.I)
+_FEMALE = re.compile(r"\b(female|woman|women|girl|lady|soprano|alto|weiblich\w*|frau|m\u00e4dchen)\b", re.I)
+
+
+def best_candidate(raws, info, design):
+    """The clearest candidate (Whisper) - but among the ones heard about as well (within 0.05 of the best), one whose
+    pitch fits a gender the design names (user test: a "man" design got a 302 Hz take that sounded like a woman):
+    male about 85-180 Hz, female about 165-300 Hz. Without such a word: just the clearest."""
+    sc = lambda r: info[r.name]["score"] or 0
+    top = max(sc(r) for r in raws)
+    near = [r for r in raws if sc(r) >= top - 0.05]
+    m, f = bool(_MALE.search(design)), bool(_FEMALE.search(design))
+    if m != f:
+        lo, hi = (85, 180) if m else (165, 300)
+        fits = [r for r in near if info[r.name].get("pitch_hz") and lo <= info[r.name]["pitch_hz"] <= hi]
+        if fits:
+            return max(fits, key=sc)
+        print(f"  (no candidate with a {'male' if m else 'female'} pitch {lo}-{hi} Hz - taking the clearest; "
+              "make more with --n 4 or adjust the design)")
+    return max(raws, key=sc)
 
 
 # ------------------------------------------------------------------ CLI

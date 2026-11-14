@@ -14,6 +14,7 @@ ton.wav and muxes it into <name>.mp4 (picture copied). The cue sheet per style r
            falling whistle, deep thump + desk knock, swishes for the head shake
   gestures fist/wave swish per beat, look_up swish + celesta on the glasses flash, wag a flick every 10 frames
   tag      pop + glockenspiel
+  return   swish on the hop back, plop + soft pop into the slot (ending "return")
 With narration the effects sit 3 dB lower and the mix is normalised to -18 LUFS (speech); without narration the
 levels of the probe clip are kept. clip.json: "sound": false (off), "sounds": [{"at": <time spec>, "sfx": "id",
 "args": [], "level": -20, "pan": 0, "align": "peak"|"start"}] (extra cues), narration lines {"level": dB, "pan"}
@@ -130,6 +131,10 @@ def cues(plan, extra_db):
         if "tag" in e and plan.get("tags", {}).get(n, True):
             c(e["tag"] + 1, "ui_pop/wide", -17, pan)
             c(e["tag"] + 3, "mallet/glock", -16, pan, ["--pitch", "A6"])
+        if "back_take_off" in e:                     # ending "return": the hop back was silent (user test)
+            c(e["back_take_off"] - 1, "swish/soft", -17, pan, ["--dur", "0.5", "--apex", "0.3"])
+            c(e["back_in_slot"], "fit/pop/mouth_plop", -12, pan)
+            c(e["back_in_slot"] + 1, "ui_pop/soft", -19, pan, ["--pitch", "G4"])
     return out
 
 

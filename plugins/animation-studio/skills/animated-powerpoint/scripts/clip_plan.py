@@ -181,6 +181,9 @@ def mover_keys(P, G, T, movers, order, windows, G0, R_ret, end, multi):
         n, g = f["name"], G[f["name"]]
         R = g["R"]
         k = R.keys
+        gs = float(f.get("gesture_scale", 1.0))      # bigger arm angles for a separate arm piece (user test: a wave
+        if gs != 1.0:                                # within the safe +-9 degrees was hardly visible)
+            k["gesture"] = [(x[0], x[1] * gs) + tuple(x[2:]) for x in k.get("gesture", [])]
         own = [(g["start"], R.land_f + 50)]
         for a in T.events[n].get("gesture", []):
             if f["gesture"] == "look_up":
