@@ -5,6 +5,8 @@
 
 *The cast of the cartoon skills and how to rig them – Tim, Lia (SVG figures with lip-sync mouths), the Computer (a face on a screen), Pip (code-drawn pear-shaped hero with spring antenna) and Fips (SVG bird) – with figure sheets, the SVG rig convention (group ids, pivot circles, feet point), Python builders (pip_figure.py, computer.py, figures.py) and the steps to add a new figure drawn in Inkscape. Used by animated-short, animated-music-video, talking-character and the other cartoon skills.*
 
+**Run a script of this block:** `uv run "<plugin>/skills/characters/scripts/<script>.py" ...` - the script names in the tables below live in `<plugin>/skills/characters/scripts/`; each script declares its own packages (PEP 723), so no `--with`. A script whose first line says it runs in another interpreter (Blender, gpu_python, tts_python) is started by the scripts that need it.
+
 ![cast](assets/figure_sheet.png) – `assets/figure_sheet.png`: Tim, Lia, Computer, Pip, Fips in rest pose on one floor
 line at their scene scale. Regenerate (or check a new figure) with
 `uv run "<plugin>/skills/characters/scripts/figure_sheet.py" --out <dir> [--add my.svg] [--pivots]`.

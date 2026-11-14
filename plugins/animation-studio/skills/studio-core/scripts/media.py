@@ -96,5 +96,13 @@ if __name__ == "__main__":
     import sys
     if len(sys.argv) >= 3 and sys.argv[1] == "sheet":
         print(contact_sheet(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else "contact_sheet.png"))
+    elif len(sys.argv) >= 3 and sys.argv[1] == "check":
+        bad = 0
+        for v in sys.argv[2:]:
+            err = check_video(v)
+            bad += bool(err)
+            print(f"{v}: {duration(v):.2f} s, " + ("0 decode errors" if not err else "ERRORS: " + err[:300]))
+        sys.exit(1 if bad else 0)
     else:
-        print("usage: python media.py sheet <video or frames/f.%04d.png> [out.png]")
+        print("usage: python media.py sheet <video or frames/f.%04d.png> [out.png]\n"
+              "       python media.py check <video> [...]     (decode check, exit 1 on errors)")

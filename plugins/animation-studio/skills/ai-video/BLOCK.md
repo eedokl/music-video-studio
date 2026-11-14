@@ -5,6 +5,8 @@
 
 *Local AI images and video through ComfyUI - FLUX stills, Qwen-Image-Edit start images that keep a character's identity, LTX-2.3 lip-sync and image-to-video (moving stills), Wan2.2-S2V, Wan 2.2 / LTXV image-to-video, Depth Anything depth maps, lip-sync measurement (mouth openness vs. vocals) for picking seeds and offsets, a canon colour check, contact sheets, and the unattended night run (one model at a time, resumable, milestones). Used by claudia-music-video, toon-2d and other user skills.*
 
+**Run a script of this block:** `uv run "<plugin>/skills/ai-video/scripts/<script>.py" ...` - the script names in the tables below live in `<plugin>/skills/ai-video/scripts/`; each script declares its own packages (PEP 723), so no `--with`. A script whose first line says it runs in another interpreter (Blender, gpu_python, tts_python) is started by the scripts that need it.
+
 Everything that talks to the local ComfyUI or measures AI clips lives here, written once. User skills build
 prompts and job lists; this skill computes and measures them.
 

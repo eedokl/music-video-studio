@@ -5,6 +5,8 @@
 
 *Brick films in Blender from the open LDraw parts library - own LDraw importer (no stud logos), minifigure rig with poses, printed faces with 9 lip-sync mouth shapes and blinks as shader decals, brick sets (room, stage, rooftop, house exterior with fly-in, arena, cloud auction) with anchors, brick effects (sets building themselves, flying brick lettering, confetti, towers, figures falling apart, steam puffs, marionette strings), name signs on torsos, stop-motion timing on twos with jitter, beat bounce, cameo silhouettes, props (coins, glowing GPU, talking monitor, spots), per-shot auto exposure and headless EEVEE rendering to scenes/<section>/f.%04d.png. Used by bricks-music-video; not called by the user directly.*
 
+**Run a script of this block:** `uv run "<plugin>/skills/bricks-3d/scripts/<script>.py" ...` - the script names in the tables below live in `<plugin>/skills/bricks-3d/scripts/`; each script declares its own packages (PEP 723), so no `--with`. A script whose first line says it runs in another interpreter (Blender, gpu_python, tts_python) is started by the scripts that need it.
+
 Everything a brick-film skill needs inside Blender, driven by a **plan JSON** (data, editable by hand). The user skill
 (e.g. `bricks-music-video/scripts/plan.py`) writes the plan; this skill turns it into frames.
 

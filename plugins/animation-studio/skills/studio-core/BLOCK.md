@@ -5,6 +5,8 @@
 
 *Machine setup and shared machinery for every video skill: finding external programs (check_tools.py, machine config), the shared GPU lock (one AI model at a time), video encoding presets, media helpers (decode, durations, voice activity, decode check, contact sheets) and the creative seed with the ideas log. Use it when setting up a machine for the plugin, when a tool is missing, or when another skill of the plugin refers to it.*
 
+**Run a script of this block:** `uv run "<plugin>/skills/studio-core/scripts/<script>.py" ...` - the script names in the tables below live in `<plugin>/skills/studio-core/scripts/`; each script declares its own packages (PEP 723), so no `--with`. A script whose first line says it runs in another interpreter (Blender, gpu_python, tts_python) is started by the scripts that need it.
+
 ## Machine setup (once per machine)
 
 `python "<plugin>/skills/studio-core/scripts/check_tools.py" --setup` searches PATH and the usual install

@@ -1,4 +1,16 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# [tool.uv]
+# exclude-newer = "2026-11-14T00:00:00Z"
+# ///
 """Size-targeted encodes shared by the video skills: two-pass x264 to hit a file size (small < 30 MB, mail ~12 MB).
+
+CLI for any finished video (no project needed):
+  uv run encode.py film.mp4 [--small] [--mail] [--mb 20 --suffix _web]
+  -> film_small.mp4 (< 29 MB, long side <= 1280) and/or film_mail.mp4 (~12 MB, long side <= 960); both by default.
+  The aspect ratio is kept, nothing is upscaled; a video already under the size is copied; every output is
+  decode-checked and the size line says "OVER the N MB target" when the target could not be met.
 
     import _studio; _studio.use("film-finish")
     from encode import encode_target
@@ -7,7 +19,10 @@
     place(tmp, final)   # rename a finished temp file; a file locked by a player keeps a new name
     over_note(path, mb)  # "" or " - OVER the 29 MB target" for the size line callers print
 """
+import argparse
 import os
+import re
+import shutil
 import subprocess
 import time
 from collections import namedtuple
@@ -15,7 +30,7 @@ from pathlib import Path
 
 import _studio  # noqa: E402
 _studio.use()
-from media import ffmpeg  # noqa: E402
+from media import check_video, duration, ffmpeg  # noqa: E402
 
 
 MIN_VIDEO_K, MIN_AUDIO_K = 120, 48
@@ -84,3 +99,55 @@ def place(tmp, final):
         os.replace(tmp, alt)
         print(f"   {final.name} is locked (open in a player?) - new file kept as {alt.name}")
         return alt
+
+
+def video_size(path):
+    """(width, height) of the first video stream, read from ffmpeg's stream line (no ffprobe needed)."""
+    r = subprocess.run([ffmpeg(), "-hide_banner", "-i", str(path)], capture_output=True, text=True, errors="replace")
+    m = re.search(r"Video:.*?(\d{2,5})x(\d{2,5})", r.stderr)
+    if not m:
+        raise SystemExit(f"{path}: no video stream found")
+    return int(m.group(1)), int(m.group(2))
+
+
+VERSIONS = {"small": (29.0, 1280, 128), "mail": (12.0, 960, 64)}
+
+
+def main():
+    ap = argparse.ArgumentParser(description="Smaller versions of a finished video: _small (< 29 MB) and _mail (~12 MB).")
+    ap.add_argument("video")
+    ap.add_argument("--small", action="store_true", help="only the < 29 MB version (long side <= 1280)")
+    ap.add_argument("--mail", action="store_true", help="only the ~12 MB version (long side <= 960)")
+    ap.add_argument("--mb", type=float, help="own target size in MB (with --suffix)")
+    ap.add_argument("--suffix", default="_custom", help="file name suffix for --mb")
+    ap.add_argument("--side", type=int, default=1280, help="longest side for --mb (never upscaled)")
+    a = ap.parse_args()
+    src = Path(a.video)
+    if not src.exists():
+        raise SystemExit(f"{src} not found")
+    jobs = []
+    if a.mb:
+        jobs.append((a.suffix, a.mb, a.side, 128))
+    else:
+        for name in [n for n in VERSIONS if getattr(a, n)] or list(VERSIONS):
+            mb, side, ak = VERSIONS[name]
+            jobs.append((f"_{name}", mb, side, ak))
+    W, H = video_size(src)
+    dur = duration(src)
+    for suffix, mb, side, ak in jobs:
+        k = min(1.0, side / max(W, H))
+        w, h = int(round(W * k / 2) * 2), int(round(H * k / 2) * 2)
+        final = src.with_name(f"{src.stem}{suffix}{src.suffix}")
+        tmp = src.with_name(f".tmp.{final.name}")
+        if src.stat().st_size < mb * 1e6:
+            shutil.copy(src, tmp)                       # already small enough
+        else:
+            encode_target(src, tmp, mb, w, h, ak, dur)
+        out = place(tmp, final)
+        err = check_video(out)
+        print(f"-> {out.name}: {out.stat().st_size / 1e6:.1f} MB{over_note(out, mb)}, "
+              f"{'0 decode errors' if not err else 'ERRORS: ' + err[:300]}")
+
+
+if __name__ == "__main__":
+    main()

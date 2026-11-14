@@ -5,6 +5,8 @@
 
 *Listens to a song for every music-video skill: song project folder, vocal separation (stems or Demucs), beats/bars/accents, word and line times from Whisper aligned to the lyrics and repaired from the vocal tracks, Rhubarb mouth shapes per vocal track, male/female voice track (earshot) and the assignment of who sings when to which figure. Use it through the music-video skills of the plugin, or directly when the user only wants a song's timing, an exposure sheet or a lip-sync track.*
 
+**Run a script of this block:** `uv run "<plugin>/skills/song-analysis/scripts/<script>.py" ...` - the script names in the tables below live in `<plugin>/skills/song-analysis/scripts/`; each script declares its own packages (PEP 723), so no `--with`. A script whose first line says it runs in another interpreter (Blender, gpu_python, tts_python) is started by the scripts that need it.
+
 Everything is measured on **song seconds** and written to `<project>/analysis/`.
 
 ## Project folder (`scripts/song_project.py`)

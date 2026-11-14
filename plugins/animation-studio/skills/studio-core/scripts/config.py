@@ -99,6 +99,12 @@ def get(key):
         w = shutil.which(n)
         if w:
             return w
+    if key == "ffprobe":                                  # ffprobe ships next to ffmpeg (e.g. Kdenlive's bin folder)
+        ff = get("ffmpeg")
+        if ff and Path(ff).exists():
+            p = Path(ff).with_name(Path(ff).name.replace("ffmpeg", "ffprobe"))
+            if p.exists():
+                return str(p)
     return None
 
 

@@ -5,6 +5,8 @@
 
 *Classical (Disney-style) 2D animation as Synfig scenes written in Python – layer builders (sif.py), motion helpers (squash/stretch, arcs, spring follow-through), Inkscape SVG figures as rigs (svg2sif.py), lip-sync mouths (lipsync.py), painted sets, rendering to frames/MP4/GIF/labelled contact sheets (render.py, parallel Synfig), frame-by-frame comparison of two renders, the three.js multiplane camera and the 2.5D comic flight (render_multiplane.py), painterly multiplane layers without AI (paint_clearing.py), Krita layer assembly (krita_assemble.py) and Blender Grease Pencil (hand-drawn look). Used by animated-short, animated-music-video, talking-character and the other cartoon skills of the plugin.*
 
+**Run a script of this block:** `uv run "<plugin>/skills/toon-2d/scripts/<script>.py" ...` - the script names in the tables below live in `<plugin>/skills/toon-2d/scripts/`; each script declares its own packages (PEP 723), so no `--with`. A script whose first line says it runs in another interpreter (Blender, gpu_python, tts_python) is started by the scripts that need it.
+
 A scene is a Python script (`make_scene.py`) that writes a Synfig file (`.sif`, XML); Synfig renders it, ffmpeg
 encodes it. The `.sif` stays editable in Synfig Studio, so an animator can take over – that is the point of going
 through Synfig instead of drawing frames directly: **keyframes, not baked frames**, wherever possible.

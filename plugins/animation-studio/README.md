@@ -20,6 +20,7 @@ Every user skill was tested by rebuilding finished films of its kind and measuri
 | `talking-character` | "Tim asks the Computer about context windows – 20 seconds." | script → character voices (Qwen3-TTS / Piper / system) → lip sync → dialogue direction |
 | `animated-short` | "A bouncing-ball exercise", "Pip finds a flower", "a new Fips gag." | the 12 principles as keyframes, editable Synfig scenes, sound cues |
 | `video-review` | "Show me V1 and V2 side by side per shot and cut the best of both." | synced browser comparison, picks per shot, frame-exact cut without re-rendering |
+| `film-tools` | "Put the film look on this video", "make it small enough for e-mail", "check this file". | quick finishing jobs on any existing video: look, small/mail versions, contact sheet, decode check, cutting clips into a film |
 
 ## Building blocks – used by the user skills (reference docs `skills/<block>/BLOCK.md`, not skills: they cost no context until a user skill needs them)
 

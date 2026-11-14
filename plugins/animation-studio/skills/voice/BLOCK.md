@@ -5,6 +5,8 @@
 
 *Text-to-speech with a fixed voice per character (Tim, Lia, the Computer, a narrator, or new characters described in project.json), Qwen3-TTS voice design + cloning from a reference sample so a character always sounds the same, Piper and Windows speech as fallbacks, ElevenLabs as an optional cloud engine, a Whisper check that the audio really says the script (with automatic retakes), pitch/effect post-processing. Used by talking-character and any skill that needs spoken lines.*
 
+**Run a script of this block:** `uv run "<plugin>/skills/voice/scripts/<script>.py" ...` - the script names in the tables below live in `<plugin>/skills/voice/scripts/`; each script declares its own packages (PEP 723), so no `--with`. A script whose first line says it runs in another interpreter (Blender, gpu_python, tts_python) is started by the scripts that need it.
+
 Scripts: `<plugin>/skills/voice/scripts/` – run with
 `uv run "<plugin>/skills/voice/scripts/voice.py" ...`
 
