@@ -58,6 +58,11 @@ def run_film_tools(ctx):
     expect(out.returncode == 1, "media.py check: a truncated file was not reported (exit code 0)")
     ctx.run(["python", MEDIA, "sheet", look, ctx.dir / "sheet.png"])
     expect((ctx.dir / "sheet.png").exists(), "media.py sheet wrote no PNG")
+    out = ctx.run(["python", MEDIA, "sheet", src, ctx.dir / "strip.png", "--from", "1", "--to", "1.5", "--cols", "6",
+                   "--rows", "2", "--width", "160"])
+    want = ", ".join(f"{f} ({f / FPS:.2f} s)" for f in range(FPS, FPS + FPS // 2))
+    expect((ctx.dir / "strip.png").exists() and want in out.stdout,
+           f"media.py sheet --from 1 --to 1.5: expected frames {want}\n{out.stdout}")
     ctx.note(f"look ({n} frames, sound kept), small/mail, rotated phone clip upright, --mb 0.25 two-pass {tiny.stat().st_size / 1e6:.2f} MB, "
              "check (good + truncated), compare, sheet")
 

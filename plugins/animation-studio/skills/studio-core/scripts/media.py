@@ -74,11 +74,12 @@ def video_fps(path):
     return float(m.group(1)) if m else None
 
 
-def contact_sheet(video_or_pattern, out, cols=3, rows=3, width=640, fps=None):
+def contact_sheet(video_or_pattern, out, cols=3, rows=3, width=640, fps=None, start=None, end=None):
     """Contact sheet of cols x rows frames spread evenly over a video or an image sequence (f.%04d.png).
     fps: of the image sequence (default 24); for a video the file's own frame rate is used (48 fps, 30 fps ...).
     Prints which frame (and second) each tile shows, in reading order - the PNG itself carries no labels (the
-    ffmpeg of some installs has no drawtext)."""
+    ffmpeg of some installs has no drawtext). start / end (seconds, videos only): only that stretch - with
+    cols x rows >= its frames this is a dense strip of every frame (e.g. 1 s at 24 fps: cols=6, rows=4)."""
     src = str(video_or_pattern)
     is_seq = "%" in src
     if is_seq:
@@ -87,12 +88,19 @@ def contact_sheet(video_or_pattern, out, cols=3, rows=3, width=640, fps=None):
     else:
         fps = video_fps(src) or fps or FPS
         n = int(duration(src) * fps)
+    f0 = 0
+    if not is_seq and (start is not None or end is not None):
+        s0 = max(0.0, float(start or 0.0))
+        s1 = min(duration(src), float(end)) if end is not None else duration(src)
+        f0, n = int(round(s0 * fps)), max(1, int(round((s1 - s0) * fps)))
     step = max(1, n // (cols * rows))
-    inp = ["-framerate", str(fps), "-i", src] if is_seq else ["-i", src]
+    ranged = not is_seq and (start is not None or end is not None)
+    rng = ["-ss", f"{f0 / fps:.4f}", "-t", f"{n / fps:.4f}"] if ranged else []
+    inp = ["-framerate", str(fps), "-i", src] if is_seq else [*rng, "-i", src]
     subprocess.run([ffmpeg(), "-y", "-v", "error", *inp, "-vf",
                     f"select='not(mod(n\\,{step}))',scale={width}:-1,tile={cols}x{rows}", "-frames:v", "1", str(out)],
                    check=True)
-    tiles = list(range(0, n, step))[: cols * rows]
+    tiles = [f0 + f for f in range(0, n, step)][: cols * rows]
     print(f"{out}: tiles left->right, top->bottom = frames " +
           ", ".join(f"{f} ({f / fps:.2f} s)" for f in tiles))
     return out
@@ -128,7 +136,17 @@ def compare(a, b):
 if __name__ == "__main__":
     import sys
     if len(sys.argv) >= 3 and sys.argv[1] == "sheet":
-        contact_sheet(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else "contact_sheet.png")
+        import argparse
+        ap = argparse.ArgumentParser(prog="media.py sheet")
+        ap.add_argument("video")
+        ap.add_argument("out", nargs="?", default="contact_sheet.png")
+        ap.add_argument("--from", dest="start", type=float, help="only from this second")
+        ap.add_argument("--to", dest="end", type=float, help="only up to this second")
+        ap.add_argument("--cols", type=int, default=3)
+        ap.add_argument("--rows", type=int, default=3)
+        ap.add_argument("--width", type=int, default=640, help="width of one tile")
+        s = ap.parse_args(sys.argv[2:])
+        contact_sheet(s.video, s.out, s.cols, s.rows, s.width, start=s.start, end=s.end)
     elif len(sys.argv) == 4 and sys.argv[1] == "compare":
         print(compare(sys.argv[2], sys.argv[3]))
     elif len(sys.argv) >= 3 and sys.argv[1] == "check":
@@ -139,6 +157,6 @@ if __name__ == "__main__":
             print(f"{v}: {'x'.join(map(str, video_size(v)))}, {duration(v):.2f} s, " + ("0 decode errors" if not err else "ERRORS: " + err[:300]))
         sys.exit(1 if bad else 0)
     else:
-        print("usage: python media.py sheet <video or frames/f.%04d.png> [out.png]\n"
+        print("usage: python media.py sheet <video or frames/f.%04d.png> [out.png] [--from s --to s --cols 6 --rows 4]\n"
               "       python media.py check <video> [...]     (decode check, exit 1 on errors)\n"
               "       python media.py compare <a> <b>         (A/B: size, length, PSNR/SSIM, sound identical?)")
