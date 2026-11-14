@@ -42,7 +42,9 @@ project.json keys read here (all optional except the section):
              {"word": "Tim", "prop": "coins", "count": 6, "from_start": true} (the stack is there from the section
               start), {"word": "abonniert", "prop": "coins_vanish", "one_by_one": false} (all coins gone at once,
               or one per beat, top first - tokens being spent)]
-            "nth": only the n-th occurrence of the word in the section (0 = first, -1 = last)
+            "nth" (gestures, props, screen): only the n-th occurrence of the word in the section (0 = first,
+            -1 = last). lights_off: "until" (or "duration") s until the light comes back, else to the section end.
+            brick_word "duration" = the time the bricks fly in; the word then stands until "fall" (s after the word)
   screen    [{"word": "LLM", "kind": "heart", "text": "xoxo", "color": "#ff4682", "duration": 99}]   room monitor
   every gestures/props/screen rule may carry "section": "chorus2" (or a list) - it then applies only there
   bricks    {"flip": false, "palette": 0, "set": "room", "samples": 32, "quality": "...", "jitter": 0.3,
@@ -67,6 +69,15 @@ from song_project import Project, word_matches  # noqa: E402
 
 CAST = json.loads((_studio.skill_dir("bricks-3d") / "assets" / "cast.json").read_text(encoding="utf-8"))
 REST = dict(arm_r=8, arm_l=8, hand_r=0, hand_l=0, head=0, lean=0, hop=0)
+
+
+def nth_of(ws, rule):
+    """"nth" of a gestures / props / screen rule: only the n-th occurrence of the word in the section (0 = first,
+    -1 = last); it used to work for props only (user test)."""
+    if rule.get("nth") is None:
+        return ws
+    n = int(rule["nth"])
+    return [ws[n]] if -len(ws) <= n < len(ws) else []
 SING_POOL = ["chest", "open_arms", "point_cam", "reach", "shrug", "sway", "open_arms", "chest"]
 SOUND_OF = {"point": "point", "point_cam": "point", "cheer": "cheer", "fist": "cheer", "scare": "scare",
             "scratch": "scratch", "slump": "sad", "shrug": "scratch"}
@@ -329,16 +340,14 @@ class Planner:
         for g in self.rules("gestures"):
             if g.get("figure") not in self.castd:
                 continue
-            for w in self.words_for(g["word"]):
+            for w in nth_of(self.words_for(g["word"]), g):
                 d = float(g.get("duration", max(0.6, min(1.6, w.get("end", w["t"] + 0.6) - w["t"] + 0.4))))
                 ev.append((w["t"], d, g["figure"], g["gesture"], g.get("target"), "rule"))
         self.cameos, self.coins, self.screen_ev, self.lights, self.fx = [], [], [], [], []
         self.coins_gone, self.strings = [], []
         vanish = []
         for p in self.rules("props"):
-            ws = self.words_for(p["word"])
-            if p.get("nth") is not None:                    # only the n-th occurrence in the section (-1 = last)
-                ws = [ws[int(p["nth"])]] if -len(ws) <= int(p["nth"]) < len(ws) else []
+            ws = nth_of(self.words_for(p["word"]), p)
             for w in ws:
                 t = w["t"]
                 kind = p["prop"]
@@ -413,8 +422,9 @@ class Planner:
                     self.fx.append(dict(kind=kind, figure=p["figure"], t=round(t, 3), d=float(p.get("duration", 1.2))))
                 elif kind == "lights_off":
                     self.lights.append(dict(kind="dim", t=t, factor=float(p.get("factor", 0.15))))
-                    if p.get("until"):
-                        self.lights.append(dict(kind="dim", t=t + float(p["until"]), factor=1.0))
+                    back = p.get("until", p.get("duration"))    # "duration" was ignored (user test): same as "until"
+                    if back:
+                        self.lights.append(dict(kind="dim", t=t + float(back), factor=1.0))
         if vanish and self.coins:                           # coins vanish (all at once or one per beat, top first)
             tv, one = vanish[0]
             n = len(self.coins)
@@ -715,7 +725,10 @@ class Planner:
                 kind = "medium"
             body = next((x for x in self.fx if x["kind"] in ("fall_apart", "assemble") and a - 0.2 <= x["t"] < b), None)
             if body and kind not in ("letters", "wide"):    # a figure falls apart / builds itself: show all of it
-                subj, kind = body["figure"], "medium"       # (user test: it happened off screen in a close-up of Lia)
+                if body["kind"] == "assemble" and body["t"] - a > 0.5:
+                    kind = "wide"                           # it is not there yet: a wide shot keeps the singer in
+                else:                                       # frame until it builds itself (user test: empty stage)
+                    subj, kind = body["figure"], "medium"   # (user test: it happened off screen in a close-up of Lia)
             other = others[0] if others else None
             if a >= self.E - 1.2 and i > 0 and kind not in ("reveal", "detail", "monitor", "letters"):
                 kind = "wide"
@@ -741,8 +754,8 @@ class Planner:
         tiles = [idle]
         events = []
         for s in self.rules("screen"):
-            for w in self.words_for(s["word"]):
-                tile = {k: v for k, v in s.items() if k not in ("word", "duration")}
+            for w in nth_of(self.words_for(s["word"]), s):
+                tile = {k: v for k, v in s.items() if k not in ("word", "duration", "nth")}
                 tiles.append(tile)
                 events.append([round(w["t"] - 0.05, 3), round(min(self.E, w["t"] + float(s.get("duration", 1.6))), 3),
                                len(tiles) - 1])

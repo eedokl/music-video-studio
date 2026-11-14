@@ -47,7 +47,7 @@ and log them with `creative.add_idea(P, "ai", "...", section)` (user ideas: `"us
   a seeded singing gesture automatically; listeners look at the singer.
 - **Props** (`props`): `cameo` (a figure appears at the set's window/door – e.g. an anonymous silhouette with a white
   grin), `coins` (stack grows one per beat), `hair` (hair flies), `head_pop`, `lights_off`; brick effects:
-  `brick_word` (a word of flying 1x1 bricks, optional `fall` = it collapses), `confetti`, `tower` (grows one brick
+  `brick_word` (a word of flying 1x1 bricks; `duration` = the fly-in time, it then stands until `fall` s after the word, when it collapses), `confetti`, `tower` (grows one brick
   per beat), `fall_apart` / `assemble` (a figure falls apart / builds itself part by part). `"nth": -1` = only the last
   occurrence of the word in the section; `"section": "chorus3"` on any rule = only there (escalating gags on a
   repeated word: hair flies in chorus 2, the head pops off in chorus 3).
