@@ -47,6 +47,9 @@ def run_film_tools(ctx):
         sar_ok = not m or not m.group(3) or m.group(3) == m.group(4)
         expect(got == want and sar_ok, f"rotated clip: {name} is {m.group(0) if m else '?'} instead of upright "
                                        f"{want[0]}x{want[1]} with square pixels")
+    out = ctx.run(["python", MEDIA, "compare", src, look])
+    expect("sound: bit-identical" in out.stdout and re.search(r"PSNR \d+\.\d dB, SSIM 0\.\d{3}", out.stdout),
+           f"media.py compare (look vs input):\n{out.stdout}")
     out = ctx.run(["python", MEDIA, "check", src, tiny])
     expect(out.returncode == 0 and out.stdout.count("0 decode errors") == 2, f"media.py check:\n{out.stdout}")
     bad = ctx.dir / "bad.mp4"
@@ -56,7 +59,7 @@ def run_film_tools(ctx):
     ctx.run(["python", MEDIA, "sheet", look, ctx.dir / "sheet.png"])
     expect((ctx.dir / "sheet.png").exists(), "media.py sheet wrote no PNG")
     ctx.note(f"look ({n} frames, sound kept), small/mail, rotated phone clip upright, --mb 0.25 two-pass {tiny.stat().st_size / 1e6:.2f} MB, "
-             "check (good + truncated), sheet")
+             "check (good + truncated), compare, sheet")
 
 
 TESTS = [Test("film-tools", run_film_tools, about="apply_look, encode.py small/mail/--mb, media.py check + sheet on any video")]

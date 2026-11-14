@@ -98,10 +98,39 @@ def contact_sheet(video_or_pattern, out, cols=3, rows=3, width=640, fps=None):
     return out
 
 
+def compare(a, b):
+    """A/B of two videos as text: size, length, file size, picture difference (PSNR / SSIM over the whole clip,
+    the second one scaled to the first one's size) and whether the sound is bit-identical."""
+    rows = []
+    for v in (a, b):
+        w, h = video_size(v)
+        rows.append(f"{v}: {w}x{h}, {duration(v):.2f} s, {Path(v).stat().st_size / 1e6:.2f} MB")
+    w, h = video_size(a)
+    r = subprocess.run([ffmpeg(), "-hide_banner", "-i", str(a), "-i", str(b), "-lavfi",
+                        f"[1:v]scale={w}:{h},split[b1][b2];[0:v]split[a1][a2];[a1][b1]psnr;[a2][b2]ssim",
+                        "-f", "null", "-"], capture_output=True, text=True, errors="replace").stderr
+    psnr = re.search(r"PSNR .*?average:([\d.inf]+)", r)
+    ssim = re.search(r"SSIM .*?All:([\d.]+)", r)
+
+    def audio_md5(v):
+        o = subprocess.run([ffmpeg(), "-v", "error", "-i", str(v), "-map", "0:a:0?", "-f", "md5", "-"],
+                           capture_output=True, text=True).stdout.strip()
+        return o or None
+    ma, mb = audio_md5(a), audio_md5(b)
+    rows.append("picture: " + (f"PSNR {float(psnr.group(1)):.1f} dB" if psnr else "PSNR ?") +
+                (f", SSIM {float(ssim.group(1)):.3f}" if ssim else "") +
+                "  (PSNR > 40 dB / SSIM > 0.98: hard to see; < 30 dB: clearly different)")
+    rows.append("sound: " + ("bit-identical" if ma and ma == mb else "no sound in one of them" if not (ma and mb)
+                             else "different (python ear.py ab a b: how it sounds different)"))
+    return "\n".join(rows)
+
+
 if __name__ == "__main__":
     import sys
     if len(sys.argv) >= 3 and sys.argv[1] == "sheet":
         contact_sheet(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else "contact_sheet.png")
+    elif len(sys.argv) == 4 and sys.argv[1] == "compare":
+        print(compare(sys.argv[2], sys.argv[3]))
     elif len(sys.argv) >= 3 and sys.argv[1] == "check":
         bad = 0
         for v in sys.argv[2:]:
@@ -111,4 +140,5 @@ if __name__ == "__main__":
         sys.exit(1 if bad else 0)
     else:
         print("usage: python media.py sheet <video or frames/f.%04d.png> [out.png]\n"
-              "       python media.py check <video> [...]     (decode check, exit 1 on errors)")
+              "       python media.py check <video> [...]     (decode check, exit 1 on errors)\n"
+              "       python media.py compare <a> <b>         (A/B: size, length, PSNR/SSIM, sound identical?)")
