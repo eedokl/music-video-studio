@@ -43,8 +43,8 @@ Legend: **required** – the plugin does not work without it · **recommended** 
 | SDXL Base 1.0 | ComfyUI | style LoRAs, negative prompts, img2img repaint (`comfy_image.py --model sdxl [--lora ...] [--repaint]`) | ~28 steps | optional (the watercolour repaint look itself was rejected, see below) |
 | LTX-2.3 22B distilled fp8 + Gemma-3 12B text encoder | ComfyUI | lip-sync video from start image + vocals (audio frozen via latent mask); image-to-video for B-roll | lip score r 0.92 on fast syllables, best image quality, 1280×704 | recommended (default video model) |
 | LTX-Video 2B 0.9.8 distilled (+ T5-XXL fp8) | ComfyUI | fast image-to-video previews without sound (`comfy_video.py ltx`) | 8 steps, 1216×704 | optional |
-| Wan 2.2 TI2V 5B (+ umt5-xxl fp8, Wan 2.2 VAE) | ComfyUI, Apache 2.0 | image-to-video without sound for backgrounds, weather, light (`comfy_video.py wan`); old Europe 2031 Wan clips with a mouth are re-placed by mouth curve (`mouth.py fit`) | ~400 s per 4 s | optional |
-| Wan2.2-S2V 14B fp8 (+ wav2vec2 large) | ComfyUI | expressive close-ups, single held emotional notes < 4.7 s (`ai-video/s2v.py`, claudia `plan.py --s2v` / `"engine": "s2v"`) | ~14–15 min per 61 frames @16 fps; plugin re-shoot of Europe 2031 shot 46: r 0.51 (reference 0.39), shot 14: 0.45 (reference 0.53) | optional, default off |
+| Wan 2.2 TI2V 5B (+ umt5-xxl fp8, Wan 2.2 VAE) | ComfyUI, Apache 2.0 | image-to-video without sound for backgrounds, weather, light (`comfy_video.py wan`); older Wan clips with a mouth are re-placed by mouth curve (`mouth.py fit`) | ~400 s per 4 s | optional |
+| Wan2.2-S2V 14B fp8 (+ wav2vec2 large) | ComfyUI | expressive close-ups, single held emotional notes < 4.7 s (`ai-video/s2v.py`, claudia `plan.py --s2v` / `"engine": "s2v"`) | ~14–15 min per 61 frames @16 fps; plugin re-shoot of two reference shots: r 0.51 (reference 0.39) and 0.45 (reference 0.53) | optional, default off |
 | InfiniteTalk (Wan2.1-I2V-14B 480p fp8 + InfiniteTalk patch + LightX2V LoRA, wav2vec2-chinese-base, umt5-xxl) | ComfyUI, Apache 2.0 | held notes and long sung passages; keeps the start image most faithfully (`ai-video/infinitetalk.py`, chained 81-frame passes for long takes; claudia `"engine": "infinitetalk"`) | r 0.90 / 0.20 / 0.58 in the model comparison, ~80 s per second, 832×480 @25 fps (upscale: `upscale.py`) | optional |
 | HuMo 1.7B | ComfyUI, Apache 2.0 | rescue run for plosive-heavy lines where LTX fails (`ai-video/humo.py`, claudia `"engine": "humo"` = HuMo clip + 1 LTX seed) | most even sync (0.78 / 0.55 / 0.64), identity less stable; user found the face too static | optional, rescue only |
 | MiniMax H3 | ComfyUI | alternative audio-anchored lip sync, local weights (`ai-video/minimax.py`, claudia `"engine": "minimax"`) | 0.64 / 0.49 / 0.37; licence unchecked; user found the rest of the body robotic | optional, rescue only |
@@ -55,7 +55,7 @@ Legend: **required** – the plugin does not work without it · **recommended** 
 | Qwen3-TTS 12Hz 1.7B VoiceDesign + Base | GPU venv (`tts_python`), ~4 GB each | VoiceDesign makes a reference voice per character from an English description; Base speaks every line in that voice, seeded; Whisper scores each take (retake below 0.8) – no voice-actor clones | Whisper 0.97–1.0 per line in the dialogue test | recommended for voices |
 | Piper (e.g. de_DE-thorsten-high) | CPU | fast lightweight TTS fallback | – | optional |
 | MiniMax Hailuo video API (cloud) | API, `MINIMAX_API_KEY` (env only) | image-to-video B-roll without audio (`ai-video/minimax.py --backend cloud`); dry run unless `--send` (paid, image leaves the machine) | not run (no paid call made) | optional, opt-in |
-| ElevenLabs (cloud) | API, `ELEVENLABS_API_KEY` | optional voice engine per figure (opt-in, line text leaves the machine, costs credits); also the source of the laugh in the "Prompts!" credits (Sound Effects) | – | optional |
+| ElevenLabs (cloud) | API, `ELEVENLABS_API_KEY` | optional voice engine per figure (opt-in, line text leaves the machine, costs credits); also usable for sound effects such as a laugh (Sound Effects) | – | optional |
 | Windows System.Speech (SSML) | – | last fallback voice; works without GPU | the Pip rebuild uses it (pitch ×1.23) | fallback |
 | HuMo 17B fp8 | – | – | does not fit 16 GB VRAM: 81 min per step, aborted | not recommended (on 16 GB) |
 | Kandinsky 6 Lite | – | – | ~40 min per 5-s clip, B-roll not better than LTX | not recommended |
@@ -86,7 +86,7 @@ venv). The lyric-video engine pulls three.js, Vite and TypeScript through npm pe
 | Sloom Studio | GUI only, no scripting interface. |
 | Audacity | Not needed: track reading (beats, words) and the listening checks are automatic (song-analysis, earshot). |
 | Godot (+ Popochiu) | Games, not films – the games reuse the plugin's figures and sets. |
-| Bark (suno/bark-small) | Tried for the laugh in the "Prompts!" credits; the user's ElevenLabs sound effect was preferred. |
+| Bark (suno/bark-small) | Tried for a laugh sound effect; an ElevenLabs sound effect was preferred. |
 | rembg, insightface, Animated Drawings | Experiments (background removal, face analysis, drawing-to-animation); not part of any proven pipeline. |
 | YuE, ACE-Step 1.5, SoulX-Singer | Singing / song generation for parodies – audio, not video; planned as a separate "song-parody" skill outside this plugin. |
 | Comfy Cloud | Not needed since ComfyUI runs locally on a 16 GB GPU. |

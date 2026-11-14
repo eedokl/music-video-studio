@@ -5,9 +5,8 @@ in which characters really sing, brick films, typographic lyric videos, photorea
 presentation figures, talking characters and short 2D scenes. Every kind of film is one **user skill**; everything two
 kinds of film share lives once in a **building block**.
 
-The plugin grew out of real projects ("Prompts!" with Tim, Lia and the Computer, its brick-film version, six lyric
-videos, "Europe 2031" with the singer Claudia, the Pip and Fips shorts, a presentation whose figures step out of the
-slides). Each user skill was rebuilt against those projects as references and measured (see "Reference tests").
+Every user skill was tested by rebuilding finished films of its kind and measuring the result against them (see
+"Reference tests").
 
 ## User skills – what you ask for
 
@@ -58,13 +57,15 @@ The plugin should never produce the same routine twice. Each project carries a `
 
 ## Install
 
-The plugin is a folder; a local marketplace makes Claude Code load it in place (edits apply at the next session or
-after `/reload-plugins`):
+From GitHub (the repository contains a marketplace in `.claude-plugin/marketplace.json`):
 
 ```
-claude plugin marketplace add <path>/plugins            # the folder that contains .claude-plugin/marketplace.json
-claude plugin install animation-studio@local-animation
+claude plugin marketplace add eedokl/music-video-studio
+claude plugin install animation-studio@music-video-studio
 ```
+
+Or from a local copy: `claude plugin marketplace add <folder with .claude-plugin/marketplace.json>`, then install the
+same way (a local marketplace loads the plugin in place; edits apply after `/reload-plugins`).
 
 Then, once per machine:
 
@@ -95,21 +96,17 @@ stays in sync.
 
 | Skill | Reference | Result |
 |---|---|---|
-| animated-music-video | "Prompts!" first chorus | who sings: 84 % (Tim) / 89 % (Lia) frame agreement; word timing median 0.10 s after the vocal-track repair (mean error 0.38 → 0.21 s); 0 lip-sync gaps; second song (rock, DE/EN, no stems) works with its own ideas |
-| bricks-music-video | "Prompts!" brick film, section 7 | open/closed mouth agrees on 98.7 % of frames; all cuts on beats; beat offset 10 ms |
-| lyric-music-video | "Europe 2031" / Comfort Zone lyric video | tempo and hits identical; words closer to the voice than the original (median 97 ms vs 200 ms); SSIM 0.97 over the whole song |
-| claudia-music-video | "Europe 2031" V2 | lip score on the comparable shot 0.58 vs 0.22; one microphone in 6/6 frames (the reference had two); mouth measurement reproduces the reference log exactly |
-| animated-powerpoint | the Helmut / Hans / Fritz / Felix deck | slide export, upscale and timing identical; rest pose at parity with the hand-made rig; scenes S4–S12 as reusable recipes: event frames identical or ±1–3 frames, loudness ±0.5 LUFS |
-| talking-character | "Pip spricht" | mouth track 97 % identical, same 166 frames; new Tim/Computer dialogue with Qwen3-TTS |
-| animated-short | Pip and the Flower, Fips, comic flight, multiplane | identical or within GPU rounding (mean ≤ 0.16 of 255) |
-| video-review | the user's own "Europe 2031" V3 | 4727/4729 frames from the same source version, audio bit-identical |
+| animated-music-video | a cartoon music video with three singing figures (one chorus, later the whole song) | who sings: 84–97 % frame agreement; word timing median 0.04–0.10 s; 0 lip-sync gaps; whole film frame-identical in length incl. credits, second language track, pop-up version and 48 fps |
+| bricks-music-video | the brick-film version of the same song | open/closed mouth agrees on 98.5–98.7 % of frames; all cuts on beats; beat offset 10 ms |
+| lyric-music-video | seven typographic lyric videos | tempo and hits identical or closer to the beat; words closer to the voice than every original (median 80–105 ms vs 110–440 ms) |
+| claudia-music-video | an AI-singer music video | lip score on the comparable shot 0.58 vs 0.22; one microphone in 6/6 frames (the reference had two); mouth measurement reproduces the reference log exactly |
+| animated-powerpoint | a presentation whose four figures step out of the slides | slide export, upscale and timing identical; nine scenes as reusable recipes: event frames identical or ±1–3 frames, loudness ±0.5 LUFS |
+| talking-character | a short talking-figure clip | mouth track 97 % identical, same 166 frames |
+| animated-short | two character shorts, a comic flight, a multiplane shot | identical or within GPU rounding (mean ≤ 0.16 of 255) |
+| video-review | a three-version music video | 4727/4729 frames from the same source version, audio bit-identical |
 
-Full-length rebuilds (night 13/14 Nov 2026) and the rest-point run: "Prompts!" complete with credits, English track,
-pop-up and 48 fps (frame-identical length, 31+ picture gags, comic caption boxes per panel, inset rules), the whole
-brick film (name signs, puppet strings, steam, vanishing coins), all seven lyric videos (held notes stretched,
-refined tempo), the deck. How to check a rebuild: `video-review/scripts/ref_check.py`.
-
-Each skill's `references/reference-tests.md` has the method and the numbers.
+How to check a rebuild against a reference: `video-review/scripts/ref_check.py` (effect checklist + dense
+side-by-side strips at every event). Each skill's `references/reference-tests.md` has the method and the numbers.
 
 ## Rules everyone follows
 
