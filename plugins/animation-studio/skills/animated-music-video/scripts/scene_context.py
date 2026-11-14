@@ -226,7 +226,8 @@ class SceneContext:
         K, FLOOR = float(A.get("scale", SET.get("scale", 0.68))), float(A.get("floor", SET.get("floor", -2.9)))
         if "spotlight" in lights and "scale" not in A:
             K *= 1.25                                         # spotlight: closer on the lit figures
-        if not SET.get("screen") and not A.get("screen") and shot != "screen" and                 any(figs_cfg[k].get("kind") == "screen" for k in names):
+        if (not SET.get("screen") and not A.get("screen") and shot != "screen"
+                and any(figs_cfg[k].get("kind") == "screen" for k in names)):
             print(f"   note: set {A.get('set', 'stage')} has no \"screen\" rectangle - the screen figure uses the stage's "
                   f"(give the section \"screen\": [x0, y0, x1, y1])")
         SCREEN = tuple(A.get("screen") or (SCREEN_SHOT if shot == "screen" else SET.get("screen", [-2.4, 3.3, 2.4, 0.2])))
