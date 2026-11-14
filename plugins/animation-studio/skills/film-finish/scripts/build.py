@@ -35,7 +35,7 @@ import _studio  # noqa: E402
 _studio.use("song-analysis")
 from encoding import h264  # noqa: E402
 from media import check_video, ffmpeg  # noqa: E402
-from encode import encode_target, place  # noqa: E402
+from encode import over_note, encode_target, place  # noqa: E402
 from song_project import Project  # noqa: E402
 
 W, H = 1280, 720
@@ -267,7 +267,7 @@ def film(P):
     tmp = P.cache / "film_tmp.mp4"
     look(P, raw, tmp)
     out = place(tmp, P.dir / "film.mp4")
-    results = [out]
+    results, targets = [out], {}
     for name, mb, w, h, ak in (("film_small", 29.0, 1280, 720, 128), ("film_mail", 12.0, 960, 540, 64)):
         target = P.cache / f"{name}_tmp.mp4"
         if out.stat().st_size < mb * 1e6:
@@ -275,9 +275,11 @@ def film(P):
         else:
             encode_target(out, target, mb, w, h, ak, dur)
         results.append(place(target, P.dir / f"{name}.mp4"))
+        targets[results[-1]] = mb
     for r in results:
         err = check_video(r)
-        print(f"-> {r.name}: {r.stat().st_size / 1e6:.1f} MB, {'0 decode errors' if not err else 'ERRORS: ' + err[:300]}")
+        over = over_note(r, targets[r]) if r in targets else ""
+        print(f"-> {r.name}: {r.stat().st_size / 1e6:.1f} MB{over}, {'0 decode errors' if not err else 'ERRORS: ' + err[:300]}")
     print(f"   {dur:.1f} s, look {P.get('look', 'standard')}")
     if P.get("credits"):                     # optional: credits show film excerpts -> rebuilt after every new film
         uv = shutil.which("uv")

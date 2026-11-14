@@ -156,7 +156,9 @@ def small_version(src, out, dur, mb=29.0):
         return out
     sw = min(w, 1280)
     sh = int(round(h * sw / w / 2) * 2)
-    encode_target(Path(src), Path(out), mb, sw, sh, 128, dur)
+    r = encode_target(Path(src), Path(out), mb, sw, sh, 128, dur)
+    if not r.met:
+        print(f"   {Path(out).name}: {r.size_mb:.1f} MB - OVER the {mb:g} MB target ({r.note})")
     return out
 
 

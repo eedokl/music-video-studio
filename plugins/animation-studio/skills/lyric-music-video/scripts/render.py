@@ -32,7 +32,7 @@ from pathlib import Path
 import _studio  # noqa: E402
 _studio.use("song-analysis", "film-finish")
 import config  # noqa: E402
-from encode import encode_target, place  # noqa: E402   film-finish: two-pass size target, locked-file handling
+from encode import over_note, encode_target, place  # noqa: E402   film-finish: two-pass size target, locked-file handling
 from frames import sheet_at  # noqa: E402
 from media import check_video, duration, ffmpeg, has_audio  # noqa: E402
 from song_project import Project  # noqa: E402
@@ -141,6 +141,9 @@ def versions(full, dur):
         else:
             encode_target(full, tmp, mb, w, h, ak, dur)
         out.append(place(tmp, full.with_name(full.stem + suffix + ".mp4")))
+        over = over_note(out[-1], mb)
+        if over:
+            print(f"   {out[-1].name}: {out[-1].stat().st_size / 1e6:.1f} MB{over}")
     return out
 
 

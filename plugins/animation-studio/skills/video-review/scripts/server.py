@@ -10,7 +10,8 @@ Start:  python review.py serve review.json [--port 0]     (prints the URL; port 
   POST /api/cut           save the choice and start pick_cut.py;  GET /api/cut -> status
 POSTs must come from the page itself: Content-Type application/json (a cross-site form cannot send it without a CORS
 preflight, which this server never allows) and Host / Origin naming this server - other web pages cannot change the
-choice or start a cut.
+choice or start a cut. Every GET also needs a Host header naming this server (127.0.0.1, localhost, [::1] or the
+--host value): a DNS-rebinding page under a foreign name cannot read the films or the review data.
 """
 import json
 import re
@@ -100,7 +101,13 @@ def serve(rp, port=0, host="127.0.0.1"):
                 except (ConnectionResetError, BrokenPipeError, ConnectionAbortedError):
                     pass
 
+        def host_ok(self):
+            port = self.server.server_address[1]
+            return self.headers.get("Host", "") in {f"{h}:{port}" for h in ("127.0.0.1", "localhost", "[::1]", host)}
+
         def do_GET(self):
+            if not self.host_ok():                            # DNS rebinding: a foreign name pointing at 127.0.0.1
+                return self.reply(403, {"error": "open the review at 127.0.0.1 / localhost / the --host address"})
             p = self.path.split("?")[0]
             R = review()
             if p == "/favicon.ico":
@@ -128,7 +135,7 @@ def serve(rp, port=0, host="127.0.0.1"):
         def same_origin(self):
             port = self.server.server_address[1]
             allowed = {f"{h}:{port}" for h in ("127.0.0.1", "localhost", "[::1]", host)}
-            if self.headers.get("Host", "") not in allowed:
+            if not self.host_ok():
                 return False
             origin = self.headers.get("Origin")
             return origin is None or urllib.parse.urlsplit(origin).netloc in allowed

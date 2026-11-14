@@ -75,7 +75,7 @@ import _studio  # noqa: E402
 _studio.use()
 from encoding import h264  # noqa: E402
 from media import check_video, contact_sheet, ffmpeg  # noqa: E402
-from encode import encode_target, place  # noqa: E402
+from encode import over_note, encode_target, place  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 SR = 48000
@@ -772,6 +772,7 @@ def main():
     film = place(tmp, out_dir / f"{prefix}.mp4")
     results = [film]
     dur = total / fps
+    targets = {}
     if not a.no_versions:
         W, H = plan.get("size", [1280, 720])
         for name, mb, side, ak in ((f"{prefix}_small", 29.0, 1280, 128), (f"{prefix}_mail", 12.0, 960, 64)):
@@ -783,11 +784,15 @@ def main():
             else:
                 encode_target(film, target, mb, w, h, ak, dur)
             results.append(place(target, out_dir / f"{name}.mp4"))
+            targets[results[-1]] = mb
     checks = {}
     for r in results:
         err = check_video(r)
+        over = over_note(r, targets[r]) if r in targets else ""
         checks[r.name] = {"mb": round(r.stat().st_size / 1e6, 2), "decode_errors": err[:300] if err else 0}
-        print(f"-> {r.name}: {r.stat().st_size / 1e6:.1f} MB, {'0 decode errors' if not err else 'ERRORS: ' + err[:300]}")
+        if r in targets:
+            checks[r.name]["target_mb"], checks[r.name]["over_target"] = targets[r], bool(over)
+        print(f"-> {r.name}: {r.stat().st_size / 1e6:.1f} MB{over}, {'0 decode errors' if not err else 'ERRORS: ' + err[:300]}")
     sheet = contact_sheet(film, out_dir / f"{prefix}_sheet.png", cols=4, rows=3, width=480, fps=fps)
     shots_json = out_dir / f"{prefix}_shots.json"
     shots_json.write_text(json.dumps({

@@ -116,8 +116,23 @@ def cmdline(cmd):
     path contains a space and another argument is quoted."""
     cmd = [str(c) for c in cmd]
     if os.name == "nt" and cmd and cmd[0].lower().endswith((".cmd", ".bat")):
-        return f'cmd /d /s /c "{subprocess.list2cmdline(cmd)}"'
+        return f'cmd /d /s /c "{" ".join(_bat_arg(c) for c in cmd)}"'
     return cmd
+
+
+_BAT_SPECIAL = set(' \t&|<>^()%!"')
+
+
+def _bat_arg(a):
+    """One argument for a cmd.exe command line that ends in a batch file (which passes it on with %*):
+    quoted whenever it contains whitespace or a cmd metacharacter (& | < > ^ ( ) % ! ") so cmd.exe never runs or
+    redirects anything; an inner " is doubled; every % becomes %%cd:~,% (cmd expands %cd:~,% to nothing), so a
+    %NAME% in an argument is passed on literally instead of being expanded. Line breaks cannot be passed safely."""
+    if "\n" in a or "\r" in a:
+        raise ValueError("a line break cannot be passed to a .cmd/.bat launcher")
+    if a and not (set(a) & _BAT_SPECIAL):
+        return a
+    return '"' + a.replace('"', '""').replace("%", "%%cd:~,%") + '"'
 
 
 def setup_env():
