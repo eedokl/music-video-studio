@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
 """Check (and set up) the external programs the animation-studio plugin needs.
 
   python check_tools.py                 report: found / missing / optional, with the path used and an install hint

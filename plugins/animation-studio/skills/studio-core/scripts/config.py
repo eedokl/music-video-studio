@@ -28,6 +28,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parent
@@ -152,6 +153,13 @@ def lock_dir():
 
 def comfy_url():
     return get("comfy_url") or "http://127.0.0.1:8188"
+
+
+def script_cmd(script):
+    """Command that runs another plugin script with the packages of its own PEP 723 header (`uv run script.py`);
+    plain python only when uv is missing."""
+    uv = shutil.which("uv")
+    return [uv, "run", str(script)] if uv else [sys.executable, str(script)]
 
 
 def gpu_runner(packages):

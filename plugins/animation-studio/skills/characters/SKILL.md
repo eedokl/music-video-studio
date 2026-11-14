@@ -8,7 +8,7 @@ user-invocable: false
 
 ![cast](assets/figure_sheet.png) – `assets/figure_sheet.png`: Tim, Lia, Computer, Pip, Fips in rest pose on one floor
 line at their scene scale. Regenerate (or check a new figure) with
-`uv run --no-project --with svgelements python "${CLAUDE_PLUGIN_ROOT}/skills/characters/scripts/figure_sheet.py" --out <dir> [--add my.svg] [--pivots]`.
+`uv run "${CLAUDE_PLUGIN_ROOT}/skills/characters/scripts/figure_sheet.py" --out <dir> [--add my.svg] [--pivots]`.
 
 Scripts (`${CLAUDE_PLUGIN_ROOT}/skills/characters/scripts/`) are importable in any scene made with
 `toon-2d/scripts/new_scene.py` (`import _toon` puts them on the path), or with `_studio.use("toon-2d", "characters")`.
@@ -81,12 +81,12 @@ Draw in Inkscape (any shapes – circles, ellipses, paths, transformed groups; `
 1. Draw the SVG following the convention (or ask the user for theirs); put it in the project folder, not the plugin.
 2. Check it: `figure_sheet.py --out sheet --add my_figure.svg --pivots` – look at the PNG: same floor line, sensible
    size next to Tim/Lia/Pip, a red dot on every pivot at the joint, nothing missing (`load` prints the parts).
-3. Fidelity check once: `python <toon-2d>/scripts/svg2sif.py my_figure.svg` writes `my_figure_static.sif`; render it
+3. Fidelity check once: `uv run <toon-2d>/scripts/svg2sif.py my_figure.svg` writes `my_figure_static.sif`; render it
    (`render.py --single 0`) next to an Inkscape PNG export (`inkscape my_figure.svg --export-type=png`).
 4. Rig it in a scene: `root, PIV = load("my_figure.svg", work_dir=HERE / "cache")`,
    `emit(root, {"kopf": lambda kids, p: around(PIV, "kopf", kids, angle=anim("angle", HEAD)), ...})` – wrapped parts
    become animated groups, the rest plain named groups; drawing order is kept. Run scenes with
-   `uv run --no-project --with svgelements`.
+   `uv run make_scene.py` (the figure template declares svgelements; add it to your own scene's PEP 723 header).
 5. For songs: add it to `project.json` "figures" of the music-video skill (`"svg": "...", "size", "mouth"`).
 
 ## The rig in other techniques

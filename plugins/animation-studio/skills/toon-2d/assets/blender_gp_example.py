@@ -1,9 +1,10 @@
+# Runs inside Blender's own Python (started by blender_run.py) - no uv / PEP 723 header.
 """Blender 5.2 headless: Pip as a Grease Pencil drawing (frame by frame, "on twos", pressure + line boil) in front of
 painted layers as image planes at real depths; the camera dollies in. Saves a .blend the artist can open and keep
 drawing in with a tablet.
 
 Usage (via the launcher, which finds Blender through the machine config key "blender"):
-  uv run --no-project python <toon-2d>/scripts/blender_run.py <toon-2d>/assets/blender_gp_example.py -- \
+  uv run <toon-2d>/scripts/blender_run.py <toon-2d>/assets/blender_gp_example.py -- \
       --layers <folder with 01_sky.png ... 06_foreground.png> --out <folder> [--still 40] [--nobg]
 The layer folder is what paint_clearing.py paints (or your own Krita layers with the same names).
 Result: <out>/pip_gp.blend, <out>/frames/pip_####.png (or <out>/still_<n>.png)

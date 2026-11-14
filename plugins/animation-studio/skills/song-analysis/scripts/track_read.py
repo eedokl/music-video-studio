@@ -1,3 +1,4 @@
+# Runs in the configured gpu_python (CUDA venv); without it the caller falls back to `uv run --with ...` (config.gpu_runner) - no PEP 723 header.
 """Automatic "track reading": music/dialogue -> exposure sheet (frames for beats, bars, accents, words).
 
 Replaces classic marking by hand (an Audacity label track): tells on which frame each beat,

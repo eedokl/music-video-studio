@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Sound for a clip: narration lines + sound effects (earshot bank) with their loudest moment on the event frame.
 
 Called by clip.py (step "sound") after "final": reads plan.json (events per figure, narration lines), writes
@@ -13,7 +17,7 @@ levels of the probe clip are kept. clip.json: "sound": false (off), "sounds": [{
 "args": [], "level": -20, "pan": 0, "align": "peak"|"start"}] (extra cues), narration lines {"level": dB, "pan"}
 (default 0 = -14 dB, centre; "voice_pan": {"felix": 0.35} pans by speaker). Mixing: shared studio-core sfx_mix.py.
 Needs earshot (config key "earshot"); without it only the narration is mixed.
-Usage: uv run --no-project --with numpy python sound.py clips/<name>/clip.json
+Usage: uv run sound.py clips/<name>/clip.json
 """
 import json
 import os

@@ -1,6 +1,6 @@
 # Blender Grease Pencil (headless) – hand-drawn look, real 3D multiplane
 
-Run: `uv run --no-project python scripts/blender_run.py <script.py> -- [args]` (= `blender -b --factory-startup
+Run: `uv run scripts/blender_run.py <script.py> -- [args]` (= `blender -b --factory-startup
 --python script.py -- args`, Blender from the config key `blender`).
 Working example: `assets/blender_gp_example.py -- --layers <dir> --out <dir> [--still 36] [--nobg]` – Pip drawn frame
 by frame on twos with pressure and line boil, painted layers (names of `paint_clearing.py`) as image planes at depth,

@@ -12,8 +12,9 @@ Building blocks: toon-2d (`sif.py`, `render.py`/`synfig_parallel.py`, `render_mu
 film-finish (`apply_look.py`), studio-core (config, gpu_lock, creative seed). Dialogue: see the end.
 
 Scripts: `${CLAUDE_PLUGIN_ROOT}/skills/animated-powerpoint/scripts/`. Run with
-`uv run --no-project --with pillow --with numpy --with scipy [--with python-pptx --with pymupdf] [--with scikit-image]`
-`[--with faster-whisper] python <script>` (`faster-whisper` whenever a clip or scene has narration: word times for tags, gestures and lip sync).
+`uv run "${CLAUDE_PLUGIN_ROOT}/skills/animated-powerpoint/scripts/<script>.py" ...` - each script declares its own
+pinned packages (PEP 723 header; faster-whisper is included wherever narration is turned into word times for tags,
+gestures and lip sync).
 Work in a project folder outside the plugin: `deck/`, `figures/`, `clips/<name>/`, `project.json` (seed + ideas).
 
 ## Workflow

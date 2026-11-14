@@ -9,7 +9,7 @@ Building blocks: `voice` (TTS, fixed voices, Whisper check), `toon-2d` (Synfig, 
 `characters` (tim.svg, lia.svg), `film-finish` (subtitles, sounds, look, film), `studio-core` (config, media,
 creative seed, GPU lock), `song-analysis` (project layout, Whisper word alignment).
 Scripts: `${CLAUDE_PLUGIN_ROOT}/skills/talking-character/scripts/`. Run them with
-`uv run --no-project --with numpy --with svgelements --with pillow python "<script>" ...`.
+`uv run "<script>" ...`.
 
 ## 1 Interview (short)
 
@@ -45,7 +45,7 @@ Directions: `(pause s)` `(beat)` `(to <name>)` `(looks up|down|away|camera)` `(i
 ```bash
 S="${CLAUDE_PLUGIN_ROOT}/skills/talking-character/scripts"
 python "$S/new_talk.py" <folder> --script dialogue.txt [--set room] [--recording take.wav] [--seed N]
-uv run --no-project --with numpy --with svgelements --with pillow python "$S/make.py" --project <folder>
+uv run "$S/make.py" --project <folder>
 ```
 `make.py` runs: `speak.py` (voices, timeline, Rhubarb per line, word times) → `talk_scene.py --render`
 (scenes/dialogue.sif + frames) → film-finish `overlays.py dialogue` (subtitles) → `sounds.py` (gesture sounds,

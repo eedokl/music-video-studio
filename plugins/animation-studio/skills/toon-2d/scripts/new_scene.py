@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
 """Create a scene folder for a Synfig scene written in Python.
 
 Usage: python new_scene.py <folder> [--from example|figure|blank|none] [--force]
@@ -15,7 +19,7 @@ Writes into <folder>:
                    figure   an SVG figure from the characters skill (Fips/Tim/Lia or your own) with wrap= rig
                    blank    background + Pip from characters/pip_figure.py, beat list to fill in
                    none     only the shim (for comic / multiplane folders whose scripts import toon-2d modules)
-Then: uv run --no-project [--with svgelements] python make_scene.py ; render.py <scene>.sif
+Then: uv run make_scene.py ; render.py <scene>.sif
 """
 import argparse
 import shutil
@@ -119,7 +123,7 @@ def main():
     else:
         shutil.copy(TEMPLATES[a.template], dst)
         print(f"template '{a.template}' ->", dst)
-    print(f"next: cd \"{folder}\" && uv run --no-project --with svgelements python make_scene.py")
+    print(f"next: cd \"{folder}\" && uv run make_scene.py")
 
 
 if __name__ == "__main__":

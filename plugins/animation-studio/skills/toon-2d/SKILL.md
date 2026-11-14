@@ -13,7 +13,8 @@ through Synfig instead of drawing frames directly: **keyframes, not baked frames
 All programs come from the machine config (`studio-core/scripts/config.py`: `synfig`, `ffmpeg`, `inkscape`,
 `rhubarb`, `krita`, `blender`, `browser`, `node`); run `check_tools.py --setup` once per machine.
 Scripts: `${CLAUDE_PLUGIN_ROOT}/skills/toon-2d/scripts/` (below just `scripts/`). Run with
-`uv run --no-project [--with svgelements] [--with pillow --with numpy] python ...`.
+`uv run "${CLAUDE_PLUGIN_ROOT}/skills/toon-2d/scripts/<script>.py" ...` (each script declares its packages in a PEP 723
+header; scene folders' `make_scene.py` too).
 
 ## Files
 
@@ -62,9 +63,9 @@ Characters (Tim, Lia, Computer, Pip, Fips, own SVG figures, rig convention) are 
    (antenna, tail, wings) a group with origin at their root.
 4. **One source of timing.** Key lists as Python data near the top (`Y_KEYS`, `SQ_KEYS`, `LEAN_KEYS` …), fed both
    to Synfig (`anim`) and to every simulation (`motion.approx`). Retiming = editing one list.
-5. **Render and look.** `ANIMATION_STUDIO_ROOT="${CLAUDE_PLUGIN_ROOT}" uv run --no-project python make_scene.py` (passes this
+5. **Render and look.** `ANIMATION_STUDIO_ROOT="${CLAUDE_PLUGIN_ROOT}" uv run make_scene.py` (passes this
    plugin version to the scene; in PowerShell: `$env:ANIMATION_STUDIO_ROOT="${CLAUDE_PLUGIN_ROOT}"` first), then
-   `uv run --no-project --with pillow python "${CLAUDE_PLUGIN_ROOT}/skills/toon-2d/scripts/render.py" scene.sif --contact 0,15,36,...` (key poses; Pillow
+   `uv run "${CLAUDE_PLUGIN_ROOT}/skills/toon-2d/scripts/render.py" scene.sif --contact 0,15,36,...` (key poses; Pillow
    labels the tiles with frame numbers). Open the contact sheet with the Read tool: silhouette readable, nothing cut
    off by the frame, squash on contacts, characters big enough (zoom with `canvas(view=...)` rather than scaling
    everything). Renders take seconds – iterate. `--jobs 6` from ~100 frames on.
@@ -150,14 +151,14 @@ Config keys, overscan formula, camera angles, lift and the parallax rules: `refe
   only the log (no frames).
 - **3D morph** (`figure_3d.py`, Blender via the GPU lock): any rig SVG; frame 0 is flat in painter order, so the 2D
   drawing crossfades in without a jump (`flat_2d.png` is exported in the same framing). Run with
-  `uv run --no-project --with svgelements --with numpy --with scipy --with pillow python "${CLAUDE_PLUGIN_ROOT}/skills/toon-2d/scripts/figure_3d.py" fig3d.json`.
+  `uv run "${CLAUDE_PLUGIN_ROOT}/skills/toon-2d/scripts/figure_3d.py" fig3d.json`.
   Keys and limits: docstring of the script and `references/multiplane-and-comic.md` (last section).
 
 ## Blender Grease Pencil
 
 Choose Blender over Synfig when the look should be hand-drawn (variable line weight, boil, frame-by-frame on twos)
 or an artist will continue in Blender; Synfig stays better for tweened vector rigs.
-`uv run --no-project python "${CLAUDE_PLUGIN_ROOT}/skills/toon-2d/scripts/blender_run.py" "${CLAUDE_PLUGIN_ROOT}/skills/toon-2d/assets/blender_gp_example.py" -- --layers <layers> --out <dir> [--still 36]`
+`uv run "${CLAUDE_PLUGIN_ROOT}/skills/toon-2d/scripts/blender_run.py" "${CLAUDE_PLUGIN_ROOT}/skills/toon-2d/assets/blender_gp_example.py" -- --layers <layers> --out <dir> [--still 36]`
 (96 frames ~25 s with EEVEE; `.blend` saved for the artist). Pitfalls: `references/blender-grease-pencil.md`.
 
 ## Tested (reference tests, 2026-11-13)

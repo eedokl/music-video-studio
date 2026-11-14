@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
 """Plan, texture and render brick-film sections, then hand over to film-finish.
 
   python render.py <section> --stills 0,120,300     plan + test frames -> stills/<section>/still_NNNN.png
@@ -16,6 +20,7 @@ from pathlib import Path
 
 import _studio  # noqa: E402
 _studio.use("song-analysis", "bricks-3d")
+import config  # noqa: E402
 from song_project import Project  # noqa: E402
 
 B3D = _studio.skill_dir("bricks-3d") / "scripts"
@@ -40,7 +45,7 @@ def section(P, name, a):
     signs = P.cache / f"signs_{name}.json"                   # name signs on robot torsos (neutral lettering)
     signs.write_text(json.dumps([{"text": f["sign"], "file": f["sign_tex"]} for f in plan["figures"] if f.get("sign")],
                                 ensure_ascii=False), encoding="utf-8")
-    run(["uv", "run", "--no-project", "--with", "pillow", "python", B3D / "textures.py", tex, "--screens", scr,
+    run(config.script_cmd(B3D / "textures.py") + [tex, "--screens", scr,
          "--signs", signs, "--seed", str(plan.get("seed", 7) % 1000)])
     extra = []
     for k in ("percent", "samples"):
@@ -58,9 +63,8 @@ def section(P, name, a):
     want = round((plan["to"] - plan["from"]) * plan["fps"])
     print(f"-> scenes/{name}: {n}/{want} frames", flush=True)
     if a.preview:
-        run(["uv", "run", "--no-project", "--with", "pillow", "--with", "numpy", "python", FF / "overlays.py", name,
-             "--project", P.dir])
-        run(["uv", "run", "--no-project", "--with", "pillow", "python", FF / "build.py", "preview", name, "--project", P.dir])
+        run(config.script_cmd(FF / "overlays.py") + [name, "--project", P.dir])
+        run(config.script_cmd(FF / "build.py") + ["preview", name, "--project", P.dir])
 
 
 def main():

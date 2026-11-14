@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4", "pillow==13.0.0"]
+# ///
 """Shared Real-ESRGAN upscaler (realesrgan-ncnn-vulkan): images (with or without alpha), image sequences and videos.
 
   from upscale import upscale_rgba, upscale_image, upscale_video
@@ -12,7 +16,7 @@ Without the config key `realesrgan` (path of realesrgan-ncnn-vulkan) everything 
 for videos) and says so. Takes the shared GPU lock ("ncnn:realesrgan").
 Measured: S2V close-up 832x480 -> 1280x720, 61 frames in 2.5 min, ~5x sharper than Lanczos - but x4plus smooths
 skin detail (Claudia's freckles): judge faces by eye.
-CLI: uv run --no-project --with numpy --with pillow python upscale.py in.png|in.mp4 out [--factor 4] [--model photo]
+CLI: uv run upscale.py in.png|in.mp4 out [--factor 4] [--model photo]
        [--width 1280 --height 720]   (videos: target size; frames are upscaled x4 by the network, then resized)
 Videos keep their frames and fps, so the clip's meta (<clip>.json: song_start, fps, delay_frames ...) is copied to
 <out>.json (+ "upscaled_from", width, height) - the upscaled clip can replace the original in selection.json.

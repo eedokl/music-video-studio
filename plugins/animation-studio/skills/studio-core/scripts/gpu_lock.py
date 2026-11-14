@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
 """Only one AI job at a time on the graphics card and in RAM (16 GB RAM is not enough for two big models).
 
 Every GPU script calls, right after parsing its arguments:
@@ -11,7 +15,7 @@ drop its models from GPU and RAM (POST /free). So two big models are never in me
 the same model several times in a row (e.g. 6 FLUX images) stays loaded and fast.
 
 Lock folder: config.lock_dir() (GPU_LOCK_DIR) - share it with the other GPU pipelines on this machine.
-Show the status:  uv run --no-project python gpu_lock.py
+Show the status:  uv run gpu_lock.py
 """
 import atexit
 import json

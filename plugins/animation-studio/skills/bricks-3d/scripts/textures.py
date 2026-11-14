@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["pillow==13.0.0"]
+# ///
 """Printed decals for brick films (Pillow, runs outside Blender): minifig faces with 9 mouth shapes (Rhubarb X A-H),
 blink tiles, torso prints, a hair clip, a night skyline and the monitor screens of a film.
 
@@ -10,7 +14,7 @@ and three LEDs, for robots / bidders - company names only as plain text, never l
 ({"kind": "text"|"terminal"|"heart"|"code"|"bar"|"face", "text": "...", "color": "#rrggbb"}) -> screens.png + computer_face.png.
 
 Usage (normally called by the user skill):
-  uv run --no-project --with pillow python textures.py <out_dir> [--screens screens.json] [--signs signs.json] [--seed 7]
+  uv run textures.py <out_dir> [--screens screens.json] [--signs signs.json] [--seed 7]
   signs.json: [{"text": "OPEN", "file": "torso_sign_open.png"}, ...]  (written by the planner / render.py)
 """
 import argparse

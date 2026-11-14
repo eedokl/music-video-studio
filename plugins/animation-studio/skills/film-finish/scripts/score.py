@@ -1,9 +1,13 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4", "opentimelineio==0.18.1", "pillow==13.0.0"]
+# ///
 """Film music for films WITHOUT a song: a generated score that follows a cue list (numpy synthesis), or - opt-in -
 ElevenLabs Music cues laid on the same cue list.
 
-  uv run --no-project --with numpy --with pillow --with opentimelineio python score.py --plan cut.json [-o music.wav] [--seed 3]
+  uv run score.py --plan cut.json [-o music.wav] [--seed 3]
         [--style light|orchestral] [--version v2]         cue list from the cut plan (cut.py), exact film length
-  uv run --no-project --with numpy python score.py --cues cues.json --duration 29.7 -o music.wav
+  uv run score.py --cues cues.json --duration 29.7 -o music.wav
   ... score.py --plan cut.json --elevenlabs [--fetch]     ElevenLabs Music instead of the synthesis (see below)
 
 Cue list (in the cut plan as "music": {"score": {"cues": [...], "seed": 3, "style": "light"}} or a cues.json):

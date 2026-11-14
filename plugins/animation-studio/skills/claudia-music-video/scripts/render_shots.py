@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4", "opencv-python-headless==5.0.0.93", "pillow==13.0.0"]
+# ///
 """Render every shot to scenes/<shot>/f.%04d.png (1280x720, 24 fps) for film-finish, with the photographic finish.
 
 Material per shot, best first:
@@ -10,7 +14,7 @@ Material per shot, best first:
 Finish (project.json "finish", defaults as in the reference films): film grain sigma 5.5, vignette 0.38,
 darker band under the lyrics, fade in 0.5 s at the song start and out 2.5 s at its end; "ai_label" (text) is shown
 in the last 3 s of the last shot (LTX licence + plugin rule: AI content is labelled).
-Usage: uv run --no-project --with numpy --with pillow --with opencv-python-headless python render_shots.py [<project>]
+Usage: uv run render_shots.py [<project>]
          [--only s02,s05] [--labels]   (--labels: shot/technique/material in the corner, for the animatic)
 """
 import argparse

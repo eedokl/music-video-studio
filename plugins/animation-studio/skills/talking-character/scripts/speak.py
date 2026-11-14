@@ -1,6 +1,10 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Step 1 of a talking scene: script -> voices (or a recording) -> dialogue timeline, mouths per figure, word times.
 
-  uv run --no-project --with numpy python speak.py [--project .] [--redo] [--engine qwen|piper|system]
+  uv run speak.py [--project .] [--redo] [--engine qwen|piper|system]
 Reads project.json ("script", "figures", "voices", "direction", "language", "seed") and the script file.
 Voices: voice building block (fixed voice per character, Whisper check, retakes). Cached in lines/ - a line is only
 spoken again when its text or voice changes (or --redo).

@@ -1,3 +1,7 @@
+# /// script
+# requires-python = "==3.12.*"
+# dependencies = ["mediapipe==1.2.3", "numpy==2.5.4", "opencv-python-headless==5.0.0.93"]
+# ///
 """Check a character's colour accent on the correct side of the face (e.g. Claudia's ONE clay-orange streak on HER right
 = the image's left; her clay star clip on the other side must stay a small spot).
 
@@ -12,7 +16,7 @@ the mic on the wrong side); no boom on the expected cheek = mic missing. Separat
 (single mic: other 0.000; two mics: 0.021-0.041).
 Viewed from BEHIND the sides swap (her right is then the image's right) - and no face is found anyway: check those by eye.
 
-  uv run --no-project --python 3.12 --with mediapipe --with opencv-python-headless python canon.py img.png [...]
+  uv run canon.py img.png [...]
          [--color "#D97757"] [--side image_left]      (videos: 3 frames at 20/50/80 %)
 Config: face_landmarker (see mouth.py).
 """

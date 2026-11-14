@@ -1,7 +1,11 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
 """Lay the project look over a video: paper + film grain + vignette (overlay image sequence, multiplied, looped).
 
 Usage:
-  uv run --no-project python apply_look.py film.mp4 [-o film_look.mp4] [--look standard|<look folder>] [--strength 1.0]
+  uv run apply_look.py film.mp4 [-o film_look.mp4] [--look standard|<look folder>] [--strength 1.0]
 
 The overlay frames live in <skill>/assets/look/<look>/mp_0000.jpg ... (+ look.json describing how they were made).
 --strength < 1 mixes the look in more weakly (0 = off). The audio is copied unchanged.

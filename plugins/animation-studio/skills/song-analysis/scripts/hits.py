@@ -1,6 +1,10 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Riff / drum hits and a constant beat grid of a song.
 
-  uv run --no-project --with numpy python hits.py SONG [-o hits.json] [--sheet analysis/song_sheet.json]
+  uv run hits.py SONG [-o hits.json] [--sheet analysis/song_sheet.json]
 
 hits   sudden loud hits (often right after a short silence) - drive flashes, shakes, lightning, cuts.
        "big" = the strongest third. Different from track_read.py's "accents" (every strong onset): hits are rarer

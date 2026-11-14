@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Turn the shot plan + creative brief into prompts and the night-run job list (ai-video night_run.py).
 
 Per shot (project.json "sections"):
@@ -19,8 +23,8 @@ A shot may name its own "start_image" (no Qwen jobs; e.g. re-shooting an earlier
 Reference images of Claudia: project.json "character_refs": [face, close-up] or config `claudia_refs`
 (paths separated by ";" or a folder). Instrumental for moving clips: stems.instrumental (e.g. a mix of the Suno
 non-vocal stems), else Demucs no_vocals (song-analysis separate_vocals.py, cache/sep/), else the song (warning).
-Usage: uv run --no-project python jobs.py [<project>] [--start 2] [--seeds 2] [--broll 2] [--no-depth] [--only s02,s05]
-Then:  uv run --no-project python <ai-video>/scripts/night_run.py <project>/jobs.json [--dry-run]
+Usage: uv run jobs.py [<project>] [--start 2] [--seeds 2] [--broll 2] [--no-depth] [--only s02,s05]
+Then:  uv run <ai-video>/scripts/night_run.py <project>/jobs.json [--dry-run]
 """
 import argparse
 import json
@@ -38,8 +42,7 @@ import creative  # noqa: E402
 from song_project import Project  # noqa: E402
 
 STRENGTHS = [1.0, 0.85, 1.0, 0.7]
-MEDIAPIPE = ["uv", "run", "--no-project", "--python", "3.12", "--with", "mediapipe", "--with", "opencv-python-headless",
-             "--with", "numpy", "--with", "pillow", "python"]
+MEDIAPIPE = ["uv", "run"]          # pick.py pins Python 3.12 + mediapipe in its own PEP 723 header
 
 
 def character_refs(P):

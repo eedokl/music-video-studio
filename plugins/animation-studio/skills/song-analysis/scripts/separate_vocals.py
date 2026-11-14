@@ -1,3 +1,4 @@
+# Runs in the configured gpu_python (CUDA venv); without it the caller falls back to `uv run --with ...` (config.gpu_runner) - no PEP 723 header.
 """Separate vocals from music (Demucs htdemucs) - only needed when there are no stems (Suno delivers them separately).
 
 Output: <out>/htdemucs/<name>/vocals.wav and no_vocals.wav (for Whisper / track_read --vocals and Rhubarb).

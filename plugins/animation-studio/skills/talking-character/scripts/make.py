@@ -1,6 +1,10 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
 """Whole talking scene in one go: voices -> scene -> render -> subtitles -> sounds -> film (look) -> check.
 
-  uv run --no-project --with numpy --with svgelements --with pillow python make.py [--project .] [--from scene]
+  uv run make.py [--project .] [--from scene]
          [--redo-voices] [--engine system] [--jobs 8]
 Steps (--from starts later, finished earlier steps are kept):
   voices    speak.py           script -> lines/*.wav, song.wav, analysis/dialogue.json, assignment.json
@@ -17,6 +21,7 @@ from pathlib import Path
 
 import _studio  # noqa: E402
 _studio.use("song-analysis")
+import config  # noqa: E402
 from song_project import Project  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
@@ -26,7 +31,7 @@ STEPS = ["voices", "scene", "overlays", "sounds", "film", "check"]
 
 def run(*cmd):
     print(">", " ".join(str(c) for c in cmd[1:3]), flush=True)
-    subprocess.run([sys.executable, *map(str, cmd)], check=True)
+    subprocess.run(config.script_cmd(cmd[0]) + [str(c) for c in cmd[1:]], check=True)   # each step: its own packages
 
 
 def main():

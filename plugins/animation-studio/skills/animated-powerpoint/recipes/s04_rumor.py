@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["faster-whisper==1.2.1", "numpy==2.5.4", "pillow==13.0.0", "scikit-image==0.26.0", "scipy==1.18.1"]
+# ///
 """Recipe "the rumour" - four figures at the office table react to a new idea (reference: ai_efficiency S4).
 
   intro    the explorer tells the news (lip sync), wing/arm opens on "imagine", a dream cloud pops on the keyword
@@ -8,8 +12,7 @@
   end      wide shot, the builder still with star eyes, the explorer nods to them
 Inputs in the clip folder: voice files (three lines), the painted set (back + table layer); deck/figures at ../../.
 Vary in recipe.json: cast (role -> figure), positions, texts, words (keywords in the lines), voices, set, seed.
-Run: uv run --no-project --with pillow --with numpy --with scipy --with scikit-image --with faster-whisper
-     python s04_rumor.py <clip folder> [--plan]
+Run: uv run s04_rumor.py <clip folder> [--plan]
 """
 import math
 import random

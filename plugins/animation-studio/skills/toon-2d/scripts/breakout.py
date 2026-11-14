@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4", "pillow==13.0.0", "svgelements==1.9.6"]
+# ///
 """A figure breaks out of a 2.5D comic flight and stands in front of the page as a paper cut-out.
 
 Method (reference film "Prompts!", verse 2: Tim climbs out of the token sea in panel 4):
@@ -12,7 +16,7 @@ Method (reference film "Prompts!", verse 2: Tim climbs out of the token sea in p
              (cut at a water line / panel edge), then jumps or flips forward and stays big in the foreground
 
 Usage:
-  uv run --no-project --with svgelements --with pillow --with numpy python breakout.py breakout.json
+  uv run breakout.py breakout.json
          [--steps flight,track,clip,compose | log] [--range 620-700] [--contact auto|630,646,700] [--jobs 6]
 
 breakout.json (paths relative to it; frames are flight frames, "*_t" keys are song seconds, needs song.start_t):

@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
 """Shot plan of one section of a brick music video: set, cast places, gestures on words, cameos, props, cuts on
 beats and camera moves -> <project>/bricks/<section>.json (editable; bricks-3d/brickfilm.py renders it).
 
@@ -44,7 +48,7 @@ project.json keys read here (all optional except the section):
              "enter": "assemble" (the set builds itself from flying bricks at the section start, "enter_time" 1.0),
              "exit": "collapse" (the set flies apart in the last "exit_time" s) - together: a room rebuilds as a stage}
             (also per section: sections[].bricks overrides the project-level block)
-Usage: uv run --no-project python plan.py <section> [--project .]        (all sections: --all)
+Usage: uv run plan.py <section> [--project .]        (all sections: --all)
 """
 import argparse
 import hashlib

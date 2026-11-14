@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["pillow==13.0.0", "pymupdf==2.1", "python-pptx==1.0.2"]
+# ///
 """Import a presentation: slide images, a clean plate per slide and every picture with its exact place on the slide.
 
   deck.py <deck.pptx | deck.pdf | slide1.png slide2.png ...> [--out deck] [--slides 5,7] [--width 3840]
@@ -17,7 +21,7 @@ Without PowerPoint the slides are composed from their pictures on white (text mi
 images from the presentation program and pass them as page images instead.
 pdf:  PyMuPDF renders pages, embedded images keep their soft mask (alpha).
 images: one image = one slide; figures are cut from the slide itself (figures.py).
-Usage: uv run --no-project --with python-pptx --with pymupdf --with pillow --with numpy python deck.py ...
+Usage: uv run deck.py ...
 """
 import argparse
 import fnmatch

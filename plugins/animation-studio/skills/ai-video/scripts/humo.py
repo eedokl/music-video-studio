@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """HuMo (ByteDance, Apache 2.0) through the local ComfyUI: reference image + text + vocals -> singing clip.
 Rescue engine for lines where LTX-2.3 fails (plosive-heavy lines: lip-sync comparison 2026-11-12, test B r 0.55 vs
 LTX -0.03; most even sync over the three tests 0.78 / 0.55 / 0.64). Weak points (user decision): the face looks
@@ -11,7 +15,7 @@ Sizes:
 Shared files: text_encoders/umt5_xxl_fp8_e4m3fn_scaled, vae/wan_2.1_vae, audio_encoders/whisper_large_v3_fp16.
 ComfyUI node: WanHuMoImageToVideo (core ComfyUI >= 0.3.6x).
 Usage:
-  uv run --no-project python humo.py start.png vocals.wav "prompt" -o clip.mp4 [--frames 97] [--seed 31]
+  uv run humo.py start.png vocals.wav "prompt" -o clip.mp4 [--frames 97] [--seed 31]
          [--size 1.7B|17B] [--steps N] [--song-start 12.3] [--dry-run]
   --dry-run: print the workflow summary (no ComfyUI, no GPU).
 From Python: humo.render(img, wav, prompt, out, frames, seed, meta=...) -> out.mp4 + out.json (clips.write_meta).

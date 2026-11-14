@@ -14,7 +14,7 @@ popup-bubbles, office-scenes); the creative part must be new every time.
 piece - inspired by earlier work, never a copy of it.
 
 Scripts: `L="${CLAUDE_PLUGIN_ROOT}/skills/lyric-music-video/scripts"`, `SA="${CLAUDE_PLUGIN_ROOT}/skills/song-analysis/scripts"`.
-Run them with `uv run --no-project --with numpy --with pillow python "$L/<script>.py" ...`. Tools are checked with
+Run them with `uv run "$L/<script>.py" ...`. Tools are checked with
 `studio-core/scripts/check_tools.py` (ffmpeg required; Node.js 20+ and npm for the engine; GPU optional).
 
 ## 1. Interview first
@@ -65,7 +65,7 @@ Read `references/scene-catalog.md` (all past scenes, techniques, identities, lik
      also repeats or ad-libs missing from `lyrics.txt`. Then **rewrite lyrics.txt as performed** (one sung line per
      row, repeat repeated lines, keep the headers) and run `analyze_song.py PROJECT --redo`. What Whisper actually
      heard is in `cache/rec_<pass>.json`; the aligned words in `analysis/song_sheet.json` ("source").
-   - Optional check: `uv run --no-project --with numpy python "$SA/sync_check.py" PROJECT/analysis/vocals_lead.wav
+   - Optional check: `uv run "$SA/sync_check.py" PROJECT/analysis/vocals_lead.wav
      PROJECT/analysis/timing.json --lead 0.08` (share of words shown while the voice is still silent should be ~0).
 3. **Held notes** (a held note shown as performed: "aaaall", "riiiight"): `analyze_song.py` already finds the
    words held clearly longer than the song's normal word as one sustained note - judged on the voice, so also a
@@ -75,7 +75,7 @@ Read `references/scene-catalog.md` (all past scenes, techniques, identities, lik
    letters landing on the release; motion phase from the seed). Per project in `project.json`: `"held_stretch":
    false` (off), `"held_max": N`, `"held_style": "vowels"` (default) | `"stretch"` (one vowel that widens) |
    `"auto"` (seeded). Per line in a scene: `{ autoHeld: false }`, or pick by hand - measure more with
-   `uv run --no-project --with numpy python "$SA/held_notes.py" measure PROJECT/song.wav PROJECT/analysis/held.json
+   `uv run "$SA/held_notes.py" measure PROJECT/song.wav PROJECT/analysis/held.json
    name:start:end ... --vocals PROJECT/analysis/vocals_lead.wav` and set `{ held: 'name', heldWord: k }`.
 4. **Install**: `install_data.py PROJECT` -> `video/src/lyrics.ts` (lines, sections, SONG_END, BPM, BEAT_OFFSET,
    SEED), `timing.json`, `hits.json`, `held.json`, `vocal.ts` track names, `public/song.wav`.

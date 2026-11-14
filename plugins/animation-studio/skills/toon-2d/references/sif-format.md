@@ -15,7 +15,7 @@ of a message is given in brackets where it was seen that way.
 | bad time: a waypoint already exists (`Ein Wegpunkt existiert bereits`) | Two keys on one frame in one value. `anim()` dedupes (last wins), but it usually means overlapping key lists – check the intent. Half frames are rounded by Synfig – keep keys on whole frames. |
 | File loads but the render fails silently | Render one frame (`render.py --single N`) and read stderr. |
 | ffmpeg `Unknown encoder 'libx264'` / `No decoder for stream` | Use an ffmpeg that has libx264 and decodes PNG (config key `ffmpeg`; the ffmpeg bundled with Synfig cannot decode PNG). |
-| ffmpeg `No such filter: 'drawtext'` | Many Windows builds lack it; render.py then labels contact sheets with Pillow (`--with pillow`). |
+| ffmpeg `No such filter: 'drawtext'` | Many Windows builds lack it; render.py then labels contact sheets with Pillow (declared in its PEP 723 header, so `uv run render.py` has it). |
 | A gradient hides everything below it | `linear_gradient` is infinite. Clip it: `clipped(desc, mask_shape, [gradient])` (blend ONTO = 13, tested). |
 | `TypeError: can only concatenate list (not "str")` | Layer builders return strings. Use `[a, b] + [shape(...)]`, not `[a] + shape(...)`. |
 

@@ -1,6 +1,10 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4", "pillow==13.0.0"]
+# ///
 """Type-check, preview, clip and final render of the lyric video (headless Chrome, frame-exact), plus the delivery versions.
 
-  uv run --no-project --with pillow python render.py PROJECT check
+  uv run render.py PROJECT check
   ... render.py PROJECT preview [--fps 1] [--every 6 | --times 4,12,20]   1-fps run of the WHOLE song + contact sheet
   ... render.py PROJECT clip --from 88 --to 98 [--fps 10]                 timing check around tight cuts / held notes
   ... render.py PROJECT final [--crf 20] [--title "Song Title"] [--look none|standard] [--from S --to S]

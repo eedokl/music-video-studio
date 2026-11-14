@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["svgelements==1.9.6"]
+# ///
 """Inkscape SVG -> Synfig layers, keeping the group structure (= animatable parts).
 
 Workflow for artists (Inkscape):
@@ -14,7 +18,7 @@ Usage:
     layers = emit(root, wrap={"wing_front": lambda kids, part: group(..., kids, origin=pivots[...], angle=...)})
 Run as a script (test): python svg2sif.py bird.svg  -> bird_static.sif (unanimated, for comparison)
 
-Requires: svgelements (uv run --with svgelements) and Inkscape 1.x (see config.py).
+Requires: svgelements (declared in the PEP 723 header: `uv run svg2sif.py`) and Inkscape 1.x (see config.py).
 """
 import subprocess
 import sys

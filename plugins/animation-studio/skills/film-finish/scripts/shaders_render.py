@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4", "pillow==13.0.0"]
+# ///
 """Make new film looks, iris transition masks and effect galleries with Shaders (WebGPU effect library, npm
 `shaders` 4.0.6, MIT) - rendered frame-exact in headless Edge/Chrome.
 
@@ -10,7 +14,7 @@ Jobs:
   gallery  one picture through N effects for choosing -> g_00_<Effect>.png ... + gallery.png (labelled sheet)
   catalog  catalog.json + shaders-catalog.md of every effect in the installed package (make_catalog.mjs)
 
-Usage (run with: uv run --no-project --with numpy --with pillow python shaders_render.py ...):
+Usage (run with: uv run shaders_render.py ...):
   shaders_render.py look  --preset my_look.json --name dusk [--frames 24] [--quality 92] [--out DIR]
   shaders_render.py look  --preset "${CLAUDE_PLUGIN_ROOT}/skills/film-finish/assets/look/standard/look.json" --out x
   shaders_render.py iris  --out DIR [--center 0.5,0.5] [--frames 12] [--direction close|open] [--feather 0.02]

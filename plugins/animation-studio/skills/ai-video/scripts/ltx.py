@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """LTX-2.3 22B distilled (fp8) image+audio -> video through the local ComfyUI. Two uses:
 
   lipsync  start image + the LEAD VOCALS of the shot -> the person sings those words (default for sung lines)
@@ -20,8 +24,8 @@ Prompt lessons (measured, Europe 2031):
   - Lip-sync: quote the sung words, "her lips clearly form every word, the mouth opens wide on the vowels and closes on
     m, b and p". Seeds vary a lot - render 2-4 and pick by measurement (mouth.py).
 Usage:
-  uv run --no-project python ltx.py lipsync start.png vocals.wav "prompt" -o clip.mp4 [--frames 97] [--seed 31] [--strength 1.0]
-  uv run --no-project python ltx.py moving still.png music.wav "prompt" -o clip.mp4 [--frames 97] [--seed 7]
+  uv run ltx.py lipsync start.png vocals.wav "prompt" -o clip.mp4 [--frames 97] [--seed 31] [--strength 1.0]
+  uv run ltx.py moving still.png music.wav "prompt" -o clip.mp4 [--frames 97] [--seed 7]
 """
 import argparse
 import re

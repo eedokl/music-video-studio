@@ -104,7 +104,7 @@ marionette strings). Any figure, any panel:
    Each phase may set `mouth`; from `sing_from_t` on the mouths come from the song's `assignment.json`
    (`song.figure` = the figure's name there). A beak (`schnabel_unten`) opens instead of a mouth, wings stand in
    for arms (`rig` overrides part ids).
-3. `uv run --no-project --with svgelements --with pillow --with numpy python breakout.py breakout.json --jobs 6`
+3. `uv run breakout.py breakout.json --jobs 6`
    Steps `flight,track,clip,compose` (rerun single steps with `--steps compose`, quick look `--range 620-700`).
    Existing flight frames are reused; work files (track.json, clip.sif, clip/, rest.png) in `breakout_work/`.
 

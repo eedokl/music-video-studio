@@ -1,6 +1,10 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
 """Run a Python script inside Blender, headless (Blender from the machine config key "blender").
 
-Usage: uv run --no-project python blender_run.py <script.py> [-- script args]
+Usage: uv run blender_run.py <script.py> [-- script args]
 Same as: blender -b --factory-startup --python <script.py> -- [args]
 Example: blender_run.py <toon-2d>/assets/blender_gp_example.py -- --layers layers --out gp --still 40
 """

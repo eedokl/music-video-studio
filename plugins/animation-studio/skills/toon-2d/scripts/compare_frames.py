@@ -1,7 +1,11 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4", "pillow==13.0.0"]
+# ///
 """Compare two renders frame by frame: side-by-side contact sheet + difference numbers (reference tests, retakes).
 
 Usage:
-  uv run --no-project --with pillow --with numpy python compare_frames.py <A> <B> --frames 0,15,36 [--out cmp.png]
+  uv run compare_frames.py <A> <B> --frames 0,15,36 [--out cmp.png]
          [--labels reference,rebuild]
 A / B: an image sequence pattern (frames/f.%04d.png) or a video file (mp4/gif; frames are extracted with ffmpeg).
 Output: a sheet with one row per frame (A | B | amplified difference) and per frame the mean absolute difference

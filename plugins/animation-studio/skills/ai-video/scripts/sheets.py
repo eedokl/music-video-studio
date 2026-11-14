@@ -1,7 +1,11 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4", "opencv-python-headless==5.0.0.93", "pillow==13.0.0"]
+# ///
 """Contact sheets for choosing and reviewing AI material: one row per image or clip (clips: start / middle / end frame),
 labelled with the file name and an optional note (e.g. the lip score or the canon check).
 
-  uv run --no-project --with pillow --with opencv-python-headless --with numpy python sheets.py out.jpg a.png b.mp4 ...
+  uv run sheets.py out.jpg a.png b.mp4 ...
   from sheets import sheet; sheet("sheet.jpg", [("ai/lipsync/s02_v1_s1.mp4", "r 0.59 lag 0"), ...])
 Rows are split into several sheets of `per_sheet` rows (out_1.jpg, out_2.jpg, ...).
 """

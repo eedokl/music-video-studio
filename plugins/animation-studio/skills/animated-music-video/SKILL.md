@@ -15,7 +15,7 @@ Building blocks used (sibling skills of this plugin): `song-analysis` (listen), 
 its first chorus with 84–89 % frame agreement of who sings and ~0.1 s median word timing (see
 `references/reference-tests.md`).
 
-Scripts (run with `uv run --no-project --with numpy --with svgelements --with pillow python <script> ...`):
+Scripts (run with `uv run <script> ...`):
 - `${CLAUDE_PLUGIN_ROOT}/skills/studio-core/scripts/check_tools.py` – once per machine (`--setup`)
 - `${CLAUDE_PLUGIN_ROOT}/skills/song-analysis/scripts/new_project.py`, `analyze.py`, `voices.py`
 - `${CLAUDE_PLUGIN_ROOT}/skills/animated-music-video/scripts/scene.py` (+ `captions.py` for comic caption boxes)

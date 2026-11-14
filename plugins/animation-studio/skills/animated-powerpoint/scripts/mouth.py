@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4", "pillow==13.0.0", "scipy==1.18.1"]
+# ///
 """Lip sync for raster slide figures: mouth stages cut from the original drawing + Rhubarb -> stage keys per frame.
 
   mouth.py figures/<name>                 cut head_base.png + mouth_0..7.png from head.png (config "mouth" in parts.json)
@@ -16,7 +20,7 @@ Stages: 0, .1, .25, .4, .55, .7, .85, 1.0 (mouth_0 .. mouth_7). Check image: mou
 Rig: clip.py puts head_base + the 8 stages into the head group (one visible per frame) when the figure speaks
 (a narration line with "speaker": <name>, or figure "talk": [line ids]). talking-character can use the same
 files for raster figures: mouth_keys() turns Rhubarb cues into stage keys.
-Usage: uv run --no-project --with pillow --with numpy --with scipy python mouth.py figures/fritz
+Usage: uv run mouth.py figures/fritz
 """
 import json
 import subprocess

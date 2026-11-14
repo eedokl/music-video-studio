@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Snap word start times to the real vocal onsets of an isolated vocal track.
 
 Whisper's word times on a full band mix scatter by +-0.3-0.6 s (and even on separated vocals they are loose). With
@@ -15,7 +19,7 @@ Works on two formats (detected automatically):
           -> words get "t"/"end"/"frame"/"end_frame" updated and "refined": true; lines follow their words.
 
 Usage:
-  uv run --no-project --with numpy python refine_timing.py VOCALS.wav timing.json refined.json [--before 0.30 --after 0.20]
+  uv run refine_timing.py VOCALS.wav timing.json refined.json [--before 0.30 --after 0.20]
 Prints how many words moved, the median correction and lines whose start moved by more than 0.15 s.
 In Python:  from refine_timing import refine_lines;  lines = refine_lines(vocals_path, lines)
 """

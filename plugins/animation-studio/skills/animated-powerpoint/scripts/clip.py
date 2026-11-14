@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["faster-whisper==1.2.1", "numpy==2.5.4", "pillow==13.0.0", "scikit-image==0.26.0", "scipy==1.18.1"]
+# ///
 """Build and render one presentation clip: figures step out of the flat slide into a 2.5D room.
 
   clip.py clips/<name>/clip.json [--only plan|synfig|light|tex|3d|final] [--jobs 8]
@@ -24,7 +28,7 @@ Steps (each writes into the clip folder, a later step reuses the earlier results
   3d      three.js stage in headless Edge/Chrome -> frames_3d/mp_NNNN.png, stage.mp4      (toon-2d render_multiplane.py)
   final   look (film-finish apply_look.py) -> <name>.mp4, first/last frame PNG, contact sheet, in/out check
   sound   narration + sound effects on the event frames (sound.py, earshot) -> ton.wav, muxed into <name>.mp4
-Usage: uv run --no-project --with pillow --with numpy --with scipy --with scikit-image [--with faster-whisper] python clip.py
+Usage: uv run clip.py
        clips/x/clip.json            (faster-whisper when the clip has narration: word times)
 """
 import argparse

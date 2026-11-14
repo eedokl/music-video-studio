@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4", "pillow==13.0.0"]
+# ///
 """Pop-up video version (like the 1980s "Pop-up Videos"): info cards about how the film was made pop up at free spots
 of the finished film, each with a pop sound, held long enough to read.
 

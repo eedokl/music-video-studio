@@ -1,9 +1,13 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4", "opencv-python-headless==5.0.0.93", "pillow==13.0.0"]
+# ///
 """Cut the film with film-finish: lyrics overlay per shot (overlays.py), the whole film on the song (build.py film:
 film.mp4, film_small.mp4 < 30 MB, film_mail.mp4, 0 decode errors), then review sheets:
   film_sheet.png        3x3 frames over the film (media.contact_sheet)
   film_shots.jpg        one row per shot at 20/50/80 % (ai-video sheets.shot_sheet) - for the canon check by eye
   review.json           shot list with technique, material, lip numbers - hand it to the video-review skill
-Usage: uv run --no-project --with numpy --with pillow --with opencv-python-headless python make_film.py [<project>]
+Usage: uv run make_film.py [<project>]
          [--no-lyrics]
 """
 import argparse

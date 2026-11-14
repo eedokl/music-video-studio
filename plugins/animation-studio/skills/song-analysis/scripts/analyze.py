@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Listen to the song: exposure sheet, vocal tracks, mouth shapes, male/female track -> <project>/analysis/.
 
   1 lyrics   lyrics without [markers] -> lyrics_clean.txt, markers with line numbers -> markers.json
@@ -10,7 +14,7 @@
   5 gender   earshot "a man singing" vs "a woman singing" every 0.5 s on the lead vocals -> gender.json
              (skipped with a note when earshot is not installed)
 Finished steps are skipped (--redo recomputes everything, --only 3,5 runs just those steps).
-Usage: uv run --no-project --with numpy python analyze.py [<project>] [--redo] [--only 1,2,...]
+Usage: uv run analyze.py [<project>] [--redo] [--only 1,2,...]
 Time: ~1-3 min per 30 s of song (Whisper large-v3 on the GPU waits for the GPU lock; small on the CPU otherwise).
 """
 import json

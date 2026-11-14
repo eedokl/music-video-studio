@@ -1,3 +1,4 @@
+# Runs in the configured gpu_python (CUDA venv); without it the caller falls back to `uv run --with ...` (config.gpu_runner) - no PEP 723 header.
 """Rescue word times when track_read.py lost whole lines: several Whisper passes, the best one per lyric line.
 
 Whisper's voice-activity filter (VAD) often drops sung passages - on "Comfort Zone" track_read's VAD pass heard

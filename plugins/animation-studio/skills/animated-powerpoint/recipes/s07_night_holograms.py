@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["faster-whisper==1.2.1", "numpy==2.5.4", "pillow==13.0.0", "scikit-image==0.26.0", "scipy==1.18.1"]
+# ///
 """Recipe "night shift with holograms" - one figure at night, neon sign, glowing panels pop on spoken words
 (reference: ai_efficiency S7 "Vibe coding").
 
@@ -9,8 +13,7 @@
   dream    the builder leans back dreamily (second line); gag: the panels glitch - the builder startles (double take)
 Scene light: blue tint + magenta rim on the figure. Inputs: three voice files, the night set (back + table).
 Vary in recipe.json: cast, neon text, word panels [[kind, title, word]], app panels, words, colours, voices, set, seed.
-Run: uv run --no-project --with pillow --with numpy --with scipy --with scikit-image --with faster-whisper
-     python s07_night_holograms.py <clip folder> [--plan]
+Run: uv run s07_night_holograms.py <clip folder> [--plan]
 """
 import math
 import sys

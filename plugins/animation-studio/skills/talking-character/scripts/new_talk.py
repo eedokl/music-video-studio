@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Create a talking-scene project folder from a dialogue script (or a recording + its script).
 
   python new_talk.py <folder> --script dialogue.txt [--recording take.wav] [--set room] [--seed 123] [--name "..."]

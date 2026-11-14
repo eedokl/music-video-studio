@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["faster-whisper==1.2.1", "numpy==2.5.4", "pillow==13.0.0", "scikit-image==0.26.0", "scipy==1.18.1"]
+# ///
 """Recipe "hall - office - machine" - one clip in three parts with their own sets, joined with hard cuts
 (reference: ai_efficiency S6 "Coding & Agent office").
 
@@ -11,8 +15,7 @@
              first; counters roll up
 Inputs: four voice files, the hall set (one image), the office set (back + table). Vary in recipe.json: cast, door
 signs, check text, stations, counters, words, voices, sets, seed.
-Run: uv run --no-project --with pillow --with numpy --with scipy --with scikit-image --with faster-whisper
-     python s06_three_parts.py <clip folder> [--plan]
+Run: uv run s06_three_parts.py <clip folder> [--plan]
 """
 import math
 import sys

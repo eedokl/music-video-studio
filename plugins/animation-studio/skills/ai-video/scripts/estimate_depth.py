@@ -1,3 +1,4 @@
+# Runs in the configured gpu_python (CUDA venv); without it run() falls back to `uv run --with ...` on the CPU - no PEP 723 header.
 """Depth maps from flat images (Depth Anything V2) - for parallax / relief on stills (2.5D camera moves, Ken Burns
 with depth, multiplane comic flights).
 

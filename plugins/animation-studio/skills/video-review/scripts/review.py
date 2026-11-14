@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Compare versions of a film shot by shot, pick per shot, cut a new version without re-rendering.
 
   init   <a.mp4> <b.mp4> [...] --out review/review.json  + one shot source:
@@ -15,7 +19,7 @@
 
 All paths inside review.json are relative to it. The choice is stored next to it in choice.json:
   {"choice": {"<shot nr>": "<version id>"}}   (the legacy {"wahl": {"3": 2}} with 1-based indices is read too)
-Usage: uv run --no-project --with numpy python review.py init ...
+Usage: uv run review.py init ...
 """
 import argparse
 import json

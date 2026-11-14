@@ -1,7 +1,11 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Sound effects for a short scene, each with its loudest moment exactly on an action frame (earshot sound bank).
 
 Usage:
-  uv run --no-project --with numpy python sfx_track.py cues.json [--video scene.mp4] [--out sfx.wav] [--fps 24]
+  uv run sfx_track.py cues.json [--video scene.mp4] [--out sfx.wav] [--fps 24]
 cues.json:
   {"end": 150, "cues": [
      {"frame": 26, "sfx": "mallet/celesta", "args": ["--pitch", "G5"], "level": -14, "what": "Pip notices the leaf"},

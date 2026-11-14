@@ -1,9 +1,13 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Night run: compute a whole list of AI jobs unattended - one model at a time, resumable, with milestones.
 
 jobs.json (written by a user skill, e.g. claudia-music-video jobs.py; paths relative to the jobs file):
   {"phases": ["flux", "qwen_edit", "depth", "ltx", "s2v", "infinitetalk", "humo", "minimax_h3", "wan"],          # order: each phase = ONE model
    "selection": "selection.json",                                          # picks between phases (see "pick")
-   "hooks": {"after:qwen_edit": ["uv", "run", ..., "${CLAUDE_PLUGIN_ROOT}/skills/<skill>/scripts/pick.py", "start", "."]},
+   "hooks": {"after:qwen_edit": ["uv", "run", "${CLAUDE_PLUGIN_ROOT}/skills/<skill>/scripts/pick.py", "start", "."]},
                                      # commands run after a phase (cwd = jobs dir; ${CLAUDE_PLUGIN_ROOT} = this plugin)
    "jobs": [{"id": "s02/start_v1", "kind": "qwen_edit", "out": "ai/start/s02_v1.png",
              "args": {"refs": ["ref1.png", "ref2.png"], "prompt": "...", "neg": "...", "seed": 1}},
@@ -31,7 +35,7 @@ Rules:
 Audio args: "quiet_start": true moves the window start back into a silence (<= 0.5 s, lead-in grows),
 "prepare": true levels the vocal (clips.prepare_vocal). LTX args: "compression" (img_compression, crowds 42).
 Usage:
-  uv run --no-project --with numpy python night_run.py jobs.json [--phases ltx,s2v] [--only s02,s05] [--dry-run] [--status]
+  uv run night_run.py jobs.json [--phases ltx,s2v] [--only s02,s05] [--dry-run] [--status]
          [--min-free-gb 20] [--clean-comfy]
 """
 import argparse

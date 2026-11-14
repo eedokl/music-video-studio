@@ -1,8 +1,12 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["pillow==13.0.0"]
+# ///
 """Render a multiplane camera move or a 2.5D comic flight (three.js in headless Edge/Chrome) -> PNG frames -> MP4.
 
 Usage:
-  uv run --no-project python render_multiplane.py <scene>/multiplane.json [--gif] [--contact auto|0,40,80|none]
-  uv run --no-project python render_multiplane.py <scene>/comic.json --page comic25d [--gif]
+  uv run render_multiplane.py <scene>/multiplane.json [--gif] [--contact auto|0,40,80|none]
+  uv run render_multiplane.py <scene>/comic.json --page comic25d [--gif]
 
 The config lives in the scene folder; every path inside it is relative to that folder.
   --page multiplane (default)  layers as glass planes at real depths, camera keys x/y/z/pan/tilt

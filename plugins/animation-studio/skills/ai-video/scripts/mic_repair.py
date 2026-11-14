@@ -1,3 +1,7 @@
+# /// script
+# requires-python = "==3.12.*"
+# dependencies = ["mediapipe==1.2.3", "numpy==2.5.4", "opencv-python-headless==5.0.0.93", "pillow==13.0.0"]
+# ///
 """Repair start images whose headset microphone breaks the canon (a boom on BOTH cheeks, or on the wrong cheek only).
 
 canon.py only detects the problem; this script fixes it and checks the result again with canon.py. Two methods, tried
@@ -18,8 +22,7 @@ none on the other) is kept:
 Nothing passes -> the best attempt is kept as "<stem>_mic_best.png" with a warning: make new start-image variants.
 Faces in profile / seen from behind are not measurable (canon.py finds no face) - those are skipped, check by eye.
 
-  uv run --no-project --python 3.12 --with mediapipe --with opencv-python-headless --with numpy --with pillow \
-      python mic_repair.py start.png [...] [--out-dir fixed/] [--side image_left] [--methods retouch,qwen]
+  uv run mic_repair.py start.png [...] [--out-dir fixed/] [--side image_left] [--methods retouch,qwen]
       [--seeds 3] [--no-refine] [--edit-prompt "..."] [--edit-negative "..."] [--force]
   -> <out-dir>/<stem>_mic.png (passed) + <stem>_mic.json (canon before/after, method) + mic_repair_sheet.jpg
 From Python: repair(path, out_dir, edit_prompt=..., edit_neg=...) -> dict (claudia-music-video pick.py --repair-mic).

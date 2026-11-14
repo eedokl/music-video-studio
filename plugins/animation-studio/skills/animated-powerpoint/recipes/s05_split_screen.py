@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["faster-whisper==1.2.1", "numpy==2.5.4", "pillow==13.0.0", "scikit-image==0.26.0", "scipy==1.18.1"]
+# ///
 """Recipe "new room + split screen" - two figures build things in a new room, a sceptic answers from the old room in a
 split screen (reference: ai_efficiency S5 "Fritz builds chatbots").
 
@@ -10,8 +14,7 @@ split screen (reference: ai_efficiency S5 "Fritz builds chatbots").
            the builder nods happily on the last word; gag: the sceptic blinks slowly and dryly into the camera
 Inputs: four voice files, the new room (back + table), the old room (back + table). Vary in recipe.json: cast,
 texts (sign, cards, info card), words, laptop position, voices, sets, seed.
-Run: uv run --no-project --with pillow --with numpy --with scipy --with scikit-image --with faster-whisper
-     python s05_split_screen.py <clip folder> [--plan]
+Run: uv run s05_split_screen.py <clip folder> [--plan]
 """
 import math
 import sys

@@ -9,8 +9,9 @@ user-invocable: false
 Everything that talks to the local ComfyUI or measures AI clips lives here, written once. User skills build
 prompts and job lists; this skill computes and measures them.
 
-Run scripts as `uv run --no-project python "${CLAUDE_PLUGIN_ROOT}/skills/ai-video/scripts/<script>.py" ...`
-(measurement scripts with `--python 3.12 --with mediapipe --with opencv-python-headless --with numpy`).
+Run scripts as `uv run "${CLAUDE_PLUGIN_ROOT}/skills/ai-video/scripts/<script>.py" ...` - every script declares its
+own pinned packages (PEP 723 header; the mediapipe measurement scripts also pin Python 3.12) - except
+`estimate_depth.py`, which runs in `gpu_python` (see below).
 From another skill: `import _studio; _studio.use("ai-video")`, then `import comfy, ltx, mouth, ...`.
 
 ## Machine config (studio-core `config.py`)

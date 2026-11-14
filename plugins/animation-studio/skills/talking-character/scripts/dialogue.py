@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
 """Dialogue scripts: parse "Name: text (direction) text" into lines, spoken chunks and stage directions.
 
 Script format (UTF-8 text, one line per speech; '#' starts a comment):

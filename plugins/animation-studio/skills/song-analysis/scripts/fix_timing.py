@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Repair word times after Whisper alignment, using the vocal tracks themselves (step 3b of analyze.py).
 
 Two known failure modes of Whisper on songs (measured on "Prompts!": 16 of 58 words off by > 0.3 s):

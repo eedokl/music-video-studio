@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Frame-picking cut: build a new version of a film from N finished versions with the same timeline - no re-render.
 
 Every output frame is copied from the version chosen for its shot; the audio is copied (not re-encoded) from one

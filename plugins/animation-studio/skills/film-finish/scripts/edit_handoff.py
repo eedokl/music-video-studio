@@ -1,6 +1,10 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4", "opentimelineio==0.18.1", "pillow==13.0.0"]
+# ///
 """Hand the cut over for manual editing: film.otio (Kdenlive, DaVinci Resolve, ...) and film.mlt (MLT / melt).
 
-  uv run --no-project --with opentimelineio python edit_handoff.py [--project .] [--crossfade 0]
+  uv run edit_handoff.py [--project .] [--crossfade 0]
 
 Built from the same pieces as build.py film: one video clip per section (clips/<section>.mp4, silent, with overlays),
 the song (+ sound effects) as one continuous audio track - so the editor gets exactly the film's timeline and can

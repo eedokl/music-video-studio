@@ -1,7 +1,11 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["pillow==13.0.0"]
+# ///
 """Render a Synfig scene: .sif -> PNG frames -> MP4 (+ GIF, + contact sheet).
 
 Usage:
-  uv run --no-project python render.py scene.sif [--gif] [--contact 0,12,36|auto|none] [--width 1280 --height 720]
+  uv run render.py scene.sif [--gif] [--contact 0,12,36|auto|none] [--width 1280 --height 720]
          [--single 40] [--audio voice.wav] [--jobs 8]
 
 Output next to the .sif:  frames/<name>.NNNN.png, <name>.mp4, <name>.gif, contact.png (or --contact-out)
@@ -100,7 +104,7 @@ def _pil_labels(out, frames, cols, rows):
     try:
         from PIL import Image, ImageDraw, ImageFont
     except ImportError:
-        print("(contact sheet without frame labels: run with --with pillow to get them)")
+        print("(contact sheet without frame labels: run with `uv run render.py` (Pillow) to get them)")
         return
     im = Image.open(out).convert("RGB")
     tw, th = im.width // cols, im.height // rows

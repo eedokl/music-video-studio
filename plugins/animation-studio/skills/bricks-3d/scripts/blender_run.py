@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
 """Run a Blender script of this skill headless, with the shared GPU lock (EEVEE/Cycles use the graphics card).
 
   python blender_run.py brickfilm.py -- <plan.json> --render

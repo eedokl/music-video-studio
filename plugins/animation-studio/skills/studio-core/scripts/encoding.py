@@ -1,6 +1,6 @@
 """Shared video encoding for all scripts: final version (x264, best quality) or fast preview (NVENC).
 
-Turn on the preview: environment variable PREVIEW=1   (e.g. in Git Bash: PREVIEW=1 uv run ... build.py film)
+Turn on the preview: environment variable PREVIEW=1   (e.g. in Git Bash: PREVIEW=1 uv run build.py film)
   (the older variable name VORSCHAU=1 is accepted too)
   - x264 crf 18 (default):  for everything you want to watch or hand on
   - NVENC preview:          much faster on an NVIDIA GPU (reference machine: 803 frames in 1.4 s instead of 32 s),

@@ -19,14 +19,14 @@ typed-binary, tinyest, tsover-runtime, ~40 MB) and runs `npm install` into the f
 ## Jobs
 
 ```
-python shaders_render.py look --preset dream.json --name dream        # -> assets/look/dream/  (apply_look.py --look dream)
-python shaders_render.py look --preset dream.json --out <project>/looks/dream   # project folder (apply_look.py --look <folder>)
-python shaders_render.py iris --out masks --center 0.3,0.25 --frames 12 --direction close   [--numpy]
-python shaders_render.py gallery --image scenes/intro/f.0100.png --out gallery [--effects my_effects.json]
-python shaders_render.py catalog --out catalog                         # full catalogue of the installed version
+uv run shaders_render.py look --preset dream.json --name dream        # -> assets/look/dream/  (apply_look.py --look dream)
+uv run shaders_render.py look --preset dream.json --out <project>/looks/dream   # project folder (apply_look.py --look <folder>)
+uv run shaders_render.py iris --out masks --center 0.3,0.25 --frames 12 --direction close   [--numpy]
+uv run shaders_render.py gallery --image scenes/intro/f.0100.png --out gallery [--effects my_effects.json]
+uv run shaders_render.py catalog --out catalog                         # full catalogue of the installed version
 ```
 
-Run with `uv run --no-project --with numpy --with pillow python "<plugin>/skills/film-finish/scripts/shaders_render.py" ...` (`<plugin>` = the plugin folder, as in the film-finish SKILL.md commands).
+Run with `uv run "<plugin>/skills/film-finish/scripts/shaders_render.py" ...` (`<plugin>` = the plugin folder, as in the film-finish SKILL.md commands).
 
 - **look**: a preset in `look.json` format: `{"components": [...], "frames": 24, "description": "..."}`. The first
   component is normally a white `SolidColor`; everything else darkens/tints it, because the overlay is

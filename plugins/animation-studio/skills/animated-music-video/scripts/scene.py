@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4", "pillow==13.0.0", "svgelements==1.9.6"]
+# ///
 """Build (and render) one section of the song as a Synfig scene: a set plus figures that sing, listen, dance and act.
 
 Reads project.json (section, figures, gestures, screen events, actions, lights ...), analysis/song_sheet.json (beats,
@@ -46,7 +50,7 @@ Rig convention of the SVG figures (see assets/figures/tim.svg): groups arm_l, ar
 pupille_l/r (pupils), brauen (brows); pivots pivot_<part>; pivot_mund marks the mouth (drawn by lip sync); feet at
 SVG point (200, 590). The German part ids are the convention of the bundled figures - keep them for new figures.
 
-Usage: uv run --no-project --with numpy --with svgelements --with pillow python scene.py <section> [--project .] [--render] [--jobs 8]
+Usage: uv run scene.py <section> [--project .] [--render] [--jobs 8]
 Output: scenes/<section>.sif (editable in Synfig Studio), with --render scenes/<section>/f.0000.png ...,
         analysis/actions_<section>.json (gesture times, key clicks for sounds.py)
 """

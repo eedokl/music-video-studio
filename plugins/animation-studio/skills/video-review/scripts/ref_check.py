@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4", "pillow==13.0.0"]
+# ///
 """Reference check: compare a rebuilt film against a reference film AT THE MOMENTS WHERE SOMETHING HAPPENS.
 
 Lesson from rebuilding "Prompts!": 3-5 stills per section and SSIM numbers missed behaviour between the stills - an
@@ -19,8 +23,8 @@ lettering gag that never reached the film. Effects in hand-made reference script
              `sheets --checklist` makes strips around appear and disappear (t-0.25, t+0.25) and a report table with
              an empty "status" column to fill in (ok / different / missing) after looking at every strip.
 
-Usage: uv run --no-project --with numpy --with pillow python ref_check.py events <project>
-       uv run --no-project --with numpy --with pillow python ref_check.py sheets --ref r.mp4 --mine m.mp4 --events e.json
+Usage: uv run ref_check.py events <project>
+       uv run ref_check.py sheets --ref r.mp4 --mine m.mp4 --events e.json
 """
 import argparse
 import json

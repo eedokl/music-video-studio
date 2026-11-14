@@ -10,7 +10,7 @@ brief** → **shot plan** per section (`plan.py`, editable JSON) → **Blender f
 (lettering, lyrics, sounds, look, film files). Every time is a song second. Own characters only; never call it a
 "LEGO" film, no brand logos (the LDraw studs have none).
 
-Scripts (run with `uv run --no-project python ...` unless noted):
+Scripts (run with `uv run ...` unless noted):
 `S=${CLAUDE_PLUGIN_ROOT}/skills` – `$S/song-analysis/scripts/{new_project,analyze,voices}.py`,
 `$S/bricks-music-video/scripts/{setup,plan,render,compare_reference}.py`, `$S/film-finish/scripts/{overlays,sounds,build}.py`.
 
@@ -22,10 +22,10 @@ anything they already imagine. Check the machine once: `python $S/bricks-3d/scri
 
 ## 2 · Song project + analysis
 ```
-python $S/song-analysis/scripts/new_project.py <proj> --song song.wav --lyrics lyrics.txt [--lead vocals.wav]
+uv run $S/song-analysis/scripts/new_project.py <proj> --song song.wav --lyrics lyrics.txt [--lead vocals.wav]
       [--from 131 --to 150 --lyrics-from "first line" --lyrics-to "last line"] --language de
-uv run --no-project --with numpy python $S/song-analysis/scripts/analyze.py <proj>
-uv run --no-project --with numpy python $S/song-analysis/scripts/voices.py <proj>
+uv run $S/song-analysis/scripts/analyze.py <proj>
+uv run $S/song-analysis/scripts/voices.py <proj>
 python $S/bricks-music-video/scripts/setup.py <proj> --sections "verse:0-19,chorus:19-41" [--cameo mann:silhouette]
 ```
 Put a marker line like `[Verse 3 - Tim, male lead]` above the lyric lines – it helps voices.py. Read
@@ -81,10 +81,10 @@ low-angle close-up; shots are 1–3 s.
 
 ## 5 · Finish (film-finish)
 ```
-uv run --no-project --with pillow --with numpy python $S/film-finish/scripts/overlays.py <section> --project <proj>
-uv run --no-project --with numpy python $S/film-finish/scripts/sounds.py <proj>        # gesture/pop sounds (earshot)
-uv run --no-project --with pillow python $S/film-finish/scripts/build.py preview <section> --project <proj>
-uv run --no-project --with pillow --with numpy python $S/film-finish/scripts/build.py film --project <proj>
+uv run $S/film-finish/scripts/overlays.py <section> --project <proj>
+uv run $S/film-finish/scripts/sounds.py <proj>        # gesture/pop sounds (earshot)
+uv run $S/film-finish/scripts/build.py preview <section> --project <proj>
+uv run $S/film-finish/scripts/build.py film --project <proj>
 ```
 Set `"lyrics": true` on a section for word-by-word lyrics. **Checkpoint:** watch the preview with the user, then the
 film (film.mp4, film_small.mp4 < 30 MB, film_mail.mp4).

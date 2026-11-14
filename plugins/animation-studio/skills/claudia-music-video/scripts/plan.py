@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Shot plan from the song: cuts on the sung lines (snapped to beats), a technique per shot, framing and camera.
 
 Reads the song-analysis results (analysis/song_sheet.json: beats, lines; markers.json: [Verse]/[Chorus] ...) and writes
@@ -13,7 +17,7 @@ of the sung shots sing on camera, never three of the same in a row. --s2v: lip-s
 sung word >= 1.4 s, not in a [Speaker]/spoken part, shot <= 4.7 s) get engine "s2v", at most 15 % of the sung shots
 (~15 min GPU each). Set "engine" by hand for an emotional close-up the rule misses.
 Framings and cameras never repeat back to back. A new seed gives a different plan; ideas recorded by the user win.
-Usage: uv run --no-project python plan.py [<project>] [--version studio|live] [--lipsync 0.5] [--max-len 5.0] [--s2v] [--force]
+Usage: uv run plan.py [<project>] [--version studio|live] [--lipsync 0.5] [--max-len 5.0] [--s2v] [--force]
 """
 import argparse
 import json

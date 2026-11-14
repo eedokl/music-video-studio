@@ -1,9 +1,13 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4", "pillow==13.0.0"]
+# ///
 """Frames at given times: contact sheets, side-by-side comparisons and a similarity score between two videos.
 
   python frames.py sheet VIDEO OUT.jpg --times 3,12,20.5 [--cols 3] [--width 480]
   python frames.py compare OUT.jpg --times 74,80,90 --video ref.mp4 --label original --video new.mp4 --label plugin
          [--offset 0,0] [--width 480] [--json scores.json]
-Run with: uv run --no-project --with numpy --with pillow python frames.py ...
+Run with: uv run frames.py ...
 sheet    grid of frames at the given seconds (for a 1-fps preview the frame number equals the second).
 compare  one row per time, one column per video, labelled; with two videos it also prints a similarity per time:
          SSIM on a 320x180 grey image (1 = identical, > 0.9 looks the same, < 0.5 different picture) and the mean

@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """ComfyUI client shared by every ai-video script: start/check the server, upload files, run a workflow, fetch results.
 
     import _studio; _studio.use("ai-video")

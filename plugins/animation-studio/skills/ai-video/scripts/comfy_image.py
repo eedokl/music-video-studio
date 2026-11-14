@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Text-to-image with the local ComfyUI: painted backgrounds, B-roll stills, concept images, comic panels.
 
 Models (files in ComfyUI's models folders):
@@ -6,7 +10,7 @@ Models (files in ComfyUI's models folders):
   qwen = Qwen-Image 2512 fp8: diffusion_models/qwen_image_2512_fp8_e4m3fn + text_encoders/qwen_2.5_vl_7b_fp8_scaled +
          vae/qwen_image_vae - correct lettering inside the image, ~3x slower
 Usage:
-  uv run --no-project python comfy_image.py "prompt ..." -o image.png [--width 1280 --height 720] [--seed 1]
+  uv run comfy_image.py "prompt ..." -o image.png [--width 1280 --height 720] [--seed 1]
          [--model flux|sdxl|qwen] [--steps N] [--variants 4] [--negative "..."] [--lora file --lora-strength 0.8]
          [--repaint image.png --strength 0.45]
   --variants N: N images with seeds seed..seed+N-1 -> image_1.png ... image_N.png (to choose from)

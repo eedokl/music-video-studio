@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["faster-whisper==1.2.1", "numpy==2.5.4", "pillow==13.0.0", "scikit-image==0.26.0", "scipy==1.18.1"]
+# ///
 """Recipe "together at the table" - finale: all figures at one table, a chain of steps lights up on the board, little
 bots carry results, everybody cheers with confetti (reference: ai_efficiency S12 "Agentic workflow lab").
 
@@ -7,8 +11,7 @@ bots carry results, everybody cheers with confetti (reference: ai_efficiency S12
   gag      one confetti piece sails down and stays on the guardian's head; the guardian squints up and blinks
 Inputs: one narrator line, the room set (back + table). Vary in recipe.json: cast, positions, sign, chain steps,
 words, voices, set, seed.
-Run: uv run --no-project --with pillow --with numpy --with scipy --with scikit-image --with faster-whisper
-     python s12_together.py <clip folder> [--plan]
+Run: uv run s12_together.py <clip folder> [--plan]
 """
 import math
 import sys

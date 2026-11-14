@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4", "pillow==13.0.0", "scipy==1.18.1"]
+# ///
 """Find the characters on a slide and cut each one out exactly as drawn (no redrawing).
 
   figures.py --deck deck/deck.json --slide 5 [--picture 18] [--names helmut hans fritz felix] [--upscale 4]
@@ -15,7 +19,7 @@ Output figures/<name>/original.png (RGBA crop) + figure.json:
   {"source": ..., "upscale": 4, "crop": [x0, y0, x1, y1] in the enlarged source, "inside": [x, y] (a core pixel),
    "to_slide": {"ax", "ay", "ox", "oy"}  slide px = o + a * enlarged-source px,  "slide": n, "slide_size": [w, h]}
 and figures/contact_figures.png (all figures with their names) to check the split.
-Usage: uv run --no-project --with pillow --with numpy --with scipy python figures.py ...
+Usage: uv run figures.py ...
 """
 import argparse
 import json

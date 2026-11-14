@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Create a cartoon music-video project: folder with song.wav, lyrics.txt, (stems) and project.json.
 
 Usage:

@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["faster-whisper==1.2.1", "numpy==2.5.4", "pillow==13.0.0", "scikit-image==0.26.0", "scipy==1.18.1"]
+# ///
 """Recipe "learning step by step" - a figure opens a book, a progress bar grows beside its head, warm light comes up
 (reference: ai_efficiency S9 "most of us are Hans").
 
@@ -7,8 +11,7 @@
            the camera (double blink, small hop); on "but" the bar sags back a bit, the guide squints at it
 Inputs: three voice files, the office set (back + table). Vary in recipe.json: cast, positions, book title, bar label,
 words, voices, set, seed.
-Run: uv run --no-project --with pillow --with numpy --with scipy --with scikit-image --with faster-whisper
-     python s09_progress_bar.py <clip folder> [--plan]
+Run: uv run s09_progress_bar.py <clip folder> [--plan]
 """
 import math
 import sys

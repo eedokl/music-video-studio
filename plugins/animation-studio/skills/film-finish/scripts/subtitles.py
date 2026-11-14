@@ -1,9 +1,13 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Subtitle files on FILM time: film.srt + film.vtt (and an optional burned-in copy of the film).
 
-  uv run --no-project python subtitles.py --project .                     song project (analysis/song_sheet.json lines,
+  uv run subtitles.py --project .                     song project (analysis/song_sheet.json lines,
                                                                           film time = song time - first section start)
-  uv run --no-project python subtitles.py --dialogue analysis/dialogue.json [--names]    talking-character dialogue
-  uv run --no-project python subtitles.py --cut film_shots.json           shots of a cut.py film with "subtitles"
+  uv run subtitles.py --dialogue analysis/dialogue.json [--names]    talking-character dialogue
+  uv run subtitles.py --cut film_shots.json           shots of a cut.py film with "subtitles"
   ... [-o film] [--offset 0] [--max-chars 42] [--drop-calls] [--names] [--burn film.mp4 [--burn-out x.mp4]]
 
 Sources:

@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["faster-whisper==1.2.1", "numpy==2.5.4", "pillow==13.0.0", "scikit-image==0.26.0", "scipy==1.18.1"]
+# ///
 """Outro on the slide: the film comes back to the slide, pushes in on one figure's face, an iris closes on it, the
 figure winks, the iris closes and a title card ends the film (reference: the finale of the ai_efficiency film).
 
@@ -16,7 +20,7 @@ outro.json (paths relative to it):
 The wink is drawn from the slide itself: the eye is covered with the skin colour sampled around it, a squashed copy of
 the eye (half) or a happy ink arc (closed) is put on top - no redrawing of the figure.
 Outputs frames_outro/f_NNNN.png, <name>.mp4 (+ sound), first.png/last.png, check.json.
-Usage: uv run --no-project --with pillow --with numpy --with scipy python outro.py clips/finale/outro.json
+Usage: uv run outro.py clips/finale/outro.json
 """
 import json
 import math

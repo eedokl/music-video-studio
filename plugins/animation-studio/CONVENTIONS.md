@@ -33,10 +33,17 @@ Anything two user skills need goes into a building block – never copy code bet
 - External programs and machine paths only through `studio-core/scripts/config.py`: `config.need("synfig")`,
   `config.get("earshot")`. They come from environment variables or the machine config
   `~/.animation-studio/config.json` written by `check_tools.py --setup` / `--set key=value`.
-- In SKILL.md, call scripts as `python "${CLAUDE_PLUGIN_ROOT}/skills/<skill>/scripts/x.py"` (substituted by Claude
+- In SKILL.md, call scripts as `uv run "${CLAUDE_PLUGIN_ROOT}/skills/<skill>/scripts/x.py"` (substituted by Claude
   Code when the skill loads - ONLY in SKILL.md; in references/ and other files write
   "`skills/<skill>/scripts/x.py` of this plugin" or refer to the SKILL.md command). Always quote the path.
-  Run them with `uv run --no-project --with <pkgs> python ...`.
+  Run them with `uv run "${CLAUDE_PLUGIN_ROOT}/skills/<skill>/scripts/x.py" ...` - never with hand-written `--with` lists.
+- Every script that is run with uv starts with PEP 723 inline metadata listing exactly the third-party packages it
+  imports, including those of the plugin modules it imports through `_studio.use(...)`, with exact pins
+  (`# /// script` / `# requires-python = ">=3.12"` / `# dependencies = ["numpy==2.5.4", ...]` / `# ///`);
+  stdlib-only CLIs declare `dependencies = []`. Modules that are only imported need no header. Scripts run by
+  another interpreter (Blender targets, `gpu_python` / `tts_python` workers, Krita) get no header but a one-line
+  comment naming that interpreter. A script that starts another plugin script whose packages it does not declare
+  itself runs it with `config.script_cmd(path)` (= `uv run path`). `tests/smoke.py` checks the headers.
 - Before a release: `python tests/smoke.py`, then bump `version` in `.claude-plugin/plugin.json`.
 
 ## Shared machinery

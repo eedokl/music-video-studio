@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """InfiniteTalk (Wan2.1-I2V-14B 480p fp8 + InfiniteTalk patch + LightX2V, 6 steps) through the local ComfyUI:
 start image + vocals -> singing face that stays closest to the start image (framing, light, face).
 Best for held notes and long sung passages (lip-sync comparison: most even hits over 12 s, r 0.58 on a held call vs
@@ -9,7 +13,7 @@ Model files: diffusion_models/Wan2_1-I2V-14B-480p_fp8_e4m3fn_scaled_KJ, loras/li
 rank64_bf16, model_patches/wan2.1_infiniteTalk_multi_fp16, audio_encoders/wav2vec2-chinese-base_fp16,
 text_encoders/umt5_xxl_fp8_e4m3fn_scaled, vae/Wan2_1_VAE_bf16.
 Usage:
-  uv run --no-project python infinitetalk.py start.png vocals.wav "prompt" -o clip.mp4 [--frames 97] [--seed 31]
+  uv run infinitetalk.py start.png vocals.wav "prompt" -o clip.mp4 [--frames 97] [--seed 31]
 """
 import argparse
 import math

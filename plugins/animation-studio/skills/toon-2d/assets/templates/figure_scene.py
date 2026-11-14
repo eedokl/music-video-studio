@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["svgelements==1.9.6"]
+# ///
 """Scene template: an SVG figure from the characters skill animated in Synfig ("Fips chirps", 5 s, 24 fps).
 
 Parts from the SVG (group ids) become animated groups here:
@@ -8,7 +12,7 @@ Pivots come from the pivot_<part> circles in the SVG.
 Beats: 0-20 looks around | 20-48 small hop with flapping | 48-72 tilts the head, blinks |
        72-96 "Peep! Peep!" (beak opens, head nods, wings twitch) | 96-120 happy flapping, hop, landing
 Replace the beat list and the key lists with your own idea; keep one key list per animated part.
-Run: uv run --no-project --with svgelements python make_scene.py   -> scene.sif
+Run: uv run make_scene.py   -> scene.sif
 """
 import sys
 from pathlib import Path

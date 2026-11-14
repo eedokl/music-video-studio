@@ -12,7 +12,7 @@ Page: paper colour + fine paper grain, title, footer, ink frames 8 px; panel are
 comic25d.html shows each panel's diorama through these windows. Layer images use the panel's aspect ratio.
 Fonts: a TrueType file name or path (default "segoeprb.ttf", Segoe Print Bold on Windows); falls back to DejaVu
 or Pillow's built-in font when it is missing.
-Needs pillow + numpy (uv run --no-project --with pillow --with numpy ...).
+Needs pillow + numpy (imported by scripts that declare them, e.g. breakout.py).
 """
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont

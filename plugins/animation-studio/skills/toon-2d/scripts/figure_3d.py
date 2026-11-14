@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4", "pillow==13.0.0", "scipy==1.18.1", "svgelements==1.9.6"]
+# ///
 """A 2D rig figure (SVG, characters convention) becomes a rounded 3D toon figure in Blender.
 
 Every filled shape of the SVG is "inflated" like a balloon (round cross-section from the distance to its outline:
@@ -12,9 +16,9 @@ Two modes in one file:
   inside Blender: builds objects, toon materials, outlines, shape keys and the actions, renders RGBA frames
 
 Usage:
-  uv run --no-project --with svgelements --with numpy --with scipy --with pillow python figure_3d.py fig3d.json
-  uv run ... python figure_3d.py --figure lia --out lia3d --actions morph:24,turn:23,pop:4 [--still 30]
-  uv run ... python figure_3d.py crossfade --flat <out>/flat_2d.png --frames3d <out> --out <dir> [--fade 6]
+  uv run figure_3d.py fig3d.json
+  uv run figure_3d.py --figure lia --out lia3d --actions morph:24,turn:23,pop:4 [--still 30]
+  uv run figure_3d.py crossfade --flat <out>/flat_2d.png --frames3d <out> --out <dir> [--fade 6]
 
 fig3d.json (paths relative to it; all keys optional except figure):
   {"figure": "lia",                      # bundled name (tim, lia, fips) or an SVG; "feet" [x, y] for own SVGs

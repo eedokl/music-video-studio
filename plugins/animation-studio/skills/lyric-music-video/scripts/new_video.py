@@ -1,6 +1,10 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Create a lyric-music-video project: song project (project.json, song.wav, lyrics.txt) + the three.js engine in video/.
 
-  uv run --no-project --with numpy python new_video.py PROJECT --song song.mp3 --lyrics lyrics.txt [--language auto|de|en]
+  uv run new_video.py PROJECT --song song.mp3 --lyrics lyrics.txt [--language auto|de|en]
          [--lead vocals.wav --backing backing.wav] [--from 38.3 --to 58.3 --lyrics-from "first" --lyrics-to "last"]
          [--name "Title"] [--seed 4711] [--no-install]
 

@@ -1,3 +1,4 @@
+# Runs in the configured tts_python venv (qwen-tts + CUDA torch), started by voice.py - no uv / PEP 723 header.
 """Qwen3-TTS worker - runs INSIDE the TTS venv (config key `tts_python`), started by voice.py. Not called by hand.
 
   python tts_worker.py job.json

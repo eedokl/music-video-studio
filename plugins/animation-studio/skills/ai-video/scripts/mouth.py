@@ -1,3 +1,7 @@
+# /// script
+# requires-python = "==3.12.*"
+# dependencies = ["mediapipe==1.2.3", "numpy==2.5.4", "opencv-python-headless==5.0.0.93"]
+# ///
 """Lip-sync measurement: how well does a singing clip's mouth follow the vocals? Used to pick seeds and offsets.
 
 Mouth openness per frame (MediaPipe FaceLandmarker): inner-lip gap (landmarks 13/14) divided by mouth width (78/308).
@@ -17,8 +21,7 @@ then Pearson r against the vocal curve for lags -6..+6 frames.
 Rating (seed selection, as Europe 2031 V2): best lag within +-3 frames, minus 0.02 per frame of offset; the lag is only
 used when it improves r by >= 0.08 over lag 0; -0.2 when the mouth stays closed; +0.05 for S2V (more expressive).
 
-Needs Python 3.12 with mediapipe:  uv run --no-project --python 3.12 --with mediapipe --with opencv-python-headless
-  python mouth.py score <clip.mp4> [...] --project <song project> --from 9.73 --to 12.89 [--curve rhubarb|level|mix]
+Needs Python 3.12 with mediapipe (both pinned in the header):  uv run mouth.py score <clip.mp4> [...] --project <song project> --from 9.73 --to 12.89 [--curve rhubarb|level|mix]
   python mouth.py curve <clip.mp4>        (mouth openness per frame, cached in <clip>.mouth.json)
   python mouth.py fit <clip.mp4> --project P --from t0 --to t1 [--write]
          a clip WITHOUT its own vocals (old Wan clip, any singing take): search entry frame and tempo 0.9-1.1 so

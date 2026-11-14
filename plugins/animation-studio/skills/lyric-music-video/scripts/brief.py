@@ -1,6 +1,10 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
 """Creative brief of a lyric video: the seed's dice, the visual identity and the scene ideas (project.json).
 
-  uv run --no-project python brief.py PROJECT                        show seed, dice, identity, ideas, past identities
+  uv run brief.py PROJECT                        show seed, dice, identity, ideas, past identities
   ... brief.py PROJECT --identity "risograph print shop: ..."         set the visual identity (2-3 lines)
   ... brief.py PROJECT --idea "waveform squeezed into a chip" --where "verse1:3" [--by user]
   ... brief.py PROJECT --status 4 done|dropped|planned                 update idea number 4

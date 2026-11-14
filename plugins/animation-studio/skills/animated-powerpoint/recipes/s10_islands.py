@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["faster-whisper==1.2.1", "numpy==2.5.4", "pillow==13.0.0", "scikit-image==0.26.0", "scipy==1.18.1"]
+# ///
 """Recipe "drifting islands" - four figures on island dioramas drift apart and are called back one by one
 (reference: ai_efficiency S10 + S11, one continuous shot).
 
@@ -11,8 +15,7 @@ Four islands (round floor plate + set wall + sign + figure), e.g. one room per f
            everybody hops
 Inputs: seven narrator lines, one set image per island. Vary in recipe.json: cast, island order, names (as spoken),
 signs, floor tones, title card + figures, words, voices, walls, seed.
-Run: uv run --no-project --with pillow --with numpy --with scipy --with scikit-image --with faster-whisper
-     python s10_islands.py <clip folder> [--plan]
+Run: uv run s10_islands.py <clip folder> [--plan]
 """
 import math
 import sys

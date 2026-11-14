@@ -64,7 +64,7 @@ Legend: **required** – the plugin does not work without it · **recommended** 
 | MuseTalk 1.5, LatentSync 1.6 | – | first lip-sync tests on Wan clips (tools/lipsync/musetalk, latentsync; claudia-video-trial lipsync_test 01–04) | not usable for singing | not recommended |
 | SDXL + watercolour LoRA repaint | – | painted look over FLUX | rejected by the user | not recommended |
 
-## Python packages (pulled by uv on demand)
+## Python packages (pulled by uv on demand, pinned in each script's PEP 723 header)
 
 numpy, pillow, svgelements, librosa, soxr, faster-whisper, matplotlib, opencv-python-headless, mediapipe, scipy,
 scikit-image, transformers (Depth Anything),

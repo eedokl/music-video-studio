@@ -5,7 +5,7 @@ A user skill writes `<project>/jobs.json`; `night_run.py` computes it. Paths are
 ```json
 {"phases": ["flux", "qwen_edit", "depth", "ltx", "s2v", "infinitetalk", "humo", "minimax_h3", "wan"],
  "selection": "selection.json",
- "hooks": {"after:qwen_edit": ["uv", "run", "...", "${CLAUDE_PLUGIN_ROOT}/skills/<skill>/scripts/pick.py", "auto", "."]},
+ "hooks": {"after:qwen_edit": ["uv", "run", "${CLAUDE_PLUGIN_ROOT}/skills/<skill>/scripts/pick.py", "auto", "."]},
  "jobs": [
   {"id": "s02/start_v1", "kind": "qwen_edit", "out": "ai/start/s02_v1.png",
    "args": {"refs": ["face.png", "closeup.png"], "prompt": "...", "neg": "...", "seed": 4711}},

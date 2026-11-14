@@ -1,7 +1,11 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
 """Assemble painted layers (PNG) into a layered Krita file (.kra) and export PNG combinations - headless, no dialogs.
 
 Usage (normal Python - starts Krita's kritarunner itself, config key "krita"):
-  uv run --no-project python krita_assemble.py <folder>/krita_set.json [--export-only]
+  uv run krita_assemble.py <folder>/krita_set.json [--export-only]
 
 The config may have any name (e.g. room_set.json); it is passed to Krita via ANIMATION_STUDIO_KRITA_SET and never
 copied over another krita_set.json. Config format (paths relative to the JSON file):

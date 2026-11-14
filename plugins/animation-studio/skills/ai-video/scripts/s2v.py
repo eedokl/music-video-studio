@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Wan2.2-S2V 14B (fp8) through the local ComfyUI: start image + vocals -> the most expressive singing (held notes,
 climaxes). 832x480 at 16 fps, length 4n+1 frames; ~11-18 min per 4 s shot with 20 steps (cfg 6). Upscale in the cut.
 Use it only for single expressive moments under ~4.7 s: on longer runs it turns the face into profile (measured) and
@@ -5,7 +9,7 @@ hits the words worse than LTX-2.3; for long sung passages InfiniteTalk was bette
 Model files: diffusion_models/wan2.2_s2v_14B_fp8_scaled, text_encoders/umt5_xxl_fp8_e4m3fn_scaled, vae/wan_2.1_vae,
 audio_encoders/wav2vec2_large_english_fp16 (light mode: loras/wan2.2_t2v_lightx2v_4steps_lora_v1.1_high_noise).
 Usage:
-  uv run --no-project python s2v.py start.png vocals.wav "prompt" -o clip.mp4 [--frames 61] [--steps 20] [--seed 31] [--light]
+  uv run s2v.py start.png vocals.wav "prompt" -o clip.mp4 [--frames 61] [--steps 20] [--seed 31] [--light]
 """
 import argparse
 import shutil

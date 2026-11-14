@@ -11,7 +11,8 @@ Building blocks: song-analysis (song project, words, Rhubarb), ai-video (models,
 film-finish (lyrics overlay, cut, small versions), video-review (V1/V2 comparison).
 
 Scripts: `S="${CLAUDE_PLUGIN_ROOT}/skills/claudia-music-video/scripts"`, `A="${CLAUDE_PLUGIN_ROOT}/skills/ai-video/scripts"`.
-Measurement scripts need `uv run --no-project --python 3.12 --with mediapipe --with opencv-python-headless --with numpy --with pillow` (= `MP` below).
+Run every script with `uv run <script>.py`: each declares its own pinned packages; the mediapipe measurement scripts
+(`pick.py`, ai-video `mouth.py` / `canon.py`) also pin Python 3.12.
 
 ## 1. Interview (short, one question at a time, with a default)
 
@@ -26,15 +27,15 @@ Measurement scripts need `uv run --no-project --python 3.12 --with mediapipe --w
 ## 2. Song project and analysis (song-analysis)
 
 ```
-uv run --no-project python ".../song-analysis/scripts/new_project.py" <proj> --song song.wav --lyrics lyrics.txt \
+uv run ".../song-analysis/scripts/new_project.py" <proj> --song song.wav --lyrics lyrics.txt \
     --lead lead.wav --backing backing.wav [--from 9 --to 24 --lyrics-from "..." --lyrics-to "..."] --language de
-uv run --no-project --with numpy python ".../song-analysis/scripts/analyze.py" <proj> --only 1,2,3,4
+uv run ".../song-analysis/scripts/analyze.py" <proj> --only 1,2,3,4
 ```
 Check `analysis/song_sheet.png`: the sung lines must sit on the vocals (they become the cuts and the lip curve).
 
 ## 3. Shot plan + creative brief
 
-`uv run --no-project python "$S/plan.py" <proj> --version studio|live [--lipsync 0.5] [--s2v]` - one shot per sung
+`uv run "$S/plan.py" <proj> --version studio|live [--lipsync 0.5] [--s2v]` - one shot per sung
 line on the beat, techniques `lipsync` / `broll` / `claudia_moving`, framings and cameras drawn with the creative seed.
 
 **Engines for sung shots** (field `engine`, default `ltx`):
@@ -74,9 +75,9 @@ new pictures. A new seed (`project.json "seed"`) gives a new take of plan, wardr
 ## 4. Prompts and night run
 
 ```
-uv run --no-project python "$S/jobs.py" <proj> [--start 2 --seeds 2 --broll 2]     # prompts.json + jobs.json
-uv run --no-project --with numpy python "$A/night_run.py" <proj>/jobs.json --dry-run   # jobs + time estimate
-uv run --no-project --with numpy python "$A/night_run.py" <proj>/jobs.json             # GPU (waits for the shared lock)
+uv run "$S/jobs.py" <proj> [--start 2 --seeds 2 --broll 2]     # prompts.json + jobs.json
+uv run "$A/night_run.py" <proj>/jobs.json --dry-run   # jobs + time estimate
+uv run "$A/night_run.py" <proj>/jobs.json             # GPU (waits for the shared lock)
 ```
 Vocal inputs of LTX / InfiniteTalk start in a silence and are levelled (-16 dBFS sung RMS, peaks <= -1 dBFS,
 15 ms ramps - `clips.prepare_vocal`, identical to the live reference). `jobs.py` refuses prompts that break the canon/LTX rules (see `references/lessons.md`). Order: FLUX stills -> Qwen
@@ -86,7 +87,7 @@ Keep other big programs closed (LTX peaks near 45 GB RAM). Only ever one GPU job
 
 ## 5. Pick by measurement, then look
 
-`$MP python "$S/pick.py" all <proj>` - canon check for start images, lip score for every seed (best lag within +-3
+`uv run "$S/pick.py" all <proj>` - canon check for start images, lip score for every seed (best lag within +-3
 frames, closed mouths, hidden scene cuts and frozen stretches rejected; moving clips warned when they barely
 move), contact sheets `sheet_start.jpg`, `sheet_broll.jpg`, `sheet_clips.jpg`, log in
 `picks.log`. Start images that fail only on the microphone (two booms, or the boom on the wrong cheek) are
@@ -104,8 +105,8 @@ look soft (render_shots otherwise scales with Lanczos). The clip's json is copie
 ## 6. Cut
 
 ```
-uv run --no-project --with numpy --with pillow --with opencv-python-headless python "$S/render_shots.py" <proj>
-uv run --no-project --with numpy --with pillow --with opencv-python-headless python "$S/make_film.py" <proj>
+uv run "$S/render_shots.py" <proj>
+uv run "$S/make_film.py" <proj>
 ```
 render_shots: every shot to `scenes/<shot>/` (clip placed on the song with lead-in, delay and lag; still + depth
 parallax as fallback; grain + vignette; AI label in the last 3 s - set `ai_label`, e.g. "Images and video

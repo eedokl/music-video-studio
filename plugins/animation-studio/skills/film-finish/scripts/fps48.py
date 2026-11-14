@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4", "pillow==13.0.0"]
+# ///
 """48 fps version of the film: RIFE frame interpolation ONLY in camera moves, every other frame doubled.
 
 Why: figure animation and lip sync are drawn on 24 fps and look wrong when interpolated (mouths and poses melt);
@@ -14,7 +18,7 @@ Output: film_48fps.mp4 (same sound, 48 fps), checked for decode errors.
 RIFE: rife-ncnn-vulkan (config key "rife" = path of rife-ncnn-vulkan.exe, model folder rife-v4.6 next to it or
 config key "rife_model"); runs under the shared GPU lock; needs "-g 0" (else it may pick the integrated GPU) and
 RGB images (no alpha).
-Usage: uv run --no-project --with numpy --with pillow python fps48.py [--project .] [--src film.mp4] [--cut-threshold 28]
+Usage: uv run fps48.py [--project .] [--src film.mp4] [--cut-threshold 28]
 """
 import argparse
 import shutil

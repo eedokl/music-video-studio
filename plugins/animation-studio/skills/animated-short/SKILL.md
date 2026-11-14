@@ -15,7 +15,7 @@ figures), `film-finish` (`apply_look.py`), `studio-core` (config, creative seed)
 depth maps; takes the GPU lock).
 Scripts here: `${CLAUDE_PLUGIN_ROOT}/skills/animated-short/scripts/` –
 `short.py` (new / idea / variant / finish) and `sfx_track.py` (frame-exact sound effects). Run them with
-`uv run --no-project --with numpy --with pillow --with svgelements python ...`.
+`uv run "${CLAUDE_PLUGIN_ROOT}/skills/animated-short/scripts/<script>.py" ...` (each script declares its packages).
 
 ## 1. Interview (short – 3 questions at most, skip what the request already says)
 
@@ -64,7 +64,7 @@ falling objects, contacts). Show the beat list to the user in one short block be
 
 ## 5. Contact-sheet review (the checkpoint – always)
 
-`uv run --no-project --with pillow python <toon-2d>/scripts/render.py scene.sif --contact <key frames> --jobs 6` –
+`uv run <toon-2d>/scripts/render.py scene.sif --contact <key frames> --jobs 6` –
 choose the frames of the key poses from the beat list (contacts, extremes of anticipation and take, the button).
 Open `contact.png` (tiles are labelled with frame numbers) and check, fixing keys before polishing:
 - silhouettes read; nobody cut off by the frame; characters big enough;

@@ -1,10 +1,14 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Start images that keep a character's identity: Qwen-Image-Edit 2511 (fp8, Lightning 4 steps) puts the person from
 one or two reference images into a new scene described by the prompt.
 
 Model files: diffusion_models/qwen_image_edit_2511_fp8_lightning_4steps.safetensors, text_encoders/
 qwen_2.5_vl_7b_fp8_scaled.safetensors, vae/qwen_image_vae.safetensors (optional loras/qwen-image-edit-2511-multiple-angles-lora).
 Usage:
-  uv run --no-project python qwen_edit.py --ref face.png --ref closeup.png "prompt" -o start.png [--seed 1]
+  uv run qwen_edit.py --ref face.png --ref closeup.png "prompt" -o start.png [--seed 1]
          [--width 1280 --height 720] [--negative "..."] [--variants 3]
 From Python: edit([ref1, ref2], prompt, "start.png", seed=1, neg="...")
 Method that held a character best (Europe 2031): TWO references - image 1 = face + whole look, image 2 = a close-up of

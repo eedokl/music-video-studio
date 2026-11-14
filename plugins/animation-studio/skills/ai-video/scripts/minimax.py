@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """MiniMax video models, two backends:
 
   comfy  (local, default) MiniMax H3 fl2va in the local ComfyUI: start image + vocals -> singing clip. The given vocal
@@ -21,9 +25,9 @@
          GET /v1/files/retrieve?file_id= -> download_url. Model: --cloud-model (default MiniMax-Hailuo-02). Check the
          current MiniMax API documentation before the first real call (names/prices change).
 Usage:
-  uv run --no-project python minimax.py start.png vocals.wav "prompt" -o clip.mp4 [--seed 31] [--song-start 12.3]
+  uv run minimax.py start.png vocals.wav "prompt" -o clip.mp4 [--seed 31] [--song-start 12.3]
          [--frames 124] [--width 1024 --height 576] [--dry-run]                       # local H3
-  uv run --no-project python minimax.py start.png - "prompt" -o broll.mp4 --backend cloud [--duration 6]
+  uv run minimax.py start.png - "prompt" -o broll.mp4 --backend cloud [--duration 6]
          [--resolution 768P] [--cloud-model MiniMax-Hailuo-02] [--send]                 # cloud (dry run without --send)
 From Python: minimax.render(img, wav, prompt, out, ...) (local), minimax.cloud_request(...) / cloud_render(...).
 """

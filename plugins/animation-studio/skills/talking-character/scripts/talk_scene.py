@@ -1,6 +1,10 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4", "pillow==13.0.0", "svgelements==1.9.6"]
+# ///
 """Step 2: the dialogue as an editable Synfig scene - figures speak, listen, look at each other and act on words.
 
-  uv run --no-project --with numpy --with svgelements --with pillow python talk_scene.py [--project .] [--render] [--jobs 8]
+  uv run talk_scene.py [--project .] [--render] [--jobs 8]
 Reads project.json, analysis/dialogue.json + assignment.json (speak.py). Output: scenes/dialogue.sif,
 with --render scenes/dialogue/f.0000.png ..., analysis/actions_dialogue.json (gesture times -> film-finish sounds.py).
 

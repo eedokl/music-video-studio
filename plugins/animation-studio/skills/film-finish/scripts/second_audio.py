@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Second audio language: the same film with a second song version (e.g. the English one) as audio track 2.
 
   python second_audio.py --project . --song song_en.wav --language en [--title English] [--offset 10.5] [--video film.mp4]
@@ -10,7 +14,7 @@ not match the mouths exactly). The offset comes from cross-correlating the onset
   - otherwise the project's song.wav excerpt is searched in the other version (warns about repeats)
 The same sound effects (analysis/sounds.wav) are mixed in. Picture, mouths and lyrics stay in the first language.
 Onset envelopes are computed in numpy (spectral flux of a log-mel spectrogram) - no librosa needed:
-  uv run --no-project --with numpy python second_audio.py ...
+  uv run second_audio.py ...
 Output: <video stem>_<lang>.mp4 next to the video: track 1 = original (default), track 2 = the other language,
 both tagged with ISO 639-2 language codes; decode-checked.
 """

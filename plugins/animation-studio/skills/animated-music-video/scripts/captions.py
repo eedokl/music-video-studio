@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["pillow==13.0.0"]
+# ///
 """Comic caption box: the sung line types itself word by word into a yellow box, in time with the singing.
 
 For comic sections (section "kind": "panels" and comic flights rendered by toon-2d render_multiplane.py into
@@ -23,7 +27,7 @@ nothing; an interrupted pass is simply composited again from the raw originals.
 Narrator inset over externally rendered sections (section "kind": "external" + "inset", e.g. a multiplane intro or a
 comic flight): scene.py renders only the round inset as a transparent Synfig track into scenes/<section>_inset/ and
 this pass lays it over the raw frames (under nothing, over the caption box) - so any renderer's frames get the inset.
-Usage: uv run --no-project --with pillow python captions.py <section> [--project .]
+Usage: uv run captions.py <section> [--project .]
        (scene.py --render calls it for sections with "caption")
 """
 import argparse

@@ -1,7 +1,11 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
 """Turn a song project (song-analysis new_project.py) into a brick-film project: minifig looks for the figures,
 a brick set per section (varied with the creative seed), the "bricks" options block and a seed.
 
-  uv run --no-project python setup.py [<project>] [--sections "verse:0-19.5,chorus:19.5-40"] [--set room]
+  uv run setup.py [<project>] [--sections "verse:0-19.5,chorus:19.5-40"] [--set room]
          [--cameo mann:silhouette] [--look tim=rocker] [--seed 4711]
 Without --sections the existing sections stay (new_project.py makes one section "all").
 Sets: room | stage | rooftop | house | arena | cloud (bricks-3d layouts.SETS). Looks: see bricks-3d/assets/cast.json. Never overwrites choices already in project.json

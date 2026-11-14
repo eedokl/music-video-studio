@@ -1,6 +1,10 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["pillow==13.0.0"]
+# ///
 """Side-by-side sheet: frames of this project next to a reference render at the same song times (reference tests).
 
-  uv run --no-project --with pillow python compare_reference.py --ours "scenes/verse3/f.{:04d}.png" \
+  uv run compare_reference.py --ours "scenes/verse3/f.{:04d}.png" \
       --ref "<reference>/frames/f_{:04d}.png" --ref-shift 0 --times 1.0,2.9,6.6 -o compare.jpg [--project .]
 --times are project seconds; our frame = round(t * fps); reference frame = round((t + ref-shift) * fps), so ref-shift is
 how many seconds the reference frame 0 lies BEFORE our time 0 (negative) or after. Each row: time, lyric word, ours, ref.

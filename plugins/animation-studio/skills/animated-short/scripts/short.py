@@ -1,6 +1,10 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
 """A short classical 2D scene as a small project: brief + creative seed + ideas, scene folder, finished film.
 
-Usage (uv run --no-project --with numpy --with pillow python short.py ...):
+Usage (uv run short.py ...):
   short.py new <folder> --title "Pip and the Flower" [--template blank|example|figure] [--seed 4711]
            [--principles "anticipation,take"] [--figure fips]
       -> <folder>/short.json, _toon.py, make_scene.py (from the toon-2d template), prints the seed
@@ -22,6 +26,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _studio  # noqa: E402
 _studio.use("toon-2d", "film-finish")
+import config  # noqa: E402
 import creative  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
@@ -41,10 +46,11 @@ class Short:
 
 
 def run(cmd, **kw):
-    print("$", " ".join(str(c) for c in cmd[1:3]), "...", flush=True)
+    i = next((k for k, c in enumerate(cmd) if str(c).endswith(".py")), 1)     # the script (after python / uv run)
+    print("$", " ".join(str(c) for c in cmd[i:i + 2]), "...", flush=True)
     r = subprocess.run([str(c) for c in cmd], **kw)
     if r.returncode != 0:
-        sys.exit(f"step failed: {Path(str(cmd[1])).name}")
+        sys.exit(f"step failed: {Path(str(cmd[i])).name}")
 
 
 def cmd_new(a):
@@ -85,11 +91,11 @@ def cmd_finish(a):
     contact = a.contact or "auto"
     sheet = sif.parent / "contact.png"
     sheet.unlink(missing_ok=True)                    # never ship a contact sheet of an earlier render
-    run([sys.executable, TOON / "render.py", sif, "--contact", contact, "--jobs", str(a.jobs)])
+    run(config.script_cmd(TOON / "render.py") + [sif, "--contact", contact, "--jobs", str(a.jobs)])
     video = sif.with_suffix(".mp4")
     cues = Path(a.cues) if a.cues else (S.dir / "sfx_cues.json")
     if cues.exists():
-        run([sys.executable, HERE / "sfx_track.py", cues, "--video", video, "--out", S.dir / "sfx.wav"])
+        run(config.script_cmd(HERE / "sfx_track.py") + [cues, "--video", video, "--out", S.dir / "sfx.wav"])
         video = video.with_name(video.stem + "_sfx.mp4")
     final = S.dir / "final"
     final.mkdir(exist_ok=True)

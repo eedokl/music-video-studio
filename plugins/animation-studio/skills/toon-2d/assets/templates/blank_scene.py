@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
 """Scene: <title> (<seconds> s, 24 fps)
 
 Idea (one sentence): <who wants what, what goes wrong, how it ends>
@@ -8,7 +12,7 @@ Beats (frames):
   60-96   <action / problem: the big move, the take>
   96-END  <result / button: reaction, settle, hold with a blink>
 
-Run: uv run --no-project python make_scene.py   -> scene.sif ; render.py scene.sif --contact <key frames>
+Run: uv run make_scene.py   -> scene.sif ; render.py scene.sif --contact <key frames>
 """
 import sys
 from pathlib import Path

@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4", "pillow==13.0.0"]
+# ///
 """Build the film: a preview of one section, or the whole film on the song timeline.
 
   preview <section>   scene frames + overlays + sound (song + sound effects) + look -> preview/<section>.mp4
@@ -19,8 +23,8 @@ project.json:
                       "fade", "shadow": true (soft dark drop shadow), "fade_out": 0.75 (s)
   "look": "standard" | "none"
   "credits": {...}    optional: after the film, credits.py rebuilds credits.mp4 (+ film_with_credits.mp4) from it
-Usage: uv run --no-project --with pillow python build.py preview <section> [--project .]
-       uv run --no-project --with pillow --with numpy python build.py film [--project .]   (numpy: transitions)
+Usage: uv run build.py preview <section> [--project .]
+       uv run build.py film [--project .]   (numpy: transitions)
 PREVIEW=1 in front = fast NVENC encoding for work-in-progress files.
 """
 import argparse
@@ -33,6 +37,7 @@ from pathlib import Path
 
 import _studio  # noqa: E402
 _studio.use("song-analysis")
+import config  # noqa: E402
 from encoding import h264  # noqa: E402
 from media import check_video, ffmpeg  # noqa: E402
 from encode import over_note, encode_target, place  # noqa: E402
@@ -282,9 +287,7 @@ def film(P):
         print(f"-> {r.name}: {r.stat().st_size / 1e6:.1f} MB{over}, {'0 decode errors' if not err else 'ERRORS: ' + err[:300]}")
     print(f"   {dur:.1f} s, look {P.get('look', 'standard')}")
     if P.get("credits"):                     # optional: credits show film excerpts -> rebuilt after every new film
-        uv = shutil.which("uv")
-        run = [uv, "run", "--no-project", "--with", "pillow", "--with", "numpy", "python"] if uv else [sys.executable]
-        subprocess.run(run + [str(HERE / "credits.py"), "--project", str(P.dir)]
+        subprocess.run(config.script_cmd(HERE / "credits.py") + ["--project", str(P.dir)]
                        + (["--append"] if P.get("credits").get("append", True) else []), check=True)
 
 

@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["faster-whisper==1.2.1", "numpy==2.5.4", "pillow==13.0.0", "scikit-image==0.26.0", "scipy==1.18.1"]
+# ///
 """Recipe "coin rain and the balance" - two figures left behind in the office, costs rain down, a balance weighs cost
 against value (reference: ai_efficiency S8 "token costs").
 
@@ -8,8 +12,7 @@ against value (reference: ai_efficiency S8 "token costs").
            fly away
 Inputs: three voice files, the office set (back + table). Vary in recipe.json: cast, positions, labels, counter,
 coin count, words, voices, set, seed.
-Run: uv run --no-project --with pillow --with numpy --with scipy --with scikit-image --with faster-whisper
-     python s08_coin_rain.py <clip folder> [--plan]
+Run: uv run s08_coin_rain.py <clip folder> [--plan]
 """
 import math
 import random

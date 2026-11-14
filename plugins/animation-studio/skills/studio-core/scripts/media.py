@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Small media helpers every skill needs: decode audio, durations, voice activity, video check, contact sheet.
 
     import media

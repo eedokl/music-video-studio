@@ -7,7 +7,7 @@ user-invocable: false
 # voice – spoken lines with a fixed voice per character
 
 Scripts: `${CLAUDE_PLUGIN_ROOT}/skills/voice/scripts/` – run with
-`uv run --no-project --with numpy python "${CLAUDE_PLUGIN_ROOT}/skills/voice/scripts/voice.py" ...`
+`uv run "${CLAUDE_PLUGIN_ROOT}/skills/voice/scripts/voice.py" ...`
 
 | file | what |
 |---|---|

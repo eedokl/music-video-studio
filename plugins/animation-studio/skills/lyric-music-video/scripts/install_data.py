@@ -1,6 +1,10 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Put the analysed song into the project's engine (video/): song, lyric lines + sections, timing, hits, held notes.
 
-  uv run --no-project python install_data.py PROJECT [--held analysis/held.json] [--video video]
+  uv run install_data.py PROJECT [--held analysis/held.json] [--video video]
 
 Reads (all made by analyze_song.py / song-analysis):
   lyrics.txt            sung lines with [Section] headers -> RAW in video/src/lyrics.ts

@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Who sings when? Assign the mouth shapes to the figures -> analysis/assignment.json (scenes only read this file).
 
 Two questions, two sources:
@@ -17,7 +21,7 @@ Rules for the lead voice, in this order:
 Backing vocals (only with a backing stem): always the OTHER figure (call and response).
 Gaps (voice audible, mouth closed - held notes) are filled with alternating open shapes C/B.
 Output: assignment.json, lines.csv (evidence per lyric line), lip-sync check (gaps >= 0.3 s).
-Usage: uv run --no-project --with numpy python voices.py [<project>]
+Usage: uv run voices.py [<project>]
 """
 import json
 import re

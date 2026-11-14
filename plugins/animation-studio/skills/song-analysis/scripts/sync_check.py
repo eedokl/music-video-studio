@@ -1,6 +1,10 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Measure how well word times sit on the voice: word start (as shown) vs. the nearest clear vocal onset.
 
-  uv run --no-project --with numpy python sync_check.py VOCALS.wav timing.json [--lead 0.08] [--ref other_timing.json]
+  uv run sync_check.py VOCALS.wav timing.json [--lead 0.08] [--ref other_timing.json]
 
 timing.json: the lines format ([{"t","e","words","ends"}]) or a song_sheet.json of track_read.py.
 --lead   the words are shown this much before their time (lyric-music-video LEAD) - measured is start - lead.

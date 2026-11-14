@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["faster-whisper==1.2.1", "numpy==2.5.4"]
+# ///
 """Narration / voice lines of a clip: length and word times, so tags, gestures and figures can land on a word.
 
 clip.json:
@@ -7,7 +11,7 @@ clip.json:
 Words come from Whisper (song-analysis whisper_device: large-v3 on the GPU under the GPU lock, "small" on the CPU
 with WHISPER_CPU=1; WHISPER_MODEL=large-v3 forces the accurate model) and are cached next to the clip in narration/<id>.json; a <audio>.words.json beside the audio
 ({"words": [{"w": "builder", "s": 1.23, "e": 1.61}], "duration": 4.38}) is used instead when it exists.
-Usage (prints the words): uv run --no-project --with faster-whisper --with numpy python narration.py <audio> [--lang en]
+Usage (prints the words): uv run narration.py <audio> [--lang en]
 """
 import json
 import os

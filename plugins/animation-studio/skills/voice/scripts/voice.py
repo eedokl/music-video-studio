@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Text-to-speech with a FIXED voice per character, checked by Whisper (building block of the animation-studio plugin).
 
 Engines (first available one of a cast entry and its "fallback" list wins):

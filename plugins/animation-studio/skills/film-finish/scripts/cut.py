@@ -1,7 +1,11 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4", "opentimelineio==0.18.1", "pillow==13.0.0"]
+# ///
 """Film cut for films WITHOUT a song timeline (shorts, slide clips, dialogue scenes, explainers): a shot list ->
 film.mp4 / film_small.mp4 / film_mail.mp4 (+ film.otio for Kdenlive, contact sheet, level report).
 
-  uv run --no-project --with numpy --with pillow --with opentimelineio python cut.py cut.json [--version v2]
+  uv run cut.py cut.json [--version v2]
         [--out-dir DIR] [--no-otio] [--no-versions]
 PREVIEW=1 in front = fast NVENC encodes for work-in-progress files.
 
@@ -811,7 +815,7 @@ def main():
             write_otio(plan, tl, out_dir / f"{prefix}.otio", bed_wav)
             print(f"-> {prefix}.otio (Kdenlive: File > Import > OpenTimelineIO)")
         except ImportError:
-            print("   opentimelineio missing - run with --with opentimelineio for the Kdenlive hand-off")
+            print("   opentimelineio missing - run with `uv run cut.py` (declares it) for the Kdenlive hand-off")
     rep.update({"frames": total, "seconds": round(dur, 3), "files": checks, "sheet": str(sheet)})
     (out_dir / f"{prefix}_report.json").write_text(json.dumps(rep, ensure_ascii=False, indent=1), encoding="utf-8")
     lv = rep.get("dialogue_over_music_db")

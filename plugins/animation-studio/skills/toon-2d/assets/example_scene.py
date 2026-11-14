@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
 """Scene "Pip and the Flower" (6 s, 24 fps) as a Synfig file - the complete reference example of toon-2d.
 
 Beats (frames):
@@ -12,8 +16,8 @@ All main moves are keyframes (editable in Synfig Studio). Only the antenna (foll
 spring simulation and baked as one key per frame.
 
 Start a scene from it:  python new_scene.py <folder> --from example   (copies this file as make_scene.py)
-Run:    uv run --no-project python make_scene.py [out.sif]   -> scene.sif next to make_scene.py (like the templates)
-Render: uv run --no-project python <toon-2d>/scripts/render.py scene.sif --gif --contact 0,15,36,52,74,97,109,118,140
+Run:    uv run make_scene.py [out.sif]   -> scene.sif next to make_scene.py (like the templates)
+Render: uv run <toon-2d>/scripts/render.py scene.sif --gif --contact 0,15,36,52,74,97,109,118,140
 """
 import math
 import sys

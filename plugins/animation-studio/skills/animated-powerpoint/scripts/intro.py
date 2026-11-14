@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["faster-whisper==1.2.1", "numpy==2.5.4", "pillow==13.0.0", "scikit-image==0.26.0", "scipy==1.18.1"]
+# ///
 """Deck intro: the title slide lights up in a dark room, slides flip faster and faster on the narrator's words, words of
 a word cloud fly out of the slide, keywords land exactly on their spoken word, a hard stop on a card where a word is
 struck through and another one is written by hand, then a story slide types its title word by word with the voice,
@@ -22,7 +26,7 @@ Defaults: the card comes 4 frames before the strike; the story starts 14 frames 
 handwriting end; wobble right after the last title word, page turn after the wobble, 4 frames of the next image.
 Steps: tex (textures + intro_stage.json + plan.json) -> 3d (assets/intro25d.html via toon-2d render_multiplane.py)
 -> final (look) -> sound (narration + clicks, whooshes, keys, strike, typewriter, knocks, page turn).
-Usage: uv run --no-project --with pillow --with numpy --with faster-whisper python intro.py clips/intro/intro.json
+Usage: uv run intro.py clips/intro/intro.json
 """
 import json
 import math

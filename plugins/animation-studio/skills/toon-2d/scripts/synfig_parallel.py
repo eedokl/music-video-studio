@@ -1,10 +1,14 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
 """Spread a Synfig scene over all CPU cores: split the frame range into chunks and render them at the same time.
 
 Synfig uses only ~1.5 cores per run (measured: 1.6 of 20 on an i5-14600K) - 8 runs in parallel take as long
 as 4. Hence: N chunks (default: cores/2) with --begin-time/--end-time, each into its own subfolder,
 then moved into the target folder as f.0000.png ... (same names as a normal Synfig run).
 
-Usage: uv run --no-project python synfig_parallel.py scene.sif target_folder [--pattern f.png] [--jobs 10]
+Usage: uv run synfig_parallel.py scene.sif target_folder [--pattern f.png] [--jobs 10]
        [--width W] [--height H]   (default: the canvas size of the .sif - never stretches)
 Several scenes queued one after another do not share the cores - to render several scenes
 at the same time, lower --jobs per scene instead.

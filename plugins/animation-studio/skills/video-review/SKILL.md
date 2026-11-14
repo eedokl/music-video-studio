@@ -15,7 +15,7 @@ song project, an AI-video pass redone for some shots, a film before/after a fix)
    the newest mix)? Which version fills shots nobody picks (default)? Where do the shot boundaries come from?
 2. **Create the review** (writes `review.json` + empty `choice.json`, measures per shot how different the versions are):
    ```
-   uv run --no-project --with numpy python "${CLAUDE_PLUGIN_ROOT}/skills/video-review/scripts/review.py" init \
+   uv run "${CLAUDE_PLUGIN_ROOT}/skills/video-review/scripts/review.py" init \
        film_v1.mp4 film_v2.mp4 --labels V1 V2 --audio v2 --default v2 --name film_v3.mp4 --out review/review.json \
        (--shots shots.json | --project <song project> | --detect)
    ```
@@ -37,7 +37,7 @@ song project, an AI-video pass redone for some shots, a film before/after a fix)
    "next shot after a pick" auto-advances. Every pick is saved at once to `choice.json`. **Cut new version** runs the
    cut in the background and shows the result under the players.
 4. **Cut without the page** (same result, bit-identical video stream):
-   `uv run --no-project python "${CLAUDE_PLUGIN_ROOT}/skills/video-review/scripts/review.py" cut review/review.json [--small] [--choice other.json]`
+   `uv run "${CLAUDE_PLUGIN_ROOT}/skills/video-review/scripts/review.py" cut review/review.json [--small] [--choice other.json]`
    → `<name>.mp4` (x264 crf 18, or NVENC with `PREVIEW=1`), `<name>.log` (version per shot, frame counts),
    with `--small` (or `"small": true` in review.json) also `<name>_small.mp4` < 29 MB (film-finish two-pass encoder).
 5. **Check:** compare the log with the picks; `media.py sheet` for a contact sheet; play the cut once with sound.

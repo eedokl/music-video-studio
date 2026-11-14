@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4", "pillow==13.0.0", "svgelements==1.9.6"]
+# ///
 """End credits like in the cinema: slowly rolling text in blocks, short gag scenes between the blocks, "scene windows"
 beside the text with excerpts of the finished film (and outtakes), a music bed (instrumental, quiet under the text,
 louder in the gags), soft sound effects, an optional post-credits scene after black, then black.
@@ -5,7 +9,7 @@ louder in the gags), soft sound effects, an optional post-credits scene after bl
 
   python credits.py [--project .] --draft [--gags N] [--force]   first credits from the project -> project.json "credits"
   python credits.py [--project .] [--append] [--to s]              build (--to: only the first s seconds, quick test)
-Run with: uv run --no-project --with pillow --with numpy python credits.py ...   (PREVIEW=1 = NVENC)
+Run with: uv run credits.py ...   (PREVIEW=1 = NVENC)
 The credits show film excerpts -> rebuild them after every new film (build.py film does it when "credits" is set).
 
 project.json "credits" (all optional except "text"):

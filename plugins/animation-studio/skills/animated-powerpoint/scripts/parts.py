@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4", "pillow==13.0.0", "scipy==1.18.1"]
+# ///
 """Cut a figure (figures/<name>/original.png) into movable parts – every pixel comes from the original drawing.
 
   parts.py figures/<name> [--auto]       --auto (or no parts.json yet): writes a first guess parts.json
@@ -17,7 +21,7 @@ joints are grown as white fill with an ink contour (only deeper than 10 px under
 in the rest pose); every back part runs 6 px under the front parts (no see-through seam when lit).
 Outputs: <part>.png (full crop size, RGBA), rig.json (pivots, feet, foot blobs, centre, Synfig view), parts_check.png,
 and the fidelity check: the parts stacked in the rest pose vs. original.png.
-Usage: uv run --no-project --with pillow --with numpy --with scipy python parts.py figures/fritz [--auto]
+Usage: uv run parts.py figures/fritz [--auto]
 """
 import argparse
 import json

@@ -1,7 +1,11 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Measure a talking scene: lip sync (open-mouth frames vs voice activity), duration, contact sheet - optionally
 against a reference scene.
 
-  uv run --no-project --with numpy python check_sync.py [--project .] [--video film.mp4]
+  uv run check_sync.py [--project .] [--video film.mp4]
          [--ref-mouth ref/mouth.json --ref-voice ref/voice.wav --ref-video ref/film.mp4 --ref-who pip]
 Per figure (frames at the project fps; the mouth is drawn one frame early, as in the scene):
   open        frames with an open mouth (Rhubarb B-H; X rest and A closed lips count as closed)

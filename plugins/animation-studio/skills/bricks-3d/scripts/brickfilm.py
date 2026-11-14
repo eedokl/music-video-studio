@@ -1,3 +1,4 @@
+# Runs inside Blender's own Python (started by blender_run.py) - no uv / PEP 723 header.
 """Render one section of a brick film inside Blender from a plan (JSON written by a user skill's planner).
 
 Run through blender_run.py (GPU lock, Blender from the config):

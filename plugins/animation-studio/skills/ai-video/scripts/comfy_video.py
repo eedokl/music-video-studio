@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Short video from a still with the local ComfyUI, WITHOUT sound: backgrounds with wind, light, clouds, water.
 
 Models:
@@ -7,7 +11,7 @@ Models:
         fast (8 steps), length 8n+1 frames, e.g. 1216x704 - for quick previews
 For photographic music videos prefer ltx.py (LTX-2.3 with the music as sound track: "moving stills", better motion).
 Usage:
-  uv run --no-project python comfy_video.py wan image.png "prompt" -o clip.mp4 [--seconds 4] [--width 1280 --height 704]
+  uv run comfy_video.py wan image.png "prompt" -o clip.mp4 [--seconds 4] [--width 1280 --height 704]
          [--seed 1] [--steps N] [--negative "..."]
 Result: MP4 (h264, 24 fps) + the frames in <clip>_frames/ (for compositing).
 Note: do not animate characters with it (they lose their look, no lips) - backgrounds, light, weather, transitions.

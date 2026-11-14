@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["faster-whisper==1.2.1", "numpy==2.5.4", "pillow==13.0.0", "scikit-image==0.26.0", "scipy==1.18.1"]
+# ///
 """General 2.5D scene stage for presentation films: the slide figures act in painted sets (after they stepped out).
 
 A scene = set layers in the room (painted backgrounds, a table as a front layer), layers in front of the camera

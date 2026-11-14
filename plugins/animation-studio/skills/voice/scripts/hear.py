@@ -1,3 +1,4 @@
+# Runs in the configured gpu_python (CUDA venv); without it the caller falls back to `uv run --with ...` (config.gpu_runner) - no PEP 723 header.
 """Whisper check of spoken lines: does the audio say the script? Plus word times for subtitles and gestures.
 
 Runs in the GPU python (config key `gpu_python`, faster-whisper) or via uv on the CPU - started by voice.py:

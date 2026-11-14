@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4", "pillow==13.0.0"]
+# ///
 """Paint the background layers of a forest clearing in a painterly style (many soft brush dabs) - no GPU, no AI.
 
 Result: <out>/01_sky.png, 02_far_trees.png, 03_mid_trees.png, 04_light_rays.png, 05_meadow_path.png,
@@ -5,7 +9,7 @@ Result: <out>/01_sky.png, 02_far_trees.png, 03_mid_trees.png, 04_light_rays.png,
 krita_assemble.py can turn into a layered .kra for painting over by hand.
 Ground line: y = 600 px (= -3.0 Synfig units with the default 16x9 view), horizon 455 px, sun top right.
 
-Usage: uv run --no-project --with numpy --with pillow python paint_clearing.py --out layers [--seed 7]
+Usage: uv run paint_clearing.py --out layers [--seed 7]
 The seed changes every dab (crowns, grass, flowers, clouds); seed 7 reproduces the reference clearing.
 """
 import argparse

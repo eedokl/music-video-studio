@@ -1,3 +1,7 @@
+# /// script
+# requires-python = "==3.12.*"
+# dependencies = ["mediapipe==1.2.3", "numpy==2.5.4", "opencv-python-headless==5.0.0.93", "pillow==13.0.0"]
+# ///
 """Choose the material by measurement -> selection.json (hand choices in selection.json "manual" always win).
 
   start  Claudia start images: canon check (ai-video canon.py) - ONE clay streak on the image left (her right),
@@ -24,8 +28,7 @@
 selection.json: {"start": {"s02": "ai/start/s02_v2.png"}, "broll": {...}, "clip": {"s02": {"file": ..., "lag": 0,
   "score": 0.59, "r": 0.59, "range": 0.21}}, "manual": {"start": {"s05": "ai/start/s05_v1.png"}, "clip": {"s07": {"file":
   "ai/lipsync/s07_v2_s1.mp4", "lag": 2}}}}
-Usage: uv run --no-project --python 3.12 --with mediapipe --with opencv-python-headless --with numpy --with pillow
-         python pick.py auto|start|broll|clips|all [<project>] [--curve rhubarb|level|mix] [--repair-mic]
+Usage: uv run pick.py auto|start|broll|clips|all [<project>] [--curve rhubarb|level|mix] [--repair-mic]
 """
 import argparse
 import json

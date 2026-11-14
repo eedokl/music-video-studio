@@ -122,8 +122,8 @@ side-by-side strips at every event). Each skill's `references/reference-tests.md
 
 ## Checking the plugin
 
-`python tests/smoke.py` (from the plugin folder; with `uv run --no-project --with numpy --with pillow --with svgelements`
-more scripts can be imported) compiles every script, runs `--help` on every CLI, checks that every flag a SKILL.md
+`python tests/smoke.py` (from the plugin folder) compiles every script, runs `--help` on every CLI, checks that every
+script run with uv declares all its third-party imports in its PEP 723 header, checks that every flag a SKILL.md
 shows exists, that the `_studio.py` copies are identical, that no new module name collides between skills and that no
 machine path slipped in. Run it before every release and bump `version` in `.claude-plugin/plugin.json` - installed
 users only get an update when the version changes.

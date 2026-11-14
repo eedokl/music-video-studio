@@ -1,8 +1,12 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Tighten or loosen the tempo of a spoken line WITHOUT changing its pitch - to fit a slot (a shot, a beat, a gap in
 the dialogue) or to follow "too slow / too fast" feedback. Technique of the ai_efficiency voices (ton/tempo.py).
 
-  uv run --no-project --with numpy python tempo.py line.wav -o line_fit.wav --slot 2.4      fit into 2.4 s
-  uv run --no-project --with numpy python tempo.py line.wav -o out.wav --factor 1.08          8 % faster
+  uv run tempo.py line.wav -o line_fit.wav --slot 2.4      fit into 2.4 s
+  uv run tempo.py line.wav -o out.wav --factor 1.08          8 % faster
   ... [--max-pause 0.40] [--new-pause 0.30] [--tail 0.0] [--wpm-max 172 --text "the words"] [--min 0.8 --max 1.35]
 Neither --slot nor --factor: only the pauses are tightened. (Also as `voice.py tempo ...`, and as "slot"/"tempo"
 per item in voice.speak().)

@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Sound-effect track on the song timeline (earshot sound bank) -> analysis/sounds.wav (build.py mixes it in).
 
 Sources, so every sound lands on its frame:
@@ -17,7 +21,7 @@ Sources, so every sound lands on its frame:
     length, earshot --dur), "sections": [...] / "not_sections": [...] (only / never in these sections)
 Soft sounds ~9 dB under the music, 6 kHz low-pass and 10 ms fades: hard unfiltered clicks over music sounded like
 "a broken speaker" (studio-core sfx_mix.py, shared with the other skills). All sounds: `earshot sfx list`. Without earshot the script says so and writes no track.
-Usage: uv run --no-project --with numpy python sounds.py [<project>]
+Usage: uv run sounds.py [<project>]
 """
 import json
 import sys

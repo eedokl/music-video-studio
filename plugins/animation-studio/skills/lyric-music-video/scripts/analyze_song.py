@@ -1,6 +1,10 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Analyse the song for the lyric video: word timing per letter, riff hits, beat grid, held-note candidates.
 
-  uv run --no-project --with numpy python analyze_song.py PROJECT [--best-words auto|always|never] [--no-refine] [--redo]
+  uv run analyze_song.py PROJECT [--best-words auto|always|never] [--no-refine] [--redo]
 
 Uses the building blocks of the plugin, nothing of its own:
   1-3  song-analysis analyze.py --only 1,2,3: lyrics_clean.txt, vocals_lead.wav (stems or Demucs, GPU lock),

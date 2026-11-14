@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4", "pillow==13.0.0"]
+# ///
 """Screen overlays on top of a section: text gags (keyword -> lettering pops up) and word-by-word lyrics.
 
 Why a separate track instead of drawing text into the scene: camera moves and panels crop text; as an overlay
@@ -22,7 +26,7 @@ project.json:
   gags with pictures: {"word": "chips", "icon": "chip"} (built in: money, chip, kiss, heart, arrow_up, arrow_down,
            star, bolt) or {"word": "...", "image": "gags/laugh.png", "text": "HA!"} (own PNG, optional word under it)
 Output: overlays/<section>.mov (PNG codec with alpha, frame 0 = section start), events in analysis/gags.json.
-Usage: uv run --no-project --with pillow --with numpy python overlays.py <section> [--project .]
+Usage: uv run overlays.py <section> [--project .]
 """
 import argparse
 import json

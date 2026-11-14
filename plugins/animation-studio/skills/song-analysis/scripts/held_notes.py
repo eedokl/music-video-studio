@@ -1,13 +1,17 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy==2.5.4"]
+# ///
 """Held notes: find long sung words and measure their loudness + pitch contour (30 values per second).
 
-  candidates  uv run --no-project --with numpy python held_notes.py candidates analysis/song_sheet.json [--min 1.0]
+  candidates  uv run held_notes.py candidates analysis/song_sheet.json [--min 1.0]
               (or a lines timing + its lyrics:  candidates timing.json --lyrics lyrics_clean.txt)
               -> words sung longer than --min seconds, longest first, with a suggested NAME:START:END
-  measure     uv run --no-project --with numpy python held_notes.py measure SONG held.json NAME:START:END ...
+  measure     uv run held_notes.py measure SONG held.json NAME:START:END ...
               [--vocals analysis/vocals_lead.wav]
               e.g. measure song.wav held.json survive1:90.4:92.5 dance:219.8:222.4
               START ~0.2 s before the word, END ~0.3 s after it.
-  detect      uv run --no-project --with numpy python held_notes.py detect VOCALS.wav timing.json [--lyrics lyrics_clean.txt]
+  detect      uv run held_notes.py detect VOCALS.wav timing.json [--lyrics lyrics_clean.txt]
               [--min 1.0 --ratio 2.5] [--out timing_held.json]
               [--pick N]  -> words held clearly longer than the song's normal word as one sustained note, judged on
               the voice (also mid-line words whose end Whisper cut short), the N that matter picked; --out writes

@@ -1,7 +1,11 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["pillow==13.0.0", "svgelements==1.9.6"]
+# ///
 """Figure sheet: all bundled characters side by side in their rest pose (Tim, Lia, Computer, Pip, Fips), or your own
 SVG figures - to show the cast to the user, to check a new figure's scale and pivots, or to pick a cast.
 
-Usage: uv run --no-project --with svgelements python figure_sheet.py --out sheet_dir [--add my_figure.svg ...]
+Usage: uv run figure_sheet.py --out sheet_dir [--add my_figure.svg ...]
        [--pivots]
 Writes <out>/figure_sheet.sif and <out>/figure_sheet.png (1920x1080). --pivots draws a red dot on every pivot.
 All figures stand on one floor line at the scale they have in scenes (Tim/Lia 1/72, Fips 1/80, Pip size 0.62 x 2).
