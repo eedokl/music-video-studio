@@ -73,8 +73,10 @@ Then **write the creative brief** (this is the film - do not skip it, do not cop
   `{name: [still sentence, short video sentence]}` for the places of this song.
 - Per shot, from the line's meaning: `idea` (one concrete picture), and
   - lipsync / claudia_moving: `action` (what she does - one thing), `set` (where), `set_short`, `manner`, `look`
-    (`manner` for singing: never just "deadpan" - LTX then keeps the mouth shut; default "with conviction and a dry,
-    calm face")
+    (`manner` = how she sings, e.g. "softly", "with energy", "tiredly into the camera"; `action` = a small movement,
+    e.g. "the wind blows her hair", "a slight sway of the head" - plan.py proposes both from the look. The LTX prompt
+    is built like the Europe 2031 night run V1: "she sings <manner>, <action>. She sings the words "...". <mouth>".
+    "deadpan" is her face, not a way to sing: bound to the words ("sings deadpan: ...") it kept mouths shut.)
   - broll: `subject` (what we see, people only anonymous/from behind), `motion` (what moves), `look`
 - Record every idea: `creative.add_idea(P, "ai", idea, shot)`; user ideas (`by: "user"`) always win.
 Reference shots (Europe 2031: projector screens, paper stacks, storms, server halls) show *techniques*; each song gets

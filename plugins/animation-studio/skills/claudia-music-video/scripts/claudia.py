@@ -94,6 +94,29 @@ WARDROBE = {   # defaults per version; the brief should invent one that fits the
     "live": ["a charcoal-grey oversized tailored blazer with the sleeves pushed up over a plain white high-neck top",
              "a black sleeveless jumpsuit with a wide belt", "a cropped white leather jacket over a black slip dress"],
 }
+# how she sings + a small movement, per look (pairs for "manner" and "action"). The Europe 2031 night run (V1) put
+# mood and motion into the action and the words into a sentence of their own - that version was chosen for 11 of 17
+# singing shots of V3 for its natural movement; "sings deadpan: <words>" (V2 / the 0.4 plugin) could shut the mouth.
+SING_MOODS = {
+    "grey_morning": [("tiredly into the camera", "a slight sway of the head"),
+                     ("quietly and dryly", "she shifts her weight, small head movements")],
+    "night": [("softly close to the camera", "the city lights flicker behind her, small head movements"),
+              ("calmly into the lens", "a slow turn of the head toward the camera")],
+    "studio": [("with energy", "a small nod on the beat, her bangs move"),
+               ("directly into the lens", "she leans in slightly, small head movements")],
+    "storm": [("with energy", "the wind blows her hair and her clothes"),
+              ("against the wind", "she turns her face into the wind, her bangs fly")],
+    "golden": [("with growing confidence", "the wind in her bangs, warm light moves over her face"),
+               ("calmly and certainly", "a slight sway of the head, she breathes in the morning air")],
+    "quiet": [("softly", "she looks slightly to the side, then back into the lens"),
+              ("quietly", "small head movements, dust drifts in the light")],
+    "intro": [("calmly into the lens", "she steps into the light, small head movements")],
+    "verse": [("with conviction", "a small nod on the beat, the light sweeps over her")],
+    "chorus": [("with energy and full voice", "she moves with the beat, her hair swings")],
+    "spoken": [("dryly, almost speaking", "very small head movements")],
+    "bridge": [("softly", "she closes her eyes for a moment, then looks into the lens")],
+    "finale": [("with passion and full voice", "she raises one hand, confetti drifts past her")],
+}
 STAGE = ("on a large dark concert stage, the band behind her only as dark silhouettes, haze in the air, beams of stage light")
 FRAMINGS = {"lipsync": ["close-up", "medium close-up", "medium shot", "low-angle medium shot", "three-quarter close-up"],
             "claudia_moving": ["wide shot", "medium shot from the side", "full shot from behind", "medium shot"]}
@@ -129,15 +152,29 @@ def start_image_prompt(s, wardrobe, look_img, version="studio"):
 
 
 def lipsync_prompt(s, wardrobe, look_vid, line):
+    """LTX prompt of a singing shot, built like the Europe 2031 night run V1: one action sentence with mood and movement
+    ("she sings softly, a slight sway of the head"), then the words in a sentence of their own, then the mouth sentence.
+    "manner" = how she sings (an adverb phrase), "action" = what she does / how she moves; "deadpan" belongs to her face
+    in the action, never right before the sung words (a mood bound to the words, "deadpan: ...", kept mouths shut)."""
     words = re.sub(r"\s+", " ", (line or "").replace('"', "").replace("„", "").replace("“", "")).strip()
-    if words and words[-1] not in ".!?":
-        words = words.rstrip(",;:") + "."
-    # "sings deadpan" kept the mouth shut in all 4 LTX takes of a shot (user test); "with conviction" opened it -
-    # the dry canon face stays in the wording
-    sing = f' and sings {s.get("manner", "with conviction and a dry, calm face")}: "{words}"' if words else " and sings."
-    return (f"{s.get('framing', 'Medium shot').capitalize()} of {ID_VIDEO}, wearing {wardrobe}, "
-            f"{s.get('action', 'she looks into the lens')}{sing} {MOUTH} {s.get('set_short') or s.get('set', '')}. "
+    words = words.rstrip(",;:.")                                 # ?! stay; the sentence ends after the quote
+    manner = (s.get("manner") or "into the camera").strip().rstrip(".")
+    if manner.lower() in ("deadpan", "deadpanned"):              # the canon face, as a face, not as a way to sing
+        manner = "into the camera with a dry, deadpan face"
+    action = (s.get("action") or "a slight sway of the head").strip().rstrip(".")
+    act = action[4:] if action.lower().startswith("she ") else action
+    first = act if act.lower().startswith("sings") else f"sings {manner}, {act}"
+    sing = f' She sings the words "{words}".' if words else ""
+    place = s.get("set_short") or s.get("set", "")
+    return (f"{s.get('framing', 'Medium shot').capitalize()} of {ID_VIDEO}, wearing {wardrobe}, she {first}.{sing} "
+            f"{MOUTH}{(' ' + place[0].upper() + place[1:] + '.') if place else ''} "
             f"{s.get('camera', 'Static camera').capitalize()}, cinematic photographic 35mm film look, {look_vid}.")
+
+
+def sing_mood(look, rng):
+    """(manner, action) for a singing shot without its own: picked by the seed from the look's SING_MOODS."""
+    opts = SING_MOODS.get(look) or SING_MOODS["studio"]
+    return rng.choice(opts)
 
 
 def moving_prompt(motion, camera, look_vid):

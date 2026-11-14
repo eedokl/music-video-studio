@@ -12,6 +12,8 @@ project.json "sections" = shots (film-finish cuts one section per shot):
    "technique": "lipsync|broll|claudia_moving", "engine": "ltx|s2v", "framing": "medium shot", "camera": "...",
    "look": "grey_morning", "lyrics": true,
    "idea": "", "action": "", "set": "", "set_short": "", "subject": "", "motion": ""}     <- the creative brief fills these
+  lipsync shots also get "manner" (how she sings: "softly", "with energy") + "action" (a small movement) from the
+  look (claudia.SING_MOODS, seeded) - the brief may replace both
 Rules: one shot per sung line (cut 0.08 s before the first syllable, onto a beat if one is within 0.2 s); intro and
 instrumental gaps > 2.5 s become B-roll shots; shots longer than --max-len are split on the beat nearest the middle,
 shorter than 1.2 s merged. Techniques are drawn with the project's creative seed (creative.rng): about --lipsync share
@@ -148,6 +150,8 @@ def main():
                       "line": (ln["text"] if sung else "(instrumental)"), "cont": bool(sung and ln.get("cont")),
                       "marker": mk, "technique": tech, "engine": engine, "framing": framing, "camera": cam, "look": lk,
                       "lyrics": sung, "idea": "", "action": "", "set": "", "set_short": "", "subject": "", "motion": ""})
+        if tech == "lipsync":                        # mood + a small movement from the look (V1 of the Europe 2031 run:
+            shots[-1]["manner"], shots[-1]["action"] = claudia.sing_mood(lk, creative.rng(P, f"mood:{name}"))  # the brief may change them
         for idea in creative.ideas(P, name):                 # ideas already recorded for this shot (user ideas win)
             if idea.get("by") == "user" or not shots[-1]["idea"]:
                 shots[-1]["idea"] = idea["idea"]
