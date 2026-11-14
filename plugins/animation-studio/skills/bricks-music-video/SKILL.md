@@ -68,7 +68,7 @@ frames the screen face. Options in `"bricks"`: `flip`, `palette`, `camera: calm|
 `samples`, `jitter`, `idle_screen`, `spots` (who stands where). Same seed → same film; new seed → new take.
 
 ## 4 · Plan, look at stills, then render
-Every build script checks project.json first (studio-core `project_check.py`, details in song-analysis "Project check"): a wrong type, overlapping sections or an unknown transition stop it in seconds with exit code 2 and the key named; unknown keys only warn. `"size": [w, h]` = render size (default 1280x720).
+Every build script checks project.json first (studio-core `project_check.py`, details in song-analysis "Project check"): a wrong type, an impossible section (from >= to, duplicate name) or an unknown transition stop it in seconds with exit code 2 and the key named; unknown keys and overlapping sections (build.py cuts at the next start) only warn. `"size": [w, h]` = render size (default 1280x720).
 ```
 python $S/bricks-music-video/scripts/render.py <section> --project <proj> --stills 24,120,240,400
 python $S/bricks-music-video/scripts/render.py <section> --project <proj> [--preview]

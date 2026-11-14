@@ -140,13 +140,19 @@ def spoken_lines(P, entries, a):
             derived.clean_temps(out)                                   # temps of a killed earlier run
             tmp = derived.temp_path(out)
             todo.append({"who": vname, "text": c["text"], "out": str(tmp)})
-            jobs.append((li, ci, out, tmp, inputs, spec))
+            jobs.append((li, ci, out, tmp, inputs, spec, engine))
     if todo:
         print(f"speaking {len(todo)} chunk(s) ...", flush=True)
         res = voice.speak(todo, P.dir, seed=creative.seed(P), language=P.get("language", "de"), engine=a.engine,
                           pronounce=P.get("pronounce"))
-        for (li, ci, out, tmp, inputs, spec), r in zip(jobs, res):
+        noted = set()
+        for (li, ci, out, tmp, inputs, spec, engine), r in zip(jobs, res):
             extra = {x: v for x, v in r.items() if x != "out"}
+            if engine and r.get("engine") and r["engine"] != engine and spec["voice"] not in noted:
+                noted.add(spec["voice"])                   # the cache key uses the predicted engine -> spoken again
+                print(f"   note: {spec['voice']} was expected to use {engine} but voice.speak fell back to "
+                      f"{r['engine']} - these lines will be spoken again on every run until {engine} works "
+                      f"(or pass --engine {r['engine']})")
             # wav complete -> then its record; the reference is hashed now: a reference designed during this run is
             # the one the line was spoken with
             derived.commit(tmp, out, inputs, spec, extra=extra)

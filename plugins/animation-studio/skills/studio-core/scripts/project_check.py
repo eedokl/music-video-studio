@@ -5,7 +5,7 @@
 # exclude-newer = "2026-11-14T00:00:00Z"
 # ///
 """Check a project's settings up front - before any long step - so a typo stops the build in seconds, not after a
-render: wrong types of shared keys, overlapping sections, a voice that is not in the cast, a talking slide figure
+render: wrong types of shared keys, impossible sections (from >= to, negative, duplicate names), a TTS voice that is not in the cast, a talking slide figure
 without mouth stages, sections whose frames were rendered for other times, unknown keys (did-you-mean).
 
   uv run project_check.py <project folder | project.json | clip.json | scene.json | short.json> [--skill <skill>]
@@ -263,13 +263,17 @@ def _sections(R, p, fps):
         if a >= b:
             R.err(k, f'"from" {a} must be smaller than "to" {b}')
             continue
-        if good and a < good[-1][1] - 1e-6:
-            pk, pa, pb = good[-1][2], good[-1][0], good[-1][1]
-            if a < pa:
-                R.err(k, f"sections must be in ascending order of time: starts at {a} s, before {pk} ({pa}-{pb} s)")
-            else:
-                R.err(k, f"overlaps {pk}: starts at {a} s but {pk} runs until {pb} s (sections should touch, not overlap)")
         good.append((a, b, k, s))
+    # order and overlaps are only warnings: film-finish build.py sorts the sections by "from" and cuts each one at the
+    # next one's start (end = min(to, next from)) - the result is defined, maybe even intended (two takes of a span)
+    if [g[0] for g in good] != sorted(g[0] for g in good):
+        R.warn("sections", "listed out of time order - build.py sorts them by \"from\"")
+    order = sorted(good, key=lambda g: g[0])
+    for (a, b, k, _), (na, nb, nk, _) in zip(order, order[1:]):
+        if na < b - 1e-6:
+            kept = max(0.0, na - a)
+            R.warn(k, f"overlaps {nk} ({na}-{nb} s): build.py cuts it at {na} s" +
+                   (f" - it keeps {a}-{na} s" if kept > 0 else " - it is dropped (0 frames)"))
     return good
 
 
@@ -323,7 +327,8 @@ def _voices(R, p, base):
     figs = p.get("figures")
     if not isinstance(figs, dict):
         return
-    if R.family == "talk":                            # every speaker is spoken by a cast voice (voice skill)
+    if R.family == "talk" and not p.get("recording"):  # TTS: every speaker is spoken by a cast voice (voice skill);
+        #                                                 with "recording" speak.py uses the recording, no cast voice
         cast = _cast(base, p)
         for n, f in figs.items():
             if not isinstance(f, dict):

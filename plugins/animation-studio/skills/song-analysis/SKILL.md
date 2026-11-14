@@ -26,9 +26,9 @@ the section of a song second, `Project.size` the film frame size (`"size": [w, h
 Errors stop the build with exit code 2 and name the key: `"sounds"` must be true/false, one rule or a list of rules
 with `"sfx"` + `"word"`/`"at"`/`"every"`/`"marker"`; `"gags"`, `"screen"`, `"steam"`, `"gestures"` lists of objects with
 `"word"`; `"transitions"` objects with `"at"` and a known `"kind"`; `"look"` a string; `"fps"` a number; `"size"` two
-even whole numbers; `"sections"` objects with `"name"`, numeric `"from"` < `"to"`, in ascending order, not
-overlapping, unique names. Figures in song projects sing by role (`"voice"`: male / female / announcer – anything else
-warns); in talking scenes `"voice"` must be a voice of the cast (voice skill `assets/cast.json` + project `"voices"`).
+even whole numbers; `"sections"` objects with `"name"`, numeric `"from"` >= 0 and < `"to"`, unique names (order
+and overlaps only warn: build.py sorts and cuts a section at the next one's start). Figures in song projects sing by role (`"voice"`: male / female / announcer – anything else
+warns); in talking scenes without a `"recording"` `"voice"` must be a voice of the cast (voice skill `assets/cast.json` + project `"voices"`).
 Warnings: unknown keys (did-you-mean), rendered `scenes/<section>/` whose frame count or size no longer fits the
 section. A new project.json key goes into `SCHEMAS` of `project_check.py`.
 

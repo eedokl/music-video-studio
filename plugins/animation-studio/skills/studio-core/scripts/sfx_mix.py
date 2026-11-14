@@ -51,6 +51,24 @@ def fade(y, ms=10, fade_in=True, fade_out=True):
     return y
 
 
+def _wav_complete(path):
+    """True when a WAV's data chunk is as long as its header says (a render killed mid-write leaves a header with
+    a placeholder size or fewer bytes than announced). Plain RIFF parse - works for PCM and float WAVs."""
+    try:
+        b = Path(path).read_bytes()
+    except OSError:
+        return False
+    if len(b) < 44 or b[:4] != b"RIFF" or b[8:12] != b"WAVE":
+        return False
+    i = 12
+    while i + 8 <= len(b):
+        cid, size = b[i:i + 4], int.from_bytes(b[i + 4:i + 8], "little")
+        if cid == b"data":
+            return 0 < size < 0xFFFFFFF0 and i + 8 + size <= len(b)
+        i += 8 + size + (size & 1)
+    return False
+
+
 class SfxMix:
     def __init__(self, seconds, cache=None, pan_law="linear", tail=2.0, names="short"):
         self.n = int(round(seconds * SR))
@@ -109,8 +127,10 @@ class SfxMix:
         if derived.fresh(wav, (), spec):
             return True
         if wav.exists() and derived.recorded(wav) is None:
-            derived.record(wav, (), spec)                  # bank file from before derived.py
-            return True
+            if _wav_complete(wav):
+                derived.record(wav, (), spec)              # bank file from before derived.py
+                return True
+            print(f"   {wav.name}: an incomplete bank file (killed render?) - rendering it again")
         try:
             with derived.build(wav, (), spec) as b:
                 r = subprocess.run(config.cmdline(self.ear + ["sfx", "render", sid, "-o", str(b.path), "--sr", str(SR)]

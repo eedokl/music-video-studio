@@ -299,13 +299,23 @@ mode["m"] = "ok"
 d = mix._bank(wav2, "swish/soft", []); r_d = len(runs)
 mode["m"] = "unknown"
 e = mix._bank(bank / "nope.wav", "nope", [])
+import io, wave as _wave
+buf = io.BytesIO()
+with _wave.open(buf, "wb") as w_:                         # a complete bank file from before derived.py
+    w_.setnchannels(1); w_.setsampwidth(2); w_.setframerate(48000); w_.writeframes(bytes([0, 1]) * 480)
+good_wav = buf.getvalue()
 legacy = bank / "drip__plink.wav"
-legacy.write_bytes(b"RIFFold")
+legacy.write_bytes(good_wav)
 f = mix._bank(legacy, "drip/plink", []); r_f = len(runs)
+mode["m"] = "ok"
+trunc = bank / "drip__bubble.wav"                         # one a killed render left half-written (no record)
+trunc.write_bytes(good_wav[:len(good_wav) // 2])
+g = mix._bank(trunc, "drip/bubble", []); r_g = len(runs)
 res["sfx_bank"] = {"rendered": a and r_a == 1, "reused": b and r_b == 1,
                    "crash_not_kept": (not c) and not c_left, "rerendered_after_crash": d and r_d == 3,
                    "unknown_id": (not e) and not (bank / "nope.wav").exists(),
-                   "legacy_adopted": f and r_f == 4 and legacy.read_bytes() == b"RIFFold",
+                   "legacy_adopted": f and r_f == 4 and legacy.read_bytes() == good_wav,
+                   "truncated_legacy_rerendered": g and r_g == 5 and trunc.read_bytes() == b"RIFFdata",
                    "no_temp": not list(bank.glob(".tmp.*"))}
 print("RESULT " + json.dumps(res))
 '''

@@ -31,7 +31,7 @@ def rejected(ctx, label, cmd, wants, limit=30):
 
 
 def run_bad_project(ctx):
-    # a song project: "sounds" as a string, overlapping sections, a typo'd key, an unknown transition kind
+    # a song project: "sounds" as a string, overlapping sections (warning), a typo'd key, an unknown transition kind
     song = ctx.dir / "song"
     write_json(song / "project.json", {
         "name": "bad", "fps": 24, "seed": 1,
@@ -41,7 +41,9 @@ def run_bad_project(ctx):
         "sounds": "pop", "gags": [{"text": "NO WORD"}], "transitions": [{"at": 2.0, "kind": "glwo"}],
         "titel": {"text": "x", "from": 0, "to": 1}})
     want_song = [r'ERROR: sounds: expected true / false, one rule .* got a string \("pop"\)',
-                 r"ERROR: sections\[1\] \(b\): overlaps sections\[0\] \(a\)",
+                 # an overlap is only a warning: build.py sorts the sections and cuts one at the next one's start
+                 r"WARNING: sections\[0\] \(a\): overlaps sections\[1\] \(b\) \(1\.5-3\.0 s\): build\.py cuts it at "
+                 r"1\.5 s - it keeps 0\.0-1\.5 s",
                  r'ERROR: gags\[0\]: needs "word"', r'transitions\[0\]\.kind: "glwo" is not one of .*did you mean "glow"',
                  r'WARNING: titel: unknown key - did you mean "title"']
     times = [rejected(ctx, "project_check.py", ["uv", "run", "--offline", CHECK, song], want_song),
@@ -61,6 +63,17 @@ def run_bad_project(ctx):
                           [r'ERROR: figures\.tim\.voice: "male" is not a voice of the cast - use one of .*tim',
                            r'add "male" to project\.json "voices"']))
     expect(not (talk / "lines").exists() and not (talk / "song.wav").exists(), "voices were made before the check")
+
+    # the same talking scene with its own "recording": no TTS, so no cast voice is needed (built before the check)
+    rec = ctx.dir / "talk_rec"
+    rec.mkdir(parents=True, exist_ok=True)
+    (rec / "dialogue.txt").write_text("Pip: Hallo!\n", encoding="utf-8")
+    write_json(rec / "project.json", {
+        "name": "rec", "fps": 24, "script": "dialogue.txt", "recording": "recording.wav", "set": "room", "seed": 3,
+        "figures": {"pip": {"svg": "skill:characters/assets/figures/pip.svg"}}})
+    r = ctx.run(["uv", "run", "--offline", CHECK, rec], check=False, timeout=120)
+    expect(r.returncode == 0 and "is not a voice of the cast" not in r.stdout,
+           f'a talking scene with "recording" was rejected for its voice:\n{r.stdout[-600:]}')
 
     # a slide clip whose narration speaker has no mouth block in parts.json
     deck = ctx.dir / "deck"
