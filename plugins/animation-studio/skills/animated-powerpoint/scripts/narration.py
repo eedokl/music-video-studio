@@ -13,7 +13,7 @@ clip.json:
 Words come from Whisper (song-analysis whisper_device: large-v3 on the GPU under the GPU lock, "small" on the CPU
 with WHISPER_CPU=1; WHISPER_MODEL=large-v3 forces the accurate model) and are cached next to the clip in narration/<id>.json; a <audio>.words.json beside the audio
 ({"words": [{"w": "builder", "s": 1.23, "e": 1.61}], "duration": 4.38}) is used instead when it exists.
-Usage (prints the words): uv run narration.py <audio> [--lang en]
+Usage (prints the words): uv run narration.py <audio> [--lang de]   (default: detected)
 """
 import json
 import os
@@ -31,14 +31,15 @@ def norm(w):
     return re.sub(r"[^\w']", "", w.lower())
 
 
-def words(audio, cache_dir, lang="en"):
-    """-> {"duration": s, "words": [{"w", "s", "e"}]} (cached)."""
+def words(audio, cache_dir, lang=None):
+    """-> {"duration": s, "words": [{"w", "s", "e"}]} (cached). lang None = Whisper detects the language (a German
+    line transcribed as English gives wrong word times - user test)."""
     audio = Path(audio)
     side = audio.with_suffix(".words.json")
     if side.exists():
         return json.loads(side.read_text(encoding="utf-8"))
     cache_dir.mkdir(parents=True, exist_ok=True)
-    c = cache_dir / (audio.stem + ".json")
+    c = cache_dir / (audio.stem + f".{lang or 'auto'}.json")
     if c.exists() and c.stat().st_mtime >= audio.stat().st_mtime:
         return json.loads(c.read_text(encoding="utf-8"))
     from whisper_device import whisper_model
@@ -62,6 +63,6 @@ def word_time(res, word, nth=1, end=False):
 
 
 if __name__ == "__main__":
-    lang = sys.argv[sys.argv.index("--lang") + 1] if "--lang" in sys.argv else "en"
+    lang = sys.argv[sys.argv.index("--lang") + 1] if "--lang" in sys.argv else None
     r = words(sys.argv[1], Path(sys.argv[1]).parent / "narration_cache", lang)
     print(json.dumps(r, indent=1))

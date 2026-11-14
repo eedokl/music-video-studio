@@ -143,6 +143,12 @@ def plan_ending(P, G, T, movers, order, last_land, multi):
                 RT.merge(G[n]["R"].keys, RT.gesture_keys(kind, G0 + 20 + 7 * k))
                 T.events[n]["group_gesture"] = [kind, G0 + 20 + 7 * k]
     R_ret = end_routine - 30 + P.get("hold", 36) if ending == "return" else None
+    if R_ret is not None and T.cfg:                  # never hop back while someone still talks (user test)
+        speech_end = max(T({"line": lid, "edge": "end"}) for lid in T.cfg)
+        if R_ret < speech_end + 8:
+            print(f"  return hop moved from frame {R_ret} to {speech_end + 8}: the narration runs until frame "
+                  f"{speech_end} (\"hold\" adds time after the routine, not after the speech)")
+            R_ret = speech_end + 8
     end = (R_ret + 22 + 24 if ending == "return" else end_routine) + P.get("tail", 0)
     P["end"] = end
     tag_hold = P.get("tag_hold", 150 if multi else None)

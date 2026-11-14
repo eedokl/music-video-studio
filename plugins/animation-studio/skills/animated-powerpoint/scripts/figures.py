@@ -144,6 +144,20 @@ def main():
     lab = lab * core
     areas = ndi.sum(core, lab, range(1, n + 1))
     keep = [i + 1 for i, ar in enumerate(areas) if ar >= a.min_area * core.size]
+    # a title bar / banner / footer stripe is slide layout, not a character (user test: the header bar became
+    # "fig1" and took the first --names entry): wide (>= 60 % of the width) and flat (height < 1/4 of its width)
+    bars = []
+    for i in keep:
+        ys, xs = np.nonzero(lab == i)
+        w, h = xs.max() - xs.min() + 1, ys.max() - ys.min() + 1
+        if w >= 0.6 * core.shape[1] and h < 0.25 * w:
+            bars.append(i)
+    if bars and len(bars) < len(keep):
+        print(f"  skipped {len(bars)} bar(s) across the slide (title bar, banner) - not figures")
+        keep = [i for i in keep if i not in bars]
+        for i in bars:                               # and they are not "small pieces" to hang onto a figure either
+            lab[lab == i] = 0
+            areas[i - 1] = 0
     if not keep:
         raise SystemExit("no figure found - lower --min-area or pick the picture with --picture")
     # small pieces close to a figure belong to it (a mug handle, steam, a hat that does not touch the head)

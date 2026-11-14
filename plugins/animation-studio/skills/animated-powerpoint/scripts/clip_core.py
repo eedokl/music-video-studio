@@ -15,6 +15,15 @@ class Clip:
         self.file = Path(path).resolve()
         self.dir = self.file.parent
         self.p = json.loads(self.file.read_text(encoding="utf-8"))
+        if "seed" not in self.p:                     # SKILL: the project's seed lives in project.json (user test:
+            for up in (self.dir.parent.parent, self.dir.parent):   # it was ignored) - clips/<name>/clip.json
+                pj = up / "project.json"
+                if pj.exists():
+                    s = json.loads(pj.read_text(encoding="utf-8")).get("seed")
+                    if s is not None:
+                        self.p["seed"] = s           # in memory; a clip's own "seed" still wins
+                        self._seed_from_project = True
+                    break
         self.deck_file = (self.dir / self.p.get("deck", "../../deck/deck.json")).resolve()
         self.deck = json.loads(self.deck_file.read_text(encoding="utf-8"))
         self.slide = next(s for s in self.deck["slides"] if s["n"] == self.p["slide"])
@@ -31,7 +40,8 @@ class Clip:
         self.z0 = (self.Hs / 2) / math.tan(math.radians(self.fov / 2))   # frontal: the slide fills the frame
 
     def save(self):
-        self.file.write_text(json.dumps(self.p, indent=1, ensure_ascii=False), encoding="utf-8")
+        p = {k: v for k, v in self.p.items() if not (k == "seed" and getattr(self, "_seed_from_project", False))}
+        self.file.write_text(json.dumps(p, indent=1, ensure_ascii=False), encoding="utf-8")
 
 
 def fig_geometry(C, name):
@@ -74,7 +84,8 @@ class Times:
         if lid not in self._words:
             import narration
             n = self.cfg[lid]
-            self._words[lid] = narration.words(self.C.dir / n["audio"], self.C.dir / "narration", n.get("lang", "en"))
+            self._words[lid] = narration.words(self.C.dir / n["audio"], self.C.dir / "narration",
+                                                  n.get("lang") or self.C.p.get("lang"))   # None = detected
         return self._words[lid]
 
     def line_at(self, lid):

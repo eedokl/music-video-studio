@@ -37,8 +37,8 @@ STAGES = [0.0, 0.1, 0.25, 0.4, 0.55, 0.7, 0.85, 1.0]
 INK = np.array([0.07, 0.07, 0.08], np.float32)
 SHAPE_TO_STAGE = {     # Rhubarb shape -> stage (A closed lips ... D wide open, X rest)
     "open": {"A": 1, "B": 3, "C": 5, "D": 7, "E": 6, "F": 2, "G": 2, "H": 4, "X": 2},
-    "line": {"A": 0, "B": 2, "C": 4, "D": 7, "E": 5, "F": 2, "G": 1, "H": 4, "X": 0},
-    "beak": {"A": 0, "B": 2, "C": 4, "D": 7, "E": 5, "F": 2, "G": 1, "H": 4, "X": 0}}
+    "line": {"A": 0, "B": 3, "C": 4, "D": 7, "E": 5, "F": 2, "G": 1, "H": 4, "X": 0},
+    "beak": {"A": 0, "B": 3, "C": 4, "D": 7, "E": 5, "F": 2, "G": 1, "H": 4, "X": 0}}
 
 
 def poly_mask(shape, pts):
@@ -256,14 +256,14 @@ def rhubarb_cues(wav, text=None, cache=None):
     _studio.use()
     import config
     wav = Path(wav)
-    out = Path(cache or wav.parent) / (wav.stem + ".mouth.json")
+    # -r phonetic: language-independent. Rhubarb's default recognizer is English-only and gives a German (or any
+    # non-English) line an almost closed mouth (user test). Its dialog text (-d) only helps that English recognizer,
+    # so `text` is not passed on. ".phonetic" in the cache name: results of the old English run are not reused.
+    out = Path(cache or wav.parent) / (wav.stem + ".mouth.phonetic.json")
     if not out.exists() or out.stat().st_mtime < wav.stat().st_mtime:
         out.parent.mkdir(parents=True, exist_ok=True)
-        cmd = [config.need("rhubarb"), "-f", "json", "--extendedShapes", "GHX", "-o", str(out), str(wav)]
-        if text:
-            txt = out.with_suffix(".txt")
-            txt.write_text(text, encoding="utf-8")
-            cmd[1:1] = ["-d", str(txt)]
+        cmd = [config.need("rhubarb"), "-r", "phonetic", "-f", "json", "--extendedShapes", "GHX", "-q",
+               "-o", str(out), str(wav)]
         subprocess.run(cmd, check=True, capture_output=True)
     return json.loads(out.read_text(encoding="utf-8"))["mouthCues"]
 
@@ -308,4 +308,10 @@ def mouth_keys(fig_dir, lines, fps=24, lead=1, cache=None):
 
 
 if __name__ == "__main__":
-    make(sys.argv[1], clean="--clean" in sys.argv)
+    import argparse
+    ap = argparse.ArgumentParser(description="Cut the mouth stages of a raster slide figure (parts.json \"mouth\" "
+                                 "block: kinds open / line / beak - see the top of this file).")
+    ap.add_argument("figure", help="figure folder, e.g. figures/robo")
+    ap.add_argument("--clean", action="store_true", help="also remove white soft-edge flecks outside the outline")
+    a = ap.parse_args()
+    make(a.figure, clean=a.clean)

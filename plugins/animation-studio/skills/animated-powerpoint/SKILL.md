@@ -57,7 +57,10 @@ Work in a project folder outside the plugin: `deck/`, `figures/`, `clips/<name>/
    `pop_at`, a line's `at`) can be a frame or a time spec – `{"line": "felix", "word": "spots"}`,
    `{"line": "fritz", "edge": "end", "offset": 6}`, `{"fig": "felix", "event": "land", "offset": -12}`,
    `{"max": [...]}` – so tags pop on the spoken role and figures start after a word. Word times come from Whisper
-   (`narration.py`; `WHISPER_MODEL=large-v3` gives the most exact times, also on the CPU).
+   (`narration.py`; `WHISPER_MODEL=large-v3` gives the most exact times, also on the CPU; the language is detected -
+   `"lang": "de"` per line or in clip.json fixes it). With `"ending": "return"` the hop back waits until the narration
+   has ended (`"hold"` = extra frames after the routine). Mouths: Rhubarb in phonetic mode (any language).
+   The seed: clip.json `"seed"`, else the one in the project's `project.json`.
 6. **Build** – `clip.py clips/<name>/clip.json` (plan → synfig → light → tex → 3d → final → sound; `--from <step>` /
    `--only <step>` to redo a part). An 8 s clip takes ~1.5 min. Output: `<name>.mp4` (with look),
    `stage.mp4` (without), `first.png`/`last.png`, `contact.png`, `plan.json` (event frames), `check.json`,
