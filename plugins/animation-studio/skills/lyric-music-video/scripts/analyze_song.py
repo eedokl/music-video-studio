@@ -156,7 +156,7 @@ def main():
     ap = argparse.ArgumentParser(description="Song analysis for a lyric music video.")
     ap.add_argument("project", nargs="?", default=".")
     ap.add_argument("--best-words", choices=["auto", "always", "never"], default="auto",
-                    help="auto: when whole lines were not heard, < 70 %% of the words recognized or words crowd "
+                    help="auto: when whole lines were not heard, < 85 %% of the words recognized or words crowd "
                          "together (> 15 %% of them < 0.08 s after the previous one)")
     ap.add_argument("--passes", default="mix,vocals,vocals-vad")
     ap.add_argument("--no-refine", action="store_true")
@@ -172,7 +172,8 @@ def main():
     crowded = sum(1 for x, y in zip(ts, ts[1:]) if y - x < 0.08) / max(1, len(ts) - 1)
     # crowded: words stacked 0.05 s apart (user test: after lyrics.txt was corrected to what is sung, no line was
     # missing any more, the passes did not run and two lines came out half heard with stacked word times)
-    weak = bool(missing) or rec_share < 0.7 or crowded > 0.15
+    weak = bool(missing) or rec_share < 0.85 or crowded > 0.15   # 0.85: a re-run with 32/40 words was "good enough"
+    #                                                               for 0.7 but visibly worse (user test)
     if a.best_words == "always" or (a.best_words == "auto" and weak and "word_passes" not in sheet):
         print(f"{len(missing)} lines without a recognized word, {100 * rec_share:.0f} % of the words recognized, "
               f"{100 * crowded:.0f} % crowded -> song-analysis best_words.py ({a.passes})")
@@ -201,6 +202,12 @@ def main():
     late = 0
     for L, (rec, al, n), text in zip(timing, quality, lines):
         flag = "  <- estimated" if rec + al == 0 else ""
+        ws = [x for x in L.get("words", []) if x is not None]
+        gaps = [b - a for a, b in zip(ws, ws[1:])]
+        if len(gaps) >= 3:                            # first word far before a dense rest: often a call that is not
+            rest = sorted(gaps[1:])[len(gaps[1:]) // 2]  # in lyrics.txt ("Hey!") was heard as that word (user test)
+            if gaps[0] > 1.0 and gaps[0] > 2.5 * rest:
+                flag += f"  <- 1st word {gaps[0]:.1f} s before the 2nd: an unlisted call (Hey!) heard as it?"
         if song_end and L["t"] >= song_end - 0.3:     # placed after the end: not sung in this (excerpt of the) song
             flag += "  <- AFTER THE SONG END: not sung here? remove it from lyrics.txt"
             late += 1

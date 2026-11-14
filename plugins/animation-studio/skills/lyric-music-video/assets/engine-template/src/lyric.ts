@@ -30,6 +30,23 @@ export interface LineOpts {
   heldStyle?: 'vowels' | 'stretch'; // default: HELD_STYLE (project.json held_style)
 }
 
+/** --accent and --accent2 as seen at `el` (so a scene's own palette wins), as [r, g, b]. */
+function heldColors(el: HTMLElement): [number[], number[]] {
+  const cs = getComputedStyle(el);
+  const parse = (v: string, fb: number[]): number[] => {
+    v = v.trim();
+    const h = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(v);
+    if (h) {
+      const x = h[1].length === 3 ? [...h[1]].map((c) => c + c).join('') : h[1];
+      return [0, 2, 4].map((i) => parseInt(x.slice(i, i + 2), 16));
+    }
+    const m = /rgba?\(([^)]+)\)/i.exec(v);
+    if (m) return m[1].split(',').slice(0, 3).map((n) => Math.round(parseFloat(n)));
+    return fb;
+  };
+  return [parse(cs.getPropertyValue('--accent'), [63, 208, 200]), parse(cs.getPropertyValue('--accent2'), [255, 107, 74])];
+}
+
 /** The automatic held note on word i of a line (matched by the word's start time), if any. */
 function autoHeldAt(line: LyricLine, i: number, opts: LineOpts) {
   if (opts.held || opts.autoHeld === false) return undefined;
@@ -143,11 +160,9 @@ class HeldWord {
     for (let i = 0; i < N; i++) {
       const sp = mk('span', 'sc hv', this.el, chars[v]);
       const k = i / Math.max(1, N - 1);
-      // brand turquoise → blue → purple across the stretch
-      const c0 = k < 0.5 ? [63, 208, 200] : [0, 123, 192];
-      const c1 = k < 0.5 ? [0, 123, 192] : [190, 60, 180];
-      const kk = k < 0.5 ? k * 2 : (k - 0.5) * 2;
-      sp.style.color = `rgb(${c0.map((v, j) => Math.round(v + (c1[j] - v) * kk)).join(', ')})`;
+      // the palette's --accent -> --accent2 across the stretch (style.css / the scene's own variables)
+      const [c0, c1] = heldColors(parent);
+      sp.style.color = `rgb(${c0.map((v, j) => Math.round(v + (c1[j] - v) * k)).join(', ')})`;
       this.vowels.push(sp);
     }
     chars.slice(v + 1).forEach((c) => this.post.push(mk('span', 'sc', this.el, c)));
