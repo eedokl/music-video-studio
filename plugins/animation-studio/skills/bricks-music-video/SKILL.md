@@ -14,6 +14,10 @@ Scripts (run with `uv run ...` unless noted):
 `S=${CLAUDE_PLUGIN_ROOT}/skills` – `$S/song-analysis/scripts/{new_project,analyze,voices}.py`,
 `$S/bricks-music-video/scripts/{setup,plan,render,compare_reference}.py`, `$S/film-finish/scripts/{overlays,sounds,build}.py`.
 
+**Building blocks** (shared code + docs of this plugin, not skills - read the one you need):
+`${CLAUDE_PLUGIN_ROOT}/skills/<block>/BLOCK.md` for `studio-core`, `song-analysis`, `toon-2d`, `characters`, `voice`, `ai-video`, `bricks-3d`, `film-finish`. In those files
+`<plugin>` stands for `${CLAUDE_PLUGIN_ROOT}`. First use on a machine: `python "${CLAUDE_PLUGIN_ROOT}/skills/studio-core/scripts/check_tools.py" --setup` (finds the programs).
+
 ## 1 · Interview (short)
 Ask only what you cannot hear or guess: the song file (+ lyrics, stems if they exist), which part (whole song or an
 excerpt for a pilot), who the figures are (Tim/Lia defaults, or the user's own: shirt colour, hair, glasses …), and

@@ -17,6 +17,10 @@ pinned packages (PEP 723 header; faster-whisper is included wherever narration i
 gestures and lip sync).
 Work in a project folder outside the plugin: `deck/`, `figures/`, `clips/<name>/`, `project.json` (seed + ideas).
 
+**Building blocks** (shared code + docs of this plugin, not skills - read the one you need):
+`${CLAUDE_PLUGIN_ROOT}/skills/<block>/BLOCK.md` for `studio-core`, `song-analysis`, `toon-2d`, `characters`, `voice`, `ai-video`, `bricks-3d`, `film-finish`. In those files
+`<plugin>` stands for `${CLAUDE_PLUGIN_ROOT}`. First use on a machine: `python "${CLAUDE_PLUGIN_ROOT}/skills/studio-core/scripts/check_tools.py" --setup` (finds the programs).
+
 ## Workflow
 
 `clip.py` and `scene.py` check their clip.json / scene.json first (studio-core `project_check.py`): wrong types, and a narration `"speaker"` (or figure `"talk"`) whose figure has no `"mouth"` block in its `parts.json`, stop them with exit code 2 before any render.

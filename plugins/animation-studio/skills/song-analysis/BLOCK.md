@@ -1,10 +1,9 @@
----
-name: song-analysis
-description: "Building block of the animation-studio plugin – listens to a song for every music-video skill: song project folder, vocal separation (stems or Demucs), beats/bars/accents, word and line times from Whisper aligned to the lyrics and repaired from the vocal tracks, Rhubarb mouth shapes per vocal track, male/female voice track (earshot) and the assignment of who sings when to which figure. Use it through the music-video skills of the plugin, or directly when the user only wants a song's timing, an exposure sheet or a lip-sync track."
-user-invocable: false
----
-
+<!-- Building block of the animation-studio plugin - a reference document, NOT a skill (it is not loaded
+     into every session). User skills point here. `<plugin>` = the plugin folder, the path that
+     the variable CLAUDE_PLUGIN_ROOT stands for in the SKILL.md files. -->
 # song-analysis
+
+*Listens to a song for every music-video skill: song project folder, vocal separation (stems or Demucs), beats/bars/accents, word and line times from Whisper aligned to the lyrics and repaired from the vocal tracks, Rhubarb mouth shapes per vocal track, male/female voice track (earshot) and the assignment of who sings when to which figure. Use it through the music-video skills of the plugin, or directly when the user only wants a song's timing, an exposure sheet or a lip-sync track.*
 
 Everything is measured on **song seconds** and written to `<project>/analysis/`.
 
@@ -22,7 +21,7 @@ edge punctuation stripped), `"=pro"` exact word, `"re:^verkauf(t)?$"` regex; `"(
 the section of a song second, `Project.size` the film frame size (`"size": [w, h]`, default 1280x720).
 
 **Project check** – every build script of the plugin validates project.json first (`P.check("<skill>")`, studio-core
-`project_check.py`; by hand: `uv run "${CLAUDE_PLUGIN_ROOT}/skills/studio-core/scripts/project_check.py" <folder>`).
+`project_check.py`; by hand: `uv run "<plugin>/skills/studio-core/scripts/project_check.py" <folder>`).
 Errors stop the build with exit code 2 and name the key: `"sounds"` must be true/false, one rule or a list of rules
 with `"sfx"` + `"word"`/`"at"`/`"every"`/`"marker"`; `"gags"`, `"screen"`, `"steam"`, `"gestures"` lists of objects with
 `"word"`; `"transitions"` objects with `"at"` and a known `"kind"`; `"look"` a string; `"fps"` a number; `"size"` two

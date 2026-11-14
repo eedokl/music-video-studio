@@ -1,15 +1,14 @@
----
-name: ai-video
-description: "Building block of the animation-studio plugin: local AI images and video through ComfyUI - FLUX stills, Qwen-Image-Edit start images that keep a character's identity, LTX-2.3 lip-sync and image-to-video (moving stills), Wan2.2-S2V, Wan 2.2 / LTXV image-to-video, Depth Anything depth maps, lip-sync measurement (mouth openness vs. vocals) for picking seeds and offsets, a canon colour check, contact sheets, and the unattended night run (one model at a time, resumable, milestones). Used by claudia-music-video, toon-2d and other user skills."
-user-invocable: false
----
-
+<!-- Building block of the animation-studio plugin - a reference document, NOT a skill (it is not loaded
+     into every session). User skills point here. `<plugin>` = the plugin folder, the path that
+     the variable CLAUDE_PLUGIN_ROOT stands for in the SKILL.md files. -->
 # ai-video
+
+*Local AI images and video through ComfyUI - FLUX stills, Qwen-Image-Edit start images that keep a character's identity, LTX-2.3 lip-sync and image-to-video (moving stills), Wan2.2-S2V, Wan 2.2 / LTXV image-to-video, Depth Anything depth maps, lip-sync measurement (mouth openness vs. vocals) for picking seeds and offsets, a canon colour check, contact sheets, and the unattended night run (one model at a time, resumable, milestones). Used by claudia-music-video, toon-2d and other user skills.*
 
 Everything that talks to the local ComfyUI or measures AI clips lives here, written once. User skills build
 prompts and job lists; this skill computes and measures them.
 
-Run scripts as `uv run "${CLAUDE_PLUGIN_ROOT}/skills/ai-video/scripts/<script>.py" ...` - every script declares its
+Run scripts as `uv run "<plugin>/skills/ai-video/scripts/<script>.py" ...` - every script declares its
 own pinned packages (PEP 723 header; the mediapipe measurement scripts also pin Python 3.12) - except
 `estimate_depth.py`, which runs in `gpu_python` (see below).
 From another skill: `import _studio; _studio.use("ai-video")`, then `import comfy, ltx, mouth, ...`.
@@ -39,8 +38,8 @@ Another machine with other file names or sub-folders: never edit code or models.
 class, model file and option the jobs need and prints exactly what is missing (exit 1):
 
 ```
-uv run "${CLAUDE_PLUGIN_ROOT}/skills/ai-video/scripts/preflight.py" jobs.json            # or --kinds flux,ltx,s2v / --all
-uv run "${CLAUDE_PLUGIN_ROOT}/skills/ai-video/scripts/preflight.py" --list               # workflows, files and folders
+uv run "<plugin>/skills/ai-video/scripts/preflight.py" jobs.json            # or --kinds flux,ltx,s2v / --all
+uv run "<plugin>/skills/ai-video/scripts/preflight.py" --list               # workflows, files and folders
 ```
 
 `night_run.py` runs it automatically before the first job (`--no-preflight` skips it).

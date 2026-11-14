@@ -14,6 +14,10 @@ Scripts: `S="${CLAUDE_PLUGIN_ROOT}/skills/claudia-music-video/scripts"`, `A="${C
 Run every script with `uv run <script>.py`: each declares its own pinned packages; the mediapipe measurement scripts
 (`pick.py`, ai-video `mouth.py` / `canon.py`) also pin Python 3.12.
 
+**Building blocks** (shared code + docs of this plugin, not skills - read the one you need):
+`${CLAUDE_PLUGIN_ROOT}/skills/<block>/BLOCK.md` for `studio-core`, `song-analysis`, `toon-2d`, `characters`, `voice`, `ai-video`, `bricks-3d`, `film-finish`. In those files
+`<plugin>` stands for `${CLAUDE_PLUGIN_ROOT}`. First use on a machine: `python "${CLAUDE_PLUGIN_ROOT}/skills/studio-core/scripts/check_tools.py" --setup` (finds the programs).
+
 ## 1. Interview (short, one question at a time, with a default)
 
 - **Song** (wav/mp3), **lyrics**, **stems** if any (Suno: lead + backing vocals; better lip measurement).

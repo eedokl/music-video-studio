@@ -17,6 +17,10 @@ Scripts here: `${CLAUDE_PLUGIN_ROOT}/skills/animated-short/scripts/` –
 `short.py` (new / idea / variant / finish) and `sfx_track.py` (frame-exact sound effects). Run them with
 `uv run "${CLAUDE_PLUGIN_ROOT}/skills/animated-short/scripts/<script>.py" ...` (each script declares its packages).
 
+**Building blocks** (shared code + docs of this plugin, not skills - read the one you need):
+`${CLAUDE_PLUGIN_ROOT}/skills/<block>/BLOCK.md` for `studio-core`, `song-analysis`, `toon-2d`, `characters`, `voice`, `ai-video`, `bricks-3d`, `film-finish`. In those files
+`<plugin>` stands for `${CLAUDE_PLUGIN_ROOT}`. First use on a machine: `python "${CLAUDE_PLUGIN_ROOT}/skills/studio-core/scripts/check_tools.py" --setup` (finds the programs).
+
 ## 1. Interview (short – 3 questions at most, skip what the request already says)
 
 - **Who?** Pip, Fips, Tim, Lia, the Computer, two of them, or the user's own figure (SVG → see `characters`).

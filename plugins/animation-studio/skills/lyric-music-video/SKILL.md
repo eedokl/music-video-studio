@@ -17,6 +17,10 @@ Scripts: `L="${CLAUDE_PLUGIN_ROOT}/skills/lyric-music-video/scripts"`, `SA="${CL
 Run them with `uv run "$L/<script>.py" ...`. Tools are checked with
 `studio-core/scripts/check_tools.py` (ffmpeg required; Node.js 20+ and npm for the engine; GPU optional).
 
+**Building blocks** (shared code + docs of this plugin, not skills - read the one you need):
+`${CLAUDE_PLUGIN_ROOT}/skills/<block>/BLOCK.md` for `studio-core`, `song-analysis`, `toon-2d`, `characters`, `voice`, `ai-video`, `bricks-3d`, `film-finish`. In those files
+`<plugin>` stands for `${CLAUDE_PLUGIN_ROOT}`. First use on a machine: `python "${CLAUDE_PLUGIN_ROOT}/skills/studio-core/scripts/check_tools.py" --setup` (finds the programs).
+
 ## 1. Interview first
 
 Ask only for what is not already given (check the message, attachments and recent Downloads - a just-downloaded

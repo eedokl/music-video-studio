@@ -1,14 +1,13 @@
----
-name: studio-core
-description: "Building block of the animation-studio plugin – machine setup and shared machinery for every video skill: finding external programs (check_tools.py, machine config), the shared GPU lock (one AI model at a time), video encoding presets, media helpers (decode, durations, voice activity, decode check, contact sheets) and the creative seed with the ideas log. Use it when setting up a machine for the plugin, when a tool is missing, or when another skill of the plugin refers to it."
-user-invocable: false
----
-
+<!-- Building block of the animation-studio plugin - a reference document, NOT a skill (it is not loaded
+     into every session). User skills point here. `<plugin>` = the plugin folder, the path that
+     the variable CLAUDE_PLUGIN_ROOT stands for in the SKILL.md files. -->
 # studio-core
+
+*Machine setup and shared machinery for every video skill: finding external programs (check_tools.py, machine config), the shared GPU lock (one AI model at a time), video encoding presets, media helpers (decode, durations, voice activity, decode check, contact sheets) and the creative seed with the ideas log. Use it when setting up a machine for the plugin, when a tool is missing, or when another skill of the plugin refers to it.*
 
 ## Machine setup (once per machine)
 
-`python "${CLAUDE_PLUGIN_ROOT}/skills/studio-core/scripts/check_tools.py" --setup` searches PATH and the usual install
+`python "<plugin>/skills/studio-core/scripts/check_tools.py" --setup` searches PATH and the usual install
 folders on every drive and stores what it finds in `~/.animation-studio/config.json` (outside the plugin, survives
 updates; override the file with `ANIMATION_STUDIO_CONFIG`). Without arguments it reports found / missing / optional
 with install hints; exit code 1 means something required is missing. Paths can be set by hand:

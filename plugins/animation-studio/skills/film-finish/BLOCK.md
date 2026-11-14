@@ -1,10 +1,9 @@
----
-name: film-finish
-description: "Building block of the animation-studio plugin – finishes any film made of rendered sections: screen overlays (pop-up text gags, word-by-word lyrics, subtitles), a sound-effect track from the earshot bank placed on actions and words, the full cut on the song timeline with one continuous sound track, transitions, title, the standard film look (paper + grain + vignette) and the output versions (full, < 30 MB, ~12 MB mail) with a decode check. Use it through the video skills of the plugin, or directly to apply the look to a video or to make small/mail versions."
-user-invocable: false
----
-
+<!-- Building block of the animation-studio plugin - a reference document, NOT a skill (it is not loaded
+     into every session). User skills point here. `<plugin>` = the plugin folder, the path that
+     the variable CLAUDE_PLUGIN_ROOT stands for in the SKILL.md files. -->
 # film-finish
+
+*Finishes any film made of rendered sections: screen overlays (pop-up text gags, word-by-word lyrics, subtitles), a sound-effect track from the earshot bank placed on actions and words, the full cut on the song timeline with one continuous sound track, transitions, title, the standard film look (paper + grain + vignette) and the output versions (full, < 30 MB, ~12 MB mail) with a decode check. Use it through the video skills of the plugin, or directly to apply the look to a video or to make small/mail versions.*
 
 Input per section: `scenes/<section>/f.%04d.png` (any renderer – Synfig, Blender, three.js) and the song project
 (`song-analysis`). All times are song seconds.

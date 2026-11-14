@@ -21,7 +21,7 @@ Every user skill was tested by rebuilding finished films of its kind and measuri
 | `animated-short` | "A bouncing-ball exercise", "Pip finds a flower", "a new Fips gag." | the 12 principles as keyframes, editable Synfig scenes, sound cues |
 | `video-review` | "Show me V1 and V2 side by side per shot and cut the best of both." | synced browser comparison, picks per shot, frame-exact cut without re-rendering |
 
-## Building blocks – used by the user skills (hidden from the `/` menu)
+## Building blocks – used by the user skills (reference docs `skills/<block>/BLOCK.md`, not skills: they cost no context until a user skill needs them)
 
 | Block | Contents |
 |---|---|

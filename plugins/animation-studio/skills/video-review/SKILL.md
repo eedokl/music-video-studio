@@ -9,6 +9,10 @@ Works for any film whose versions share one timeline (same fps, same shot bounda
 song project, an AI-video pass redone for some shots, a film before/after a fix). Different frame sizes are fine
 (scaled to the size of the audio version).
 
+**Building blocks** (shared code + docs of this plugin, not skills - read the one you need):
+`${CLAUDE_PLUGIN_ROOT}/skills/<block>/BLOCK.md` for `studio-core`, `song-analysis`, `toon-2d`, `characters`, `voice`, `ai-video`, `bricks-3d`, `film-finish`. In those files
+`<plugin>` stands for `${CLAUDE_PLUGIN_ROOT}`. First use on a machine: `python "${CLAUDE_PLUGIN_ROOT}/skills/studio-core/scripts/check_tools.py" --setup` (finds the programs).
+
 ## Workflow
 
 1. **Interview (short).** Which files are the versions (2–9)? Which version's sound should the new cut use (usually

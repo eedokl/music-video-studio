@@ -1,10 +1,9 @@
----
-name: bricks-3d
-description: "Building block of the animation-studio plugin: brick films in Blender from the open LDraw parts library - own LDraw importer (no stud logos), minifigure rig with poses, printed faces with 9 lip-sync mouth shapes and blinks as shader decals, brick sets (room, stage, rooftop, house exterior with fly-in, arena, cloud auction) with anchors, brick effects (sets building themselves, flying brick lettering, confetti, towers, figures falling apart, steam puffs, marionette strings), name signs on torsos, stop-motion timing on twos with jitter, beat bounce, cameo silhouettes, props (coins, glowing GPU, talking monitor, spots), per-shot auto exposure and headless EEVEE rendering to scenes/<section>/f.%04d.png. Used by bricks-music-video; not called by the user directly."
-user-invocable: false
----
-
+<!-- Building block of the animation-studio plugin - a reference document, NOT a skill (it is not loaded
+     into every session). User skills point here. `<plugin>` = the plugin folder, the path that
+     the variable CLAUDE_PLUGIN_ROOT stands for in the SKILL.md files. -->
 # bricks-3d – brick films in Blender (building block)
+
+*Brick films in Blender from the open LDraw parts library - own LDraw importer (no stud logos), minifigure rig with poses, printed faces with 9 lip-sync mouth shapes and blinks as shader decals, brick sets (room, stage, rooftop, house exterior with fly-in, arena, cloud auction) with anchors, brick effects (sets building themselves, flying brick lettering, confetti, towers, figures falling apart, steam puffs, marionette strings), name signs on torsos, stop-motion timing on twos with jitter, beat bounce, cameo silhouettes, props (coins, glowing GPU, talking monitor, spots), per-shot auto exposure and headless EEVEE rendering to scenes/<section>/f.%04d.png. Used by bricks-music-video; not called by the user directly.*
 
 Everything a brick-film skill needs inside Blender, driven by a **plan JSON** (data, editable by hand). The user skill
 (e.g. `bricks-music-video/scripts/plan.py`) writes the plan; this skill turns it into frames.
@@ -12,7 +11,7 @@ Everything a brick-film skill needs inside Blender, driven by a **plan JSON** (d
 ## Setup (once per machine)
 - Blender 4.2+ (tested 5.2 LTS): config key `blender` (`check_tools.py --setup` finds it).
 - LDraw parts library: config key **`ldraw_dir`** – see [references/ldraw-setup.md](references/ldraw-setup.md).
-- Check: `python "${CLAUDE_PLUGIN_ROOT}/skills/bricks-3d/scripts/blender_run.py" --check`
+- Check: `python "<plugin>/skills/bricks-3d/scripts/blender_run.py" --check`
 
 ## Scripts
 | script | runs in | what |

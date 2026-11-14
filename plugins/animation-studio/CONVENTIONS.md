@@ -10,16 +10,21 @@ animation-studio/
   README.md            what the plugin does, the skills, how to install
   TOOLS.md             external programs and AI models: used / recommended / optional
   CONVENTIONS.md       this file
-  skills/<skill>/SKILL.md, scripts/, references/, assets/
+  skills/<skill>/SKILL.md, scripts/, references/, assets/      (user skills)
+  skills/<block>/BLOCK.md, scripts/, references/, assets/      (building blocks - not skills)
   tests/smoke.py       static checks;  tests/e2e/run.py  end-to-end builds per film type
 ```
 
-Two kinds of skills:
+Two kinds of folders under skills/:
 - **User skills** (one per kind of video the user asks for): thin. Interview → creative brief → build →
   review checkpoints. Their SKILL.md is what the user sees; frontmatter `name` + a "pushy" `description`.
 - **Building blocks** (studio-core, song-analysis, toon-2d, film-finish, characters, voice, ai-video, bricks-3d):
-  scripts + knowledge used by several user skills, written once. Frontmatter `user-invocable: false`, description
-  starts with "Building block of the animation-studio plugin: ...".
+  scripts + knowledge used by several user skills, written once. Their doc is `BLOCK.md` (no frontmatter), NOT a
+  SKILL.md: Claude Code loads the description of every skill into every session, so blocks stay out of that list
+  and cost no context until a user skill sends Claude to read them. Every user SKILL.md carries the standard
+  "Building blocks" paragraph with `${CLAUDE_PLUGIN_ROOT}/skills/<block>/BLOCK.md`; inside BLOCK.md (and references)
+  write `<plugin>` for the plugin folder - `${CLAUDE_PLUGIN_ROOT}` is substituted only in SKILL.md. A new block gets a
+  BLOCK.md and is added to that paragraph in every user skill; a new user skill copies the paragraph.
 Anything two user skills need goes into a building block – never copy code between skills.
 
 ## Language and paths

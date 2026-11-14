@@ -1,13 +1,12 @@
----
-name: voice
-description: "Building block of the animation-studio plugin: text-to-speech with a fixed voice per character (Tim, Lia, the Computer, a narrator, or new characters described in project.json), Qwen3-TTS voice design + cloning from a reference sample so a character always sounds the same, Piper and Windows speech as fallbacks, ElevenLabs as an optional cloud engine, a Whisper check that the audio really says the script (with automatic retakes), pitch/effect post-processing. Used by talking-character and any skill that needs spoken lines."
-user-invocable: false
----
-
+<!-- Building block of the animation-studio plugin - a reference document, NOT a skill (it is not loaded
+     into every session). User skills point here. `<plugin>` = the plugin folder, the path that
+     the variable CLAUDE_PLUGIN_ROOT stands for in the SKILL.md files. -->
 # voice – spoken lines with a fixed voice per character
 
-Scripts: `${CLAUDE_PLUGIN_ROOT}/skills/voice/scripts/` – run with
-`uv run "${CLAUDE_PLUGIN_ROOT}/skills/voice/scripts/voice.py" ...`
+*Text-to-speech with a fixed voice per character (Tim, Lia, the Computer, a narrator, or new characters described in project.json), Qwen3-TTS voice design + cloning from a reference sample so a character always sounds the same, Piper and Windows speech as fallbacks, ElevenLabs as an optional cloud engine, a Whisper check that the audio really says the script (with automatic retakes), pitch/effect post-processing. Used by talking-character and any skill that needs spoken lines.*
+
+Scripts: `<plugin>/skills/voice/scripts/` – run with
+`uv run "<plugin>/skills/voice/scripts/voice.py" ...`
 
 | file | what |
 |---|---|

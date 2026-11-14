@@ -1,16 +1,15 @@
----
-name: characters
-description: "Building block of the animation-studio plugin: the cast of the cartoon skills and how to rig them – Tim, Lia (SVG figures with lip-sync mouths), the Computer (a face on a screen), Pip (code-drawn pear-shaped hero with spring antenna) and Fips (SVG bird) – with figure sheets, the SVG rig convention (group ids, pivot circles, feet point), Python builders (pip_figure.py, computer.py, figures.py) and the steps to add a new figure drawn in Inkscape. Used by animated-short, animated-music-video, talking-character and the other cartoon skills."
-user-invocable: false
----
-
+<!-- Building block of the animation-studio plugin - a reference document, NOT a skill (it is not loaded
+     into every session). User skills point here. `<plugin>` = the plugin folder, the path that
+     the variable CLAUDE_PLUGIN_ROOT stands for in the SKILL.md files. -->
 # characters – the cast and the rig convention
+
+*The cast of the cartoon skills and how to rig them – Tim, Lia (SVG figures with lip-sync mouths), the Computer (a face on a screen), Pip (code-drawn pear-shaped hero with spring antenna) and Fips (SVG bird) – with figure sheets, the SVG rig convention (group ids, pivot circles, feet point), Python builders (pip_figure.py, computer.py, figures.py) and the steps to add a new figure drawn in Inkscape. Used by animated-short, animated-music-video, talking-character and the other cartoon skills.*
 
 ![cast](assets/figure_sheet.png) – `assets/figure_sheet.png`: Tim, Lia, Computer, Pip, Fips in rest pose on one floor
 line at their scene scale. Regenerate (or check a new figure) with
-`uv run "${CLAUDE_PLUGIN_ROOT}/skills/characters/scripts/figure_sheet.py" --out <dir> [--add my.svg] [--pivots]`.
+`uv run "<plugin>/skills/characters/scripts/figure_sheet.py" --out <dir> [--add my.svg] [--pivots]`.
 
-Scripts (`${CLAUDE_PLUGIN_ROOT}/skills/characters/scripts/`) are importable in any scene made with
+Scripts (`<plugin>/skills/characters/scripts/`) are importable in any scene made with
 `toon-2d/scripts/new_scene.py` (`import _toon` puts them on the path), or with `_studio.use("toon-2d", "characters")`.
 
 | Script | What |

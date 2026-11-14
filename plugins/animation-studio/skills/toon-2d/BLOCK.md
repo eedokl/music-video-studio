@@ -1,10 +1,9 @@
----
-name: toon-2d
-description: "Building block of the animation-studio plugin: classical (Disney-style) 2D animation as Synfig scenes written in Python – layer builders (sif.py), motion helpers (squash/stretch, arcs, spring follow-through), Inkscape SVG figures as rigs (svg2sif.py), lip-sync mouths (lipsync.py), painted sets, rendering to frames/MP4/GIF/labelled contact sheets (render.py, parallel Synfig), frame-by-frame comparison of two renders, the three.js multiplane camera and the 2.5D comic flight (render_multiplane.py), painterly multiplane layers without AI (paint_clearing.py), Krita layer assembly (krita_assemble.py) and Blender Grease Pencil (hand-drawn look). Used by animated-short, animated-music-video, talking-character and the other cartoon skills of the plugin."
-user-invocable: false
----
-
+<!-- Building block of the animation-studio plugin - a reference document, NOT a skill (it is not loaded
+     into every session). User skills point here. `<plugin>` = the plugin folder, the path that
+     the variable CLAUDE_PLUGIN_ROOT stands for in the SKILL.md files. -->
 # toon-2d – Synfig scenes from Python
+
+*Classical (Disney-style) 2D animation as Synfig scenes written in Python – layer builders (sif.py), motion helpers (squash/stretch, arcs, spring follow-through), Inkscape SVG figures as rigs (svg2sif.py), lip-sync mouths (lipsync.py), painted sets, rendering to frames/MP4/GIF/labelled contact sheets (render.py, parallel Synfig), frame-by-frame comparison of two renders, the three.js multiplane camera and the 2.5D comic flight (render_multiplane.py), painterly multiplane layers without AI (paint_clearing.py), Krita layer assembly (krita_assemble.py) and Blender Grease Pencil (hand-drawn look). Used by animated-short, animated-music-video, talking-character and the other cartoon skills of the plugin.*
 
 A scene is a Python script (`make_scene.py`) that writes a Synfig file (`.sif`, XML); Synfig renders it, ffmpeg
 encodes it. The `.sif` stays editable in Synfig Studio, so an animator can take over – that is the point of going
@@ -12,8 +11,8 @@ through Synfig instead of drawing frames directly: **keyframes, not baked frames
 
 All programs come from the machine config (`studio-core/scripts/config.py`: `synfig`, `ffmpeg`, `inkscape`,
 `rhubarb`, `krita`, `blender`, `browser`, `node`); run `check_tools.py --setup` once per machine.
-Scripts: `${CLAUDE_PLUGIN_ROOT}/skills/toon-2d/scripts/` (below just `scripts/`). Run with
-`uv run "${CLAUDE_PLUGIN_ROOT}/skills/toon-2d/scripts/<script>.py" ...` (each script declares its packages in a PEP 723
+Scripts: `<plugin>/skills/toon-2d/scripts/` (below just `scripts/`). Run with
+`uv run "<plugin>/skills/toon-2d/scripts/<script>.py" ...` (each script declares its packages in a PEP 723
 header; scene folders' `make_scene.py` too).
 
 ## Files
@@ -52,7 +51,7 @@ Characters (Tim, Lia, Computer, Pip, Fips, own SVG figures, rig convention) are 
 
 1. **Beats first.** Turn the idea into a beat list with frame ranges at 24 fps (`0-36 hops in`, `46-62 notices`,
    `72-86 take`) and write it as the docstring of `make_scene.py`. Short is good: 3–8 s.
-2. **Scene folder.** `python "${CLAUDE_PLUGIN_ROOT}/skills/toon-2d/scripts/new_scene.py" <folder> --from example|figure|blank`. Never write scenes into
+2. **Scene folder.** `python "<plugin>/skills/toon-2d/scripts/new_scene.py" <folder> --from example|figure|blank`. Never write scenes into
    the plugin. The `_toon.py` shim holds no path: it finds the plugin at run time (env `CLAUDE_PLUGIN_ROOT`, else
    the machine config entry `animation_studio_root`, which new_scene.py stores and every plugin script moves to its
    own plugin folder after an update). If it cannot, it stops and says how
@@ -63,9 +62,9 @@ Characters (Tim, Lia, Computer, Pip, Fips, own SVG figures, rig convention) are 
    (antenna, tail, wings) a group with origin at their root.
 4. **One source of timing.** Key lists as Python data near the top (`Y_KEYS`, `SQ_KEYS`, `LEAN_KEYS` …), fed both
    to Synfig (`anim`) and to every simulation (`motion.approx`). Retiming = editing one list.
-5. **Render and look.** `ANIMATION_STUDIO_ROOT="${CLAUDE_PLUGIN_ROOT}" uv run make_scene.py` (passes this
-   plugin version to the scene; in PowerShell: `$env:ANIMATION_STUDIO_ROOT="${CLAUDE_PLUGIN_ROOT}"` first), then
-   `uv run "${CLAUDE_PLUGIN_ROOT}/skills/toon-2d/scripts/render.py" scene.sif --contact 0,15,36,...` (key poses; Pillow
+5. **Render and look.** `ANIMATION_STUDIO_ROOT="<plugin>" uv run make_scene.py` (passes this
+   plugin version to the scene; in PowerShell: `$env:ANIMATION_STUDIO_ROOT="<plugin>"` first), then
+   `uv run "<plugin>/skills/toon-2d/scripts/render.py" scene.sif --contact 0,15,36,...` (key poses; Pillow
    labels the tiles with frame numbers). Open the contact sheet with the Read tool: silhouette readable, nothing cut
    off by the frame, squash on contacts, characters big enough (zoom with `canvas(view=...)` rather than scaling
    everything). Renders take seconds – iterate. `--jobs 6` from ~100 frames on.
@@ -151,14 +150,14 @@ Config keys, overscan formula, camera angles, lift and the parallax rules: `refe
   only the log (no frames).
 - **3D morph** (`figure_3d.py`, Blender via the GPU lock): any rig SVG; frame 0 is flat in painter order, so the 2D
   drawing crossfades in without a jump (`flat_2d.png` is exported in the same framing). Run with
-  `uv run "${CLAUDE_PLUGIN_ROOT}/skills/toon-2d/scripts/figure_3d.py" fig3d.json`.
+  `uv run "<plugin>/skills/toon-2d/scripts/figure_3d.py" fig3d.json`.
   Keys and limits: docstring of the script and `references/multiplane-and-comic.md` (last section).
 
 ## Blender Grease Pencil
 
 Choose Blender over Synfig when the look should be hand-drawn (variable line weight, boil, frame-by-frame on twos)
 or an artist will continue in Blender; Synfig stays better for tweened vector rigs.
-`uv run "${CLAUDE_PLUGIN_ROOT}/skills/toon-2d/scripts/blender_run.py" "${CLAUDE_PLUGIN_ROOT}/skills/toon-2d/assets/blender_gp_example.py" -- --layers <layers> --out <dir> [--still 36]`
+`uv run "<plugin>/skills/toon-2d/scripts/blender_run.py" "<plugin>/skills/toon-2d/assets/blender_gp_example.py" -- --layers <layers> --out <dir> [--still 36]`
 (96 frames ~25 s with EEVEE; `.blend` saved for the artist). Pitfalls: `references/blender-grease-pencil.md`.
 
 ## Tested (reference tests, 2026-11-13)

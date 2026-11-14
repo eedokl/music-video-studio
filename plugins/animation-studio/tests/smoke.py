@@ -90,7 +90,7 @@ for p in ROOT.rglob("*"):
 by_name = {}
 for p in scripts:
     by_name.setdefault(p.name, []).append(p)
-for md in SKILLS.glob("*/SKILL.md"):
+for md in sorted(SKILLS.glob("*/SKILL.md")) + sorted(SKILLS.glob("*/BLOCK.md")):
     for line in md.read_text(encoding="utf-8").splitlines():
         for m in re.finditer(r"([\w-]+\.py)\b([^`|]*)", line):
             name, rest = m.group(1), m.group(2)
@@ -103,7 +103,7 @@ for md in SKILLS.glob("*/SKILL.md"):
                 if flag in ("--with", "--no-project", "--help"):
                     continue
                 if f'"{flag}"' not in src and f"'{flag}'" not in src and flag not in src:
-                    fail(f"{md.parent.name}/SKILL.md shows `{name} {flag}` but {name} has no {flag}")
+                    fail(f"{md.parent.name}/{md.name} shows `{name} {flag}` but {name} has no {flag}")
 
 # 7 --help
 skipped = 0
@@ -310,6 +310,18 @@ for p in scripts:
             if missing:
                 fail(f"{p.relative_to(ROOT).as_posix()} starts {callee.name} with sys.executable, but its PEP 723 "
                      f"header lacks {missing} that {callee.name} needs - declare them or use config.script_cmd()")
+
+# 10 building blocks are BLOCK.md (not skills), user skills point to every block
+BLOCK_NAMES = sorted(p.parent.name for p in SKILLS.glob("*/BLOCK.md"))
+for d in SKILLS.iterdir():
+    if d.is_dir() and not d.name.startswith(".") and (d / "SKILL.md").exists() == (d / "BLOCK.md").exists():
+        fail(f"skills/{d.name}: needs exactly one of SKILL.md (user skill) or BLOCK.md (building block)")
+for md in SKILLS.glob("*/SKILL.md"):
+    t = md.read_text(encoding="utf-8")
+    if "skills/<block>/BLOCK.md" not in t or any(f"`{b}`" not in t for b in BLOCK_NAMES):
+        fail(f"{md.parent.name}/SKILL.md lacks the standard \"Building blocks\" paragraph naming every BLOCK.md")
+    if "user-invocable: false" in t:
+        fail(f"{md.parent.name}/SKILL.md is marked user-invocable: false - a building block belongs in BLOCK.md")
 
 for n in notes:
     print("  " + n)
