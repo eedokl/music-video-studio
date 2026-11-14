@@ -13,8 +13,12 @@ clip.json:
 Words come from Whisper (song-analysis whisper_device: large-v3 on the GPU under the GPU lock, "small" on the CPU
 with WHISPER_CPU=1; WHISPER_MODEL=large-v3 forces the accurate model) and are cached next to the clip in narration/<id>.json; a <audio>.words.json beside the audio
 ({"words": [{"w": "builder", "s": 1.23, "e": 1.61}], "duration": 4.38}) is used instead when it exists.
-Usage (prints the words): uv run narration.py <audio> [--lang de]   (default: detected)
+With a configured gpu_python (CUDA venv, check_tools.py) the transcription runs there - large-v3 on the graphics
+card - instead of in this script's own environment, which has no CUDA libraries (user test: "cublas64_12.dll
+missing", small model on the CPU). WHISPER_CPU=1 keeps it in this process.
+Usage (prints the words): uv run narration.py <audio> [--lang de] [--cache <folder>]   (default: detected)
 """
+import subprocess
 import json
 import os
 import re
@@ -42,6 +46,8 @@ def words(audio, cache_dir, lang=None):
     c = cache_dir / (audio.stem + f".{lang or 'auto'}.json")
     if c.exists() and c.stat().st_mtime >= audio.stat().st_mtime:
         return json.loads(c.read_text(encoding="utf-8"))
+    if _in_gpu_python(audio, cache_dir, lang) and c.exists():
+        return json.loads(c.read_text(encoding="utf-8"))
     from whisper_device import whisper_model
     model, where, name = whisper_model(os.environ.get("WHISPER_MODEL", "auto"))   # e.g. large-v3 on the CPU
     segs, _ = model.transcribe(decode(audio, 16000).astype("float32"), language=lang, word_timestamps=True)   # own decode: no PyAV
@@ -49,6 +55,25 @@ def words(audio, cache_dir, lang=None):
     res = {"duration": round(duration(audio), 3), "words": ws, "whisper": f"{name} ({where})"}
     c.write_text(json.dumps(res, indent=1), encoding="utf-8")
     return res
+
+
+def _in_gpu_python(audio, cache_dir, lang):
+    """Run this script in the configured CUDA python (it writes the cache file); False when there is none, we are
+    already in it, WHISPER_CPU is set, or it failed (then the caller transcribes here)."""
+    gp = config.get("gpu_python")
+    if not gp or not Path(gp).exists() or os.environ.get("WHISPER_CPU"):
+        return False
+    try:
+        if Path(sys.executable).resolve() == Path(gp).resolve():
+            return False
+    except OSError:
+        return False
+    r = subprocess.run([gp, str(Path(__file__).resolve()), str(audio), "--cache", str(cache_dir),
+                        *(["--lang", lang] if lang else [])], capture_output=True, text=True, errors="replace")
+    if r.returncode:
+        print(f"  narration: the GPU python failed ({(r.stderr or r.stdout).strip()[-200:]}) - transcribing here")
+        return False
+    return True
 
 
 def word_time(res, word, nth=1, end=False):
@@ -64,5 +89,7 @@ def word_time(res, word, nth=1, end=False):
 
 if __name__ == "__main__":
     lang = sys.argv[sys.argv.index("--lang") + 1] if "--lang" in sys.argv else None
-    r = words(sys.argv[1], Path(sys.argv[1]).parent / "narration_cache", lang)
+    cache = Path(sys.argv[sys.argv.index("--cache") + 1]) if "--cache" in sys.argv else \
+        Path(sys.argv[1]).parent / "narration_cache"
+    r = words(sys.argv[1], cache, lang)
     print(json.dumps(r, indent=1))
