@@ -223,10 +223,13 @@ class SceneContext:
         for sp in as_list(A.get("light")):
             sp = {"kind": sp} if isinstance(sp, str) else dict(sp)
             lights[sp.get("kind")] = sp
-        K, FLOOR = float(A.get("scale", SET["scale"])), float(A.get("floor", SET["floor"]))
+        K, FLOOR = float(A.get("scale", SET.get("scale", 0.68))), float(A.get("floor", SET.get("floor", -2.9)))
         if "spotlight" in lights and "scale" not in A:
             K *= 1.25                                         # spotlight: closer on the lit figures
-        SCREEN = tuple(A.get("screen") or (SCREEN_SHOT if shot == "screen" else SET["screen"]))
+        if not SET.get("screen") and not A.get("screen") and shot != "screen" and                 any(figs_cfg[k].get("kind") == "screen" for k in names):
+            print(f"   note: set {A.get('set', 'stage')} has no \"screen\" rectangle - the screen figure uses the stage's "
+                  f"(give the section \"screen\": [x0, y0, x1, y1])")
+        SCREEN = tuple(A.get("screen") or (SCREEN_SHOT if shot == "screen" else SET.get("screen", [-2.4, 3.3, 2.4, 0.2])))
         c = cls(P=P, section=section, A=A, S=S, E=E, fps=fps, N=N, beats=beats, lines=lines, words=words, ASG=ASG,
                 figs_cfg=figs_cfg, kind=kind, shot=shot, names=names, SET=SET, lights=lights, K=K, FLOOR=FLOOR,
                 SCREEN=SCREEN)
@@ -299,8 +302,8 @@ class SceneContext:
             elif spec.get("line"):
                 spans = [line_span(l) for l in lines if l["text"].lower().startswith(spec["line"].lower())]
             elif spec.get("word"):
-                spans = [line_span(l) for l in lines if any(word_matches(w["word"], spec["word"]) and w.get("line") == i
-                                                            for w in words) for i in [lines.index(l)]]
+                spans = [line_span(l) for i, l in enumerate(lines)          # lines that contain the word
+                         if any(word_matches(w["word"], spec["word"]) and w.get("line") == i for w in words)]
             elif spec.get("when") in ("listening", "singing", "always"):
                 run = None
                 for b in beats:

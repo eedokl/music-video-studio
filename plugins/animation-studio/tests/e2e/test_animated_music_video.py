@@ -107,7 +107,23 @@ def run_two_sections(ctx):
     ctx.note(f"{total} frames = round(3.02*24) (33 + 39), cut on frame {blue}, sound mark at {loud:.3f} s")
 
 
+def run_park_word_action(ctx):
+    # two former crashes: a bundled set without "scale"/"screen" (park) and an action keyed on a "word"
+    need("synfig")
+    proj = new_project(ctx, "park", 3.0)
+    P = read_json(proj / "project.json")
+    P["sections"] = [{"name": "p", "from": 0.0, "to": 2.0, "set": "park"}]
+    P.update({"seed": 3, "sounds": False, "actions": [{"figure": "tim", "action": "typing", "word": "limit"}]})
+    write_json(proj / "project.json", P)
+    r = ctx.uv(SCENE, "p", "--project", proj, timeout=600)
+    out = r.stdout if hasattr(r, "stdout") else str(r)
+    expect((proj / "scenes" / "p.sif").exists(), "scene.py wrote no .sif for the park section")
+    expect("set park" in out and "tim typing" in out, f"park set / word action missing in the output:\n{out[-600:]}")
+    ctx.note("set park (no scale/screen in set.json) and an action keyed on the word 'limit' build")
+
+
 TESTS = [
     Test("animated-music-video", run_single, about="one section: scene.py --render, overlays, sounds (true/false/list), build.py film"),
+    Test("animated-music-video-park", run_park_word_action, about="set park + an action keyed on a word (two former crashes)"),
     Test("animated-music-video-drift", run_two_sections, about="two sections 0-1.37-3.02 s: frame count and cut frame vs sound"),
 ]
