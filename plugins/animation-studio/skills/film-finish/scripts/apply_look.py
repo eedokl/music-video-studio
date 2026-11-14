@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _studio  # noqa: E402
 _studio.use()
 import config  # noqa: E402
-from encoding import h264  # noqa: E402  (preview: PREVIEW=1 -> NVENC)
+from encoding import h264, video_size  # noqa: E402  (preview: PREVIEW=1 -> NVENC)
 
 LOOKS = Path(__file__).resolve().parent.parent / "assets" / "look"
 
@@ -62,7 +62,8 @@ def main():
         look = Path(a.look).resolve()
     if not (look / "mp_0000.jpg").exists():
         sys.exit(f"Look missing: {look}")
-    w, h, rate = video_info(src)
+    _, _, rate = video_info(src)
+    w, h = video_size(src)                                  # displayed size: phone clips with a rotation flag
     s = max(0.0, min(1.0, a.strength))
     # overlay looped, scaled to the video size; multiply; strength via mixing with the original
     fc = (f"[1:v]scale={w}:{h},format=gbrp[o];[0:v]format=gbrp,split[v][orig];"

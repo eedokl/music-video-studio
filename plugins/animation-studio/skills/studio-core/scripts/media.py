@@ -17,6 +17,7 @@ import subprocess
 from pathlib import Path
 
 import config
+from encoding import video_size  # noqa: F401  (re-exported)
 
 FPS = 24
 

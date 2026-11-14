@@ -1,6 +1,8 @@
 """film-tools: the quick jobs on an arbitrary video - apply_look.py, encode.py (small / mail / own target with a real
 two-pass encode), media.py check and sheet - on a synthetic 1920x1080 clip with sound."""
-from common import FPS, Test, expect, frame_colours, need, script, video_frames, check_video, has_audio
+import re
+
+from common import FPS, Test, expect, ffmpeg, frame_colours, need, script, video_frames, check_video, has_audio
 
 LOOK = script("film-finish", "apply_look.py")
 ENCODE = script("film-finish", "encode.py")
@@ -22,7 +24,7 @@ def run_film_tools(ctx):
     a, b = frame_colours(src)[10], frame_colours(look)[10]
     expect(a != b, "the look did not change the picture")
 
-    ctx.uv(ENCODE, src)                                    # small + mail (input is small enough -> copies)
+    ctx.uv(ENCODE, src)                                    # small + mail (1920 px > the side limits -> re-encoded, not copied)
     for suffix in ("_small", "_mail"):
         f = ctx.dir / f"in{suffix}.mp4"
         expect(f.exists() and not check_video(f), f"encode.py: in{suffix}.mp4 missing or broken")
@@ -31,6 +33,18 @@ def run_film_tools(ctx):
     expect(tiny.exists() and not check_video(tiny) and video_frames(tiny) == n, "encode.py --mb: broken output")
     expect(tiny.stat().st_size <= 0.25 * 1.024e6 or "OVER the" in r.stdout,
            f"encode.py --mb 0.25: {tiny.stat().st_size} bytes without an OVER note")
+    # a phone clip: landscape pixels + a 90 degree rotation flag -> outputs must be upright portrait, not squeezed
+    phone = ctx.dir / "phone.mp4"
+    ctx.ff("-display_rotation", "90", "-i", src, "-c", "copy", phone)
+    ctx.uv(ENCODE, phone, "--mb", "5", "--suffix", "_web", "--side", "640")
+    ctx.uv(LOOK, phone, "-o", ctx.dir / "phone_look.mp4")
+    for name, want in (("phone_web.mp4", (360, 640)), ("phone_look.mp4", (1080, 1920))):
+        info = ctx.run([ffmpeg(), "-hide_banner", "-i", ctx.dir / name], check=False).stdout
+        m = re.search(r"Video:.*?(\d{2,5})x(\d{2,5})(?: \[SAR (\d+):(\d+))?", info)
+        got = (int(m.group(1)), int(m.group(2))) if m else None
+        sar_ok = not m or not m.group(3) or m.group(3) == m.group(4)
+        expect(got == want and sar_ok, f"rotated clip: {name} is {m.group(0) if m else '?'} instead of upright "
+                                       f"{want[0]}x{want[1]} with square pixels")
     out = ctx.run(["python", MEDIA, "check", src, tiny])
     expect(out.returncode == 0 and out.stdout.count("0 decode errors") == 2, f"media.py check:\n{out.stdout}")
     bad = ctx.dir / "bad.mp4"
@@ -39,7 +53,7 @@ def run_film_tools(ctx):
     expect(out.returncode == 1, "media.py check: a truncated file was not reported (exit code 0)")
     ctx.run(["python", MEDIA, "sheet", look, ctx.dir / "sheet.png"])
     expect((ctx.dir / "sheet.png").exists(), "media.py sheet wrote no PNG")
-    ctx.note(f"look ({n} frames, sound kept), small/mail copies, --mb 0.25 two-pass {tiny.stat().st_size / 1e6:.2f} MB, "
+    ctx.note(f"look ({n} frames, sound kept), small/mail, rotated phone clip upright, --mb 0.25 two-pass {tiny.stat().st_size / 1e6:.2f} MB, "
              "check (good + truncated), sheet")
 
 

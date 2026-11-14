@@ -12,6 +12,7 @@ Usage in scripts:
   subprocess.run([FF, ..., *h264(), "-pix_fmt", "yuv420p", out])     # instead of "-c:v", "libx264", "-crf", "18"
 """
 import os
+import re
 import subprocess
 
 
@@ -53,3 +54,19 @@ def hint():
     if not PREVIEW:
         return "final version (x264)"
     return "PREVIEW (NVENC)" if nvenc_ok() else "PREVIEW (x264 veryfast)"
+
+
+def video_size(path):
+    """(width, height) of the first video stream AS DISPLAYED: phone clips store landscape pixels plus a rotation
+    flag ("Display Matrix: rotation of -90.00 degrees"); ffmpeg turns them upright when decoding, so for +-90/270
+    width and height are swapped here. Read from ffmpeg's stream line (no ffprobe needed)."""
+    import config
+    r = subprocess.run([config.need("ffmpeg"), "-hide_banner", "-i", str(path)], capture_output=True, text=True, errors="replace")
+    m = re.search(r"Video:.*?(\d{2,5})x(\d{2,5})", r.stderr)
+    if not m:
+        raise SystemExit(f"{path}: no video stream found")
+    w, h = int(m.group(1)), int(m.group(2))
+    rot = re.search(r"rotation of (-?[\d.]+) degrees", r.stderr)
+    if rot and round(abs(float(rot.group(1)))) % 180 == 90:
+        w, h = h, w
+    return w, h

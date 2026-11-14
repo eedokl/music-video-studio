@@ -9,7 +9,8 @@
 CLI for any finished video (no project needed):
   uv run encode.py film.mp4 [--small] [--mail] [--mb 20 --suffix _web]
   -> film_small.mp4 (< 29 MB, long side <= 1280) and/or film_mail.mp4 (~12 MB, long side <= 960); both by default.
-  The aspect ratio is kept, nothing is upscaled; a video already under the size is copied; every output is
+  The aspect ratio is kept (also of phone clips with a rotation flag), nothing is upscaled; a video already
+  under the size and the side limit is copied; every output is
   decode-checked and the size line says "OVER the N MB target" when the target could not be met.
 
     import _studio; _studio.use("film-finish")
@@ -30,7 +31,7 @@ from pathlib import Path
 
 import _studio  # noqa: E402
 _studio.use()
-from media import check_video, duration, ffmpeg  # noqa: E402
+from media import check_video, duration, ffmpeg, video_size  # noqa: E402
 
 
 MIN_VIDEO_K, MIN_AUDIO_K = 120, 48
@@ -101,15 +102,6 @@ def place(tmp, final):
         return alt
 
 
-def video_size(path):
-    """(width, height) of the first video stream, read from ffmpeg's stream line (no ffprobe needed)."""
-    r = subprocess.run([ffmpeg(), "-hide_banner", "-i", str(path)], capture_output=True, text=True, errors="replace")
-    m = re.search(r"Video:.*?(\d{2,5})x(\d{2,5})", r.stderr)
-    if not m:
-        raise SystemExit(f"{path}: no video stream found")
-    return int(m.group(1)), int(m.group(2))
-
-
 VERSIONS = {"small": (29.0, 1280, 128), "mail": (12.0, 960, 64)}
 
 
@@ -139,8 +131,8 @@ def main():
         w, h = int(round(W * k / 2) * 2), int(round(H * k / 2) * 2)
         final = src.with_name(f"{src.stem}{suffix}{src.suffix}")
         tmp = src.with_name(f".tmp.{final.name}")
-        if src.stat().st_size < mb * 1e6:
-            shutil.copy(src, tmp)                       # already small enough
+        if src.stat().st_size < mb * 1e6 and max(W, H) <= side:
+            shutil.copy(src, tmp)                       # already small enough (bytes and pixels)
         else:
             encode_target(src, tmp, mb, w, h, ak, dur)
         out = place(tmp, final)
