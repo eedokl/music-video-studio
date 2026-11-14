@@ -45,6 +45,9 @@ Numbers: typing writes one key click per strike into `actions_<section>.json` (r
 them: `fit/key/medium|thock|lubed` ~-21 dB); `"at": "silence"` finds the abrupt stop of the full song at 211.9 s
 (reference: 212.0) - in an excerpt starting at the stop there is nothing before it, so the test used `"from"`.
 Regression: refrain1 and comfortzone projects produce byte-identical `.sif` and actions files with the new scene.py.
+Split of scene.py into `scene_*.py` modules + `SceneContext`: all 12 sections of the "Prompts!" project, 12 variant
+sections (desk, colour set, disco + spotlight, night, show, pulse, panels with figures / auto / 4:3, external with and
+without inset, screen shot) and the e2e projects gave byte-identical `.sif`, actions files and printed lines.
 
 Second song ("Comfort Zone", chorus 47.5–71.2, seed 2031, no stems): `storm` section with disco + Tim's air guitar while
 Lia sings (`when: listening, in_chorus: true`) + a STORM meter (segments, fills at "storm", resets at "Zukunft") +

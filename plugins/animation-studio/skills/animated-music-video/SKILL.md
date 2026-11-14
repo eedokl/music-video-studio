@@ -214,6 +214,8 @@ opens in Synfig Studio for hand animation.
 ## 6. Extending
 
 `scene.py` is one script for all sets; extend it with new behaviours (a new gesture, a new set feature) instead of
-writing scenes from scratch, and keep them seed-driven. Bigger techniques from the reference film (2.5D comic flight
+writing scenes from scratch, and keep them seed-driven. Its layer builders sit next to it as `scene_*.py` modules
+taking one `SceneContext` (`scene_context.py`: section times, beats/words/lines, who sings when, places, lights);
+the comment block in `scene.py` says which module holds what. Bigger techniques from the reference film (2.5D comic flight
 for a verse, multiplane intro, credits with outtakes, second audio language, 48 fps) are described in
 `references/techniques.md`; read `references/lessons.md` before a full song.

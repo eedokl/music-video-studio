@@ -129,7 +129,8 @@ system); for raster slide figures call `mouth.mouth_keys(fig_dir, [(wav, start_f
 ## Files
 
 - `scripts/deck.py` (import), `figures.py` (find + upscale), `parts.py` (cut + rig measures + fidelity),
-  `acting.py` (keys of the jump routine), `routines.py` (styles + gestures), `clip.py` (build), `narration.py`
+  `acting.py` (keys of the jump routine), `routines.py` (styles + gestures), `clip.py` (build; its steps in `clip_core.py`, `clip_plan.py`,
+  `clip_frames.py`, `clip_stage.py`, `clip_sif.py`, `clip_light.py`, `clip_tex.py`), `narration.py`
   (word times), `sound.py` (narration + effects), `mouth.py` (mouth stages + lip-sync keys), `intro.py`, `outro.py`,
   `scene.py`, `props.py` (drawn props); `recipes/` (ready scenes); `assets/stage25d.html`, `intro25d.html`, `scene25d.html` (three.js pages, copied into the clip folder
   and rendered by toon-2d `render_multiplane.py --page`).
