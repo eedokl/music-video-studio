@@ -183,8 +183,9 @@ def main():
     SET, set_dir = load_set(P, P.get("set", "room"))
     K, FLOOR = float(P.get("scale", SET.get("scale", 0.8))), float(P.get("floor", SET.get("floor", -3.0)))
     scr = SET.get("screen", [2.6, 2.6, 6.2, -0.2])
-    places = dict(SET.get("places", {}))
     svg_names = [k for k in names if figs[k].get("svg")]
+    places = dict(SET.get("places", {})) if len(names) > 1 else {}   # set places are dialogue spots; one figure
+    #                                                                     alone stands in the middle (user test)
     for i, k in enumerate(svg_names):
         if "place" in figs[k]:
             places[k] = float(figs[k]["place"])

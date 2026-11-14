@@ -6,9 +6,10 @@
 # ///
 """Whole talking scene in one go: voices -> scene -> render -> subtitles -> sounds -> film (look) -> check.
 
-  uv run make.py [--project .] [--from scene]
+  uv run make.py [--project .] [--from scene] [--to voices]
          [--redo-voices] [--engine system] [--jobs 8]
-Steps (--from starts later, finished earlier steps are kept):
+Steps (--from starts later, finished earlier steps are kept; --to stops after a step, e.g. --to voices = make the
+voices, let the user hear song.wav, then --from scene):
   voices    speak.py           script -> lines/*.wav, song.wav, analysis/dialogue.json, assignment.json
   scene     talk_scene.py      scenes/dialogue.sif + frames scenes/dialogue/f.%04d.png
   overlays  film-finish overlays.py dialogue   subtitles (word by word, "subtitles": false switches them off)
@@ -41,13 +42,17 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--project", default=".")
     ap.add_argument("--from", dest="start", choices=STEPS, default="voices")
+    ap.add_argument("--to", dest="stop", choices=STEPS, default=STEPS[-1],
+                    help="stop after this step (--to voices: listen to song.wav before the scene is rendered)")
     ap.add_argument("--redo-voices", action="store_true")
     ap.add_argument("--engine", choices=["qwen", "piper", "system"])
     ap.add_argument("--jobs", type=int, default=8)
     a = ap.parse_args()
     d = Path(a.project).resolve()
     project_check.require(d, skill="talking-character")   # project.json validated before the first step
-    todo = STEPS[STEPS.index(a.start):]
+    todo = STEPS[STEPS.index(a.start):STEPS.index(a.stop) + 1]
+    if not todo:
+        raise SystemExit(f"--from {a.start} comes after --to {a.stop}")
     if "voices" in todo:
         run(HERE / "speak.py", "--project", d, *(["--redo"] if a.redo_voices else []),
             *(["--engine", a.engine] if a.engine else []))
@@ -66,6 +71,10 @@ def main():
         run(FINISH / "build.py", "film", "--project", d)
     if "check" in todo:
         run(HERE / "check_sync.py", "--project", d)
+    if a.stop != STEPS[-1]:
+        nxt = STEPS[STEPS.index(a.stop) + 1]
+        print(f"Stopped after '{a.stop}'" + (f" - listen to {d / 'song.wav'}" if a.stop == "voices" else "")
+              + f"; continue with: make.py --project {d} --from {nxt}")
 
 
 if __name__ == "__main__":

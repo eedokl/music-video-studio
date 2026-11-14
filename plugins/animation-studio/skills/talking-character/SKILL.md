@@ -49,13 +49,19 @@ Directions: `(pause s)` `(beat)` `(to <name>)` `(looks up|down|away|camera)` `(i
 ```bash
 S="${CLAUDE_PLUGIN_ROOT}/skills/talking-character/scripts"
 python "$S/new_talk.py" <folder> --script dialogue.txt [--set room] [--recording take.wav] [--seed N]
-uv run "$S/make.py" --project <folder>
+uv run "$S/make.py" --project <folder> --to voices     # voices only: let the user hear <folder>/song.wav
+uv run "$S/make.py" --project <folder> --from scene    # then scene, subtitles, sounds, film, check
 ```
+(Without `--to` / `--from` it runs all steps in one go - fine when nobody wants to hear the voices first.)
 `make.py` checks project.json first (studio-core `project_check.py`): every figure's `"voice"` must be a voice of the cast (voice block `assets/cast.json` or project `"voices"`) – not a role like "male" – else it stops with exit code 2 before any voice is made. `"size": [w, h]` = frame size (default 1280x720).
 `make.py` runs: `speak.py` (voices, timeline, Rhubarb per line, word times) → `talk_scene.py --render`
 (scenes/dialogue.sif + frames) → film-finish `overlays.py dialogue` (subtitles) → `sounds.py` (gesture sounds,
 earshot) → `build.py film` (look, film.mp4 / film_small / film_mail, 0 decode errors) → `check_sync.py`.
-`--from scene` re-runs from a later step (voices are cached in `lines/` and only re-spoken when a text changes).
+`--from scene` re-runs from a later step (voices are cached in `lines/` and only re-spoken when a text changes);
+`--to <step>` stops after a step.
+A single figure (no other figure, no screen) stands in the middle of the set (the set's `places` are dialogue spots); `"place": x` moves it.
+Harmless lines in make.log from the Qwen3-TTS library: "SoX could not be found", a flash-attn warning, and on
+some Windows machines a cmd "AutoRun" registry message - the voices are fine (check the Whisper score per line).
 
 project.json keys (besides the song-analysis ones): `script`, `recording`, `figures` {name: {svg | kind: screen,
 voice, place, size, mouth, follow, arms, hands}}, `voices` (overrides, see the voice block), `set`, `view`,
