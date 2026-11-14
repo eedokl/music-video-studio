@@ -42,7 +42,8 @@ POP = ("ui_pop/blip", -20)
 
 
 def main():
-    P = Project(sys.argv[1] if len(sys.argv) > 1 else ".")
+    args = [x for x in sys.argv[1:] if x != "--project"]           # `sounds.py <folder>` or `--project <folder>`
+    P = Project(args[0] if args else ".")
     P.check("film-finish")                 # project.json validated before any long step
     rules = P.get("sounds", [])
     if rules is False:                                # "sounds": false = no sound-effect track at all

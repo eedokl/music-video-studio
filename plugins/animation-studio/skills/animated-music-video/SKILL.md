@@ -200,8 +200,12 @@ marker such as "final chorus"), `"from"`/`"to"` (song seconds) or `"until_word"`
 
 Every build script checks project.json first (studio-core `project_check.py`, details in song-analysis "Project check"): a wrong type, an impossible section (from >= to, duplicate name) or an unknown transition stop it in seconds with exit code 2 and the key named; unknown keys and overlapping sections (build.py cuts at the next start) only warn.
 `"size": [w, h]` sets the frame size of scenes and film (default `[1280, 720]`; keep 16:9 – the sets are 16:9).
-Per section: `scene.py <section> --project <folder> --render` → `overlays.py <section>` → (all sections) `sounds.py`
-→ `build.py preview <section>` or `build.py film`. Then **look at your own result before showing it**:
+Per section: `scene.py <section> --project <folder> --render` → `overlays.py <section> --project <folder>` → (all
+sections) `sounds.py --project <folder>` → `build.py preview <section> --project <folder>` or `build.py film --project <folder>`.
+A word that is still shown at the wrong time (analyze.py warns e.g. "'Out of' sits far before the rest"): add the
+missing call to lyrics.txt and re-run `analyze.py --redo`, or edit its `"t"` / `"end"` in `analysis/song_sheet.json`
+by hand (keep a copy; `--redo` overwrites it), then re-run `overlays.py`. The mouths come from the vocals (Rhubarb)
+and do not change. Then **look at your own result before showing it**:
 `media.py sheet film.mp4 sheet.png` and read the image. Check: figures in frame and not covering the screen face,
 mouths open when the voice sings, gags readable, nothing repeats mechanically. Fix and rebuild only what changed.
 Optional versions: a **48 fps film** (`film-finish/scripts/fps48.py` after `build.py film`, needs RIFE – config key

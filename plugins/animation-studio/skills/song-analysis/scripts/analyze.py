@@ -117,6 +117,19 @@ def step_sheet(P):
         print("   WARNING " + msg)
 
 
+def leading_strays(starts):
+    """How many words (0-2) at the start of a line sit far before a dense rest: each gap after them > 1 s and more
+    than twice the median gap of the rest. User tests: an unlisted "Hey! Hey!" was heard as "Out of"."""
+    gaps = [b - a for a, b in zip(starts, starts[1:])]
+    for k in (2, 1):
+        rest = gaps[k:]
+        if len(rest) >= 2:
+            med = sorted(rest)[len(rest) // 2]
+            if all(g > 1.0 and g > 2 * med for g in gaps[:k]):
+                return k
+    return 0
+
+
 def sheet_warnings(sheet):
     """Plausibility notes on the word times of song_sheet.json (user tests): a lyric line placed after the song end
     (an excerpt that stops before the last line), and a line whose first word sits far before a dense rest (a call
@@ -129,16 +142,15 @@ def sheet_warnings(sheet):
     for li, ws in sorted(by_line.items(), key=lambda kv: (kv[0] is None, kv[0] or 0)):
         ws.sort(key=lambda w: w["t"])
         if end and ws[0]["t"] >= end - 0.3:
-            out.append(f"lyric line {li} starts at {ws[0]['t']:.2f} s, after the song end ({end:.2f} s): not sung in "
-                       "this (excerpt of the) song? delete it from the lyrics and run with --redo")
+            where = "after the song end" if ws[0]["t"] >= end else f"only {end - ws[0]['t']:.2f} s before the song end"
+            out.append(f"lyric line {li} starts at {ws[0]['t']:.2f} s, {where} ({end:.2f} s): at most a fragment of it "
+                       "is sung in this (excerpt of the) song - delete it (or keep only the sung words) and run --redo")
             continue
-        gaps = [b["t"] - a["t"] for a, b in zip(ws, ws[1:])]
-        if len(gaps) >= 3:
-            rest = sorted(gaps[1:])[len(gaps[1:]) // 2]
-            if gaps[0] > 1.0 and gaps[0] > 2.5 * rest:
-                out.append(f"lyric line {li}: its first word '{ws[0]['word']}' ({ws[0]['t']:.2f} s) is {gaps[0]:.1f} s "
-                           "before the second - a call that is not in the lyrics (\"Hey!\") heard as it? add the call "
-                           "to the lyrics, or fix the time")
+        k = leading_strays([w["t"] for w in ws])
+        if k:
+            lead = " ".join(w["word"] for w in ws[:k])
+            out.append(f"lyric line {li}: '{lead}' ({ws[0]['t']:.2f} s) sits far before the rest of the line - a call "
+                       "that is not in the lyrics (\"Hey!\") heard as it? add the call to the lyrics, or fix the time")
     return out
 
 

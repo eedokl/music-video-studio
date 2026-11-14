@@ -39,7 +39,8 @@ _studio.use("song-analysis")
 import held_notes  # noqa: E402
 import hits as hits_mod  # noqa: E402
 from refine_timing import Onsets, refine_lines  # noqa: E402
-from song_project import Project  # noqa: E402
+from song_project import Project
+from analyze import leading_strays  # noqa: E402  (song-analysis)
 
 SA = _studio.skill_dir("song-analysis") / "scripts"
 
@@ -202,14 +203,11 @@ def main():
     late = 0
     for L, (rec, al, n), text in zip(timing, quality, lines):
         flag = "  <- estimated" if rec + al == 0 else ""
-        ws = [x for x in L.get("words", []) if x is not None]
-        gaps = [b - a for a, b in zip(ws, ws[1:])]
-        if len(gaps) >= 3:                            # first word far before a dense rest: often a call that is not
-            rest = sorted(gaps[1:])[len(gaps[1:]) // 2]  # in lyrics.txt ("Hey!") was heard as that word (user test)
-            if gaps[0] > 1.0 and gaps[0] > 2.5 * rest:
-                flag += f"  <- 1st word {gaps[0]:.1f} s before the 2nd: an unlisted call (Hey!) heard as it?"
-        if song_end and L["t"] >= song_end - 0.3:     # placed after the end: not sung in this (excerpt of the) song
-            flag += "  <- AFTER THE SONG END: not sung here? remove it from lyrics.txt"
+        k = leading_strays([x for x in L.get("words", []) if x is not None])
+        if k:                                         # first word(s) far before a dense rest: a call that is not in
+            flag += f"  <- first {k} word(s) far before the rest: an unlisted call (Hey!) heard as it?"   # lyrics.txt
+        if song_end and L["t"] >= song_end - 0.3:     # (user tests) / placed at or after the end of the excerpt
+            flag += "  <- AT/AFTER THE SONG END: at most a fragment sung - delete it or keep only the sung words"
             late += 1
         print(f"{L['t']:7.2f} {L['e']:7.2f}  {rec:>2}+{al}/{n:<2}  {text}{flag}")
     tot = sum(q[2] for q in quality)

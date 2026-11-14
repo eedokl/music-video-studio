@@ -149,14 +149,19 @@ def preview(P, name):
 TITLE_Y = {"top": 170, "center": 360, "lower": 520}       # px of a 720-high frame (times P.scale)
 
 
-def title_sprite(t, k=1.0):
-    """The title lettering as an RGBA image (Impact, ink outline, optional drop shadow); k = P.scale."""
+def title_sprite(t, k=1.0, max_w=None):
+    """The title lettering as an RGBA image (Impact, ink outline, optional drop shadow); k = P.scale. max_w: the
+    lettering shrinks to fit (user test: a long title at the default size was cut off left and right)."""
     from PIL import Image, ImageDraw, ImageFont
     fp = next((f for f in ("C:/Windows/Fonts/impact.ttf", "/System/Library/Fonts/Supplemental/Impact.ttf",
                            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf") if Path(f).exists()), None)
     size = int(t.get("size", 150) * k)
     f = ImageFont.truetype(fp, size) if fp else ImageFont.load_default()
     tw, th = f.getbbox(t["text"])[2:]
+    if fp and max_w and tw > max_w:
+        size = max(12, int(size * max_w / tw))
+        f = ImageFont.truetype(fp, size)
+        tw, th = f.getbbox(t["text"])[2:]
     m = round(40 * k)
     img = Image.new("RGBA", (tw + 2 * m, th + 2 * m), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
@@ -176,7 +181,7 @@ def title_frames(P, t):
     n = frame_count(t["from"], t["to"], fps)
     fade = max(1, round(float(t.get("fade_out", 0.75)) * fps))
     W, H = P.size
-    spr = title_sprite(t, P.scale)
+    spr = title_sprite(t, P.scale, max_w=0.9 * W / 1.15)             # room for the pop overshoot (1.15)
     y = (t["y"] if isinstance(t.get("y"), (int, float)) else TITLE_Y.get(t.get("place", "top"), 170)) * P.scale
     d = P.cache / "title"
     d.mkdir(exist_ok=True)
@@ -199,7 +204,7 @@ def title_image(P, t):
     if any(k in t for k in ("size", "y", "place", "shadow")):     # positioned lettering, static
         from PIL import Image
         W, H = P.size
-        spr = title_sprite(t, P.scale)
+        spr = title_sprite(t, P.scale, max_w=0.9 * W)
         img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         y = (t["y"] if isinstance(t.get("y"), (int, float)) else TITLE_Y.get(t.get("place", "top"), 170)) * P.scale
         img.alpha_composite(spr, (W // 2 - spr.width // 2, int(y - spr.height / 2)))
@@ -219,6 +224,9 @@ def title_image_plain(P, t):
     f = ImageFont.truetype(fp, round(120 * P.scale)) if fp else ImageFont.load_default()
     h = t.get("color", "#ffd23f").lstrip("#")
     tw = d.textlength(t["text"], font=f)
+    if fp and tw > 0.9 * W:                                   # a long title shrinks to fit
+        f = ImageFont.truetype(fp, max(12, int(120 * P.scale * 0.9 * W / tw)))
+        tw = d.textlength(t["text"], font=f)
     d.text(((W - tw) / 2, H * 0.32), t["text"], font=f, fill=tuple(int(h[i:i + 2], 16) for i in (0, 2, 4)) + (255,),
            stroke_width=max(1, round(8 * P.scale)), stroke_fill=(43, 29, 20, 255))
     out = P.cache / "title.png"
