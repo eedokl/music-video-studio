@@ -16,6 +16,7 @@ from motion import squash_keys, approx, spring_follow
 from sif import V, R, anim, comp_vec, group, circle, hexc
 from svg2sif import normalize, load_svg, emit
 import scene_fx as fx
+import scene_acting as acting
 
 INK = hexc("#2b1d14")
 DANCE_STYLES = ("arms", "bounce", "step", "twist")
@@ -39,8 +40,10 @@ def strike_frames(c, k, t0, t1, speed):
     return out
 
 
-def _beat_keys(c, k, x0, style, spans):
-    """Per-beat keyframes of one figure: (arm_l, arm_r, head, look, brow, sq, by, step, sway)."""
+def _beat_keys(c, k, x0, style, spans, acted=False):
+    """Per-beat keyframes of one figure: (arm_l, arm_r, head, look, brow, sq, by, step, sway).
+    acted: the acting layer (scene_acting.py) turns eyes and head to the singer - the listen pose keeps only its
+    small beat nod here."""
     beats, names, figs_cfg, places, fps, act = c.beats, c.names, c.figs_cfg, c.places, c.fps, c.act
     arm_l, arm_r, head, look, brow, sq, by, step = [], [], [], [], [], [], [], [(0, 0.0)]
     sway = [(0, 0.0)]
@@ -95,6 +98,10 @@ def _beat_keys(c, k, x0, style, spans):
             arm_l.append((f, -150 if (down and bt["bar"] % 4 == 0) else -20))
             head.append((f, 7 if down else -2)); look.append((f, (0.0, 0.02))); brow.append((f, 0.07 if down else 0.03))
             sq += [(f - 2, 1.02), (f, 0.96), (f + 4, 1.01)]; by.append((f, 0.0))
+        elif mode == "listen" and acted:
+            arm_l.append((f, 6)); arm_r.append((f, -6)); head.append((f, 2 if up else -1))
+            look.append((f, (0.0, 0.0))); brow.append((f, 0.05)); sq += [(f, 0.99), (f + 4, 1.0)]
+            by.append((f, 0.0))
         elif mode == "listen":
             arm_l.append((f, 6)); arm_r.append((f, -6)); head.append((f, 9 * (toward or 1)))
             look.append((f, (0.09 * toward, 0.0))); brow.append((f, 0.05)); sq += [(f, 0.99), (f + 4, 1.0)]
@@ -145,7 +152,53 @@ def figure(c, k, nr, x=None, scale=None, floor=None, actions=True, front_out=Non
     #   own "dance_style" still changes it on purpose
     c.styles_used[k] = style
     spans = c.act_spans.get(k, []) if actions else []
-    arm_l, arm_r, head, look, brow, sq, by, step, sway = _beat_keys(c, k, x0, style, spans)
+    act_k = acting.plan(c, k, x0, spans) if actions else None       # project.json "acting": gaze, nods, brows
+    arm_l, arm_r, head, look, brow, sq, by, step, sway = _beat_keys(c, k, x0, style, spans, acted=act_k is not None)
+    gaze = brow_act = None
+    if act_k:
+        head = acting.add_to_keys(c, head, act_k["head"])           # in the head keys: the hair follows them
+        gaze = anim("vector", acting.vector_keys(*act_k["gaze"], 0.10, 0.06))
+        brow_act = comp_vec(R(0), anim("real", acting.keys(act_k["brow"])))
+        c.acting_used[k] = act_k["n"]
+    expr = acting.express(c, k) if actions else None                # project.json "expressions"
+    if expr:
+        head = acting.add_to_keys(c, head, expr["head"])
+        c.acting_used.setdefault(k, {})["expressions"] = expr["n"]
+    turn = act_k["turn"] if act_k else None
+
+    def turned(layer, part):
+        """the face turn: this part of the face slides sideways inside the head outline"""
+        if turn is None:
+            return layer
+        return group(f"acting turn {part}", [layer],
+                     offset=anim("vector", acting.vector_keys(turn, turn * 0, acting.TURN[part], 0.0)))
+
+    def eye(pid, kids):
+        if expr and pid in PIV:                       # expression: eyes wide / narrowed, under the blink
+            px, py = PIV[pid]
+            kids = [group(f"expression {pid}", kids, origin=(px, py), offset=V(px, py),
+                          scale=anim("vector", acting.vector_keys(expr["eye"] * 0 + 1, expr["eye"], 1.0, 1.0)))]
+        return turned(pivot(pid, kids, scale=anim("vector", blink)), "eyes")
+
+    def brows(kids):
+        if expr and len(kids) == 2 and "brauen" in PIV:   # each brow lifts and tips on its own
+            by_ = PIV["brauen"][1]
+            xs = [PIV.get("auge_l", (-0.5, 0))[0], PIV.get("auge_r", (0.5, 0))[0]]
+            kids = [group(f"expression brow {j}", [kid], origin=(xs[j], by_),
+                          offset=anim("vector", acting.vector_keys(expr[lr] * 0 + xs[j], expr[lr] + by_, 1.0, 1.0)),
+                          angle=anim("angle", acting.keys(expr["angle"], sg)))
+                    for j, (kid, lr, sg) in enumerate(zip(kids, ("brow_l", "brow_r"), (-1.0, 1.0)))]
+        return turned(group("brauen", acted(kids, "brow", brow_act),
+                            offset=comp_vec(R(0), anim("real", keys(brow)))), "brows")
+
+    def mouth():
+        center = PIV.get("mund", (0, 6))
+        m = mouth_layers(cues, fps, center=center, size=msize, ink=INK, offset_frames=-1)
+        if expr and expr["mouths"]:                  # silent + expression: its own mouth instead of the sync mouth
+            draw = acting.expression_mouths(center, msize, INK)
+            m = [group("Mouth sync", m, amount=anim("real", expr["sync"]))] + \
+                [group(f"Mouth {n}", draw[n], amount=anim("real", ks)) for n, ks in expr["mouths"].items()]
+        return [turned(group("Mouth", m), "mouth")] if (turn is not None or expr) else m
     blink = [(0, (1, 1))]
     for t in np.arange(S + 1.1 + 0.7 * nr, E, 3.7 + 0.4 * nr):
         f = F(t)
@@ -176,18 +229,25 @@ def figure(c, k, nr, x=None, scale=None, floor=None, actions=True, front_out=Non
         px, py = PIV[pid]
         return group(pid, kids, origin=(px, py), offset=V(px, py), **kw)
 
+    def acted(kids, name, offset):
+        """the acting layer's own offset under the beat offset (both add up)"""
+        return kids if offset is None else [group(f"acting {name}", kids, offset=offset)]
+
     wrap = {
         "arm_l": lambda kids, p: pivot("arm_l", kids, angle=anim("angle", keys(arm_l)),
                                        **({"amount": anim("real", keys(amt_l))} if amt_l else {})),
         "arm_r": lambda kids, p: pivot("arm_r", kids, angle=anim("angle", keys(arm_r)),
                                        **({"amount": anim("real", keys(amt_r))} if amt_r else {})),
-        "kopf": lambda kids, p: pivot("kopf", kids + mouth_layers(cues, fps, center=PIV.get("mund", (0, 6)), size=msize,
-                                                                  ink=INK, offset_frames=-1), angle=anim("angle", keys(head))),
-        "auge_l": lambda kids, p: pivot("auge_l", kids, scale=anim("vector", blink)),
-        "auge_r": lambda kids, p: pivot("auge_r", kids, scale=anim("vector", blink)),
-        "pupille_l": lambda kids, p: group("pupille_l", kids, offset=anim("vector", keys(look))),
-        "pupille_r": lambda kids, p: group("pupille_r", kids, offset=anim("vector", keys(look))),
-        "brauen": lambda kids, p: group("brauen", kids, offset=comp_vec(R(0), anim("real", keys(brow)))),
+        "kopf": lambda kids, p: pivot("kopf", kids + mouth(), angle=anim("angle", keys(head))),
+        "auge_l": lambda kids, p: eye("auge_l", kids),
+        "auge_r": lambda kids, p: eye("auge_r", kids),
+        "brille": lambda kids, p: turned(group("brille", kids), "glasses"),
+        "nase": lambda kids, p: turned(group("nase", kids), "nose"),
+        "wangen": lambda kids, p: turned(group("wangen", kids, offset=anim("vector", acting.vector_keys(
+            expr["cheek"] * 0, expr["cheek"], 1.0, 1.0))) if expr else group("wangen", kids), "cheeks"),
+        "pupille_l": lambda kids, p: group("pupille_l", acted(kids, "gaze", gaze), offset=anim("vector", keys(look))),
+        "pupille_r": lambda kids, p: group("pupille_r", acted(kids, "gaze", gaze), offset=anim("vector", keys(look))),
+        "brauen": lambda kids, p: brows(kids),
     }
     # hair (and other parts hanging from the head): turn with the head, then swing behind it on a spring
     if "kopf" in PIV:

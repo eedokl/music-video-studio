@@ -90,6 +90,7 @@ class SceneContext:
     act_spans: dict = field(default_factory=dict)  # figure -> [(t0, t1, action, speed)]
     action_log: list = field(default_factory=list) # entries for analysis/actions_<section>.json
     styles_used: dict = field(default_factory=dict)
+    acting_used: dict = field(default_factory=dict)  # figure -> counts of the acting layer (scene_acting.py)
     light_pal: object = None       # disco palette
     screen_ev: list = field(default_factory=list)  # (t0, t1, text, colour)
     tint_ev: list = field(default_factory=list)    # (t0, t1, colour): the whole screen tinted (e.g. red at "Quota")

@@ -25,8 +25,15 @@ def screen_face(c, k, rect=None):
     face_on = [(0, 1.0, "constant")]
     for t0, t1, _, _ in c.screen_ev:
         face_on += [(F(t0), 0.0, "constant"), (F(t1), 1.0, "constant")]
+    look = None
+    if rect is None:                                  # the face in the set's screen looks at whoever sings
+        import scene_acting as acting
+        act_k = acting.plan(c, k, (c.SCREEN[0] + c.SCREEN[2]) / 2, screen=True)
+        if act_k:
+            look = acting.vector_keys(*act_k["gaze"], 0.4, 0.4)       # in eye radii
+            c.acting_used[k] = act_k["n"]
     return computer(tuple(rect or c.SCREEN), fps=c.fps, blink=blinks, bounce=bounce, mouth_cues=c.cues_in_window(k),
-                    face_on=c.keys(face_on))
+                    face_on=c.keys(face_on), look_keys=look)
 
 
 def screen_texts_layers(c):
