@@ -53,6 +53,12 @@ def vocalise(line):
     return bool(line) and all(w.lower() in VOCALISE for w in ws)
 
 
+def shouts(line):
+    """Calls like "Hey! Hey!": the lip score says little there (test: all LTX takes -0.25..0.12, the best frozen)."""
+    ws = [w.lower() for w in re.findall(r"[A-Za-zÄÖÜäöüß]+", line or "")]
+    return (line or "").count("!") >= 2 or sum(w in VOCALISE for w in ws) >= 2
+
+
 def done(files):
     return [f for f in files if ".part." not in f.name and ".encoding." not in f.name]
 
@@ -243,6 +249,7 @@ def build(P, only=None, rebuild=False, quiet=False):
         shots.append(dict(name=s["name"], start=s["from"], end=s["to"], technique=s.get("technique"),
                           line=s.get("line") or "", auto=auto_file,
                           auto_entry=a_ent, vocalise=s.get("technique") == "lipsync" and vocalise(s.get("line")),
+                          shouts=s.get("technique") == "lipsync" and not vocalise(s.get("line")) and shouts(s.get("line")),
                           engine=s.get("engine"), manual=mine, note=note, takes=rows))
         if not quiet:
             print(f"  {s['name']}: {len(rows)} takes" + (f", auto {Path(shots[-1]['auto']).name}" if shots[-1]["auto"] else ""))

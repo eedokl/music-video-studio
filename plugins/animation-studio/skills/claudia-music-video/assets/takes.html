@@ -108,14 +108,14 @@ section.stage { display: flex; flex-direction: column; gap: 14px; padding: 16px;
 </main>
 <script>
 const $ = id => document.getElementById(id);
-let data = null, idx = 0, playing = false, changed = [], building = false;
+let data = null, idx = 0, playing = false, changed = [], building = false, lockUntil = 0;
 
 function fmt(t) { const m = Math.floor(t / 60); return m + ':' + (t - 60 * m).toFixed(2).padStart(5, '0'); }
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 function current(s) { return s.manual || s.auto; }
 function label(t) {
   if (t.file === 'still') return 'still';
-  return t.kind === 's2v' ? 'S2V' : t.kind === 'lipsync' ? 'LTX ' + (t.file.match(/_s(\d+)\.mp4$/) || ['', ''])[1]
+  return t.kind === 's2v' ? 'S2V' : t.kind === 'lipsync' ? 'LTX ' + (t.file.match(/_s(\d+)(?:_p[ab])?\.mp4$/) || ['', ''])[1]
        : t.kind === 'moving' ? 'clip' : t.kind;
 }
 
@@ -163,7 +163,9 @@ function vids() { return [...$('grid').querySelectorAll('video')]; }
 
 function show(i, autoplay = true) {
   stop();
-  idx = Math.max(0, Math.min(data.shots.length - 1, i));
+  const to = Math.max(0, Math.min(data.shots.length - 1, i));
+  if (to !== idx) lockUntil = Date.now() + 400;      // a click / key meant for the previous shot must not choose here
+  idx = to;
   const s = data.shots[idx];
   $('shotname').textContent = s.name;
   $('time').textContent = `${fmt(s.start)}–${fmt(s.end)} · ${(s.end - s.start).toFixed(1)} s · ${s.technique}`
@@ -171,6 +173,7 @@ function show(i, autoplay = true) {
   $('sung').textContent = s.line ? '„' + s.line + '“' : '';
   const notes = $('notes'); notes.innerHTML = '';
   if (s.note) notes.appendChild(el('div', 'note', s.note));
+  if (s.shouts) notes.appendChild(el('div', 'note', 'Shouts / calls ("Hey!"): the lip score says little here - judge the movement and the mouth by eye.'));
   if (s.vocalise) notes.appendChild(el('div', 'note', 'Vocalise (no real words): the lip score says little here - judge the expression.'));
   $('auto').disabled = !s.manual;
   const grid = $('grid'); grid.innerHTML = '';
@@ -178,6 +181,7 @@ function show(i, autoplay = true) {
     const card = el('div', 'take' + (t.file === current(s) ? ' chosen' : ''));
     const v = el('video'); v.src = '/' + t.preview; v.preload = 'auto'; v.muted = true; v.playsInline = true;
     v.dataset.file = t.file;
+    v.addEventListener('loadedmetadata', () => { if (!playing && v.duration) v.currentTime = v.duration / 2; }, { once: true });
     card.appendChild(v);
     const u = el('div', 'under');
     u.appendChild(el('span', 'title', label(t) + (t.image && t.file !== 'still' ? ' · ' + t.image : '')));
@@ -201,6 +205,7 @@ function show(i, autoplay = true) {
 
 async function choose(file) {
   const s = data.shots[idx];
+  if (Date.now() < lockUntil) return;
   if (file && file === s.manual) return;
   const r = await fetch('/api/choose', { method: 'POST', headers: { 'Content-Type': 'application/json' },
                                          body: JSON.stringify({ shot: s.name, file }) });

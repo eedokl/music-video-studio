@@ -85,8 +85,10 @@ Then **write the creative brief** (this is the film - do not skip it, do not cop
     add a `timeline` `[[0, 1.0, "she punches her fist up on each Hey"], [1.0, 3.1, "she walks ..., one step on every
     beat"]]` - one concrete action per span, no hold words ("small head movements", "static camera", "upright"), and a
     camera move on the downbeat. The times count from the shot start (jobs.py shifts them by the LTX lead-in). Such a
-    shot renders mixed: odd seeds with the plain prompt (A), even seeds with the timeline prompt (B) - with a single LTX
-    seed only B -, the user picks by eye (`prompt_style`: "timeline" / "plain" forces one). Close-ups, spoken
+    shot renders mixed with 4 LTX seeds (unless `--seeds` is given): odd seeds with the plain prompt (A, without a
+    downbeat camera), even seeds with the timeline prompt (B) - with a single LTX seed only B -, files
+    `<shot>_<img>_s<k>_pa.mp4` / `_pb.mp4`, the user picks by eye (GPU test 2026-11-15, s08 "Hey!": B 2:0, all three
+    actions on the beat; the lip score says little for shouts, the takes page says so) (`prompt_style`: "timeline" / "plain" forces one). Close-ups, spoken
     and quiet shots stay plain: in the A/B test (2026-11-15, 8 shots) B won 3 of 3 multi-action shots, A the other 5.
   - broll: `subject` (what we see, people only anonymous/from behind), `motion` (what moves), `look`
 - Record every idea: `creative.add_idea(P, "ai", idea, shot)`; user ideas (`by: "user"`) always win.

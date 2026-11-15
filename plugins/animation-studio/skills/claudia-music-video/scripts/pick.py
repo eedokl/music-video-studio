@@ -257,9 +257,11 @@ def pick_clips(P, sel, log, rows, curve):
             [f for d in ("s2v", "infinitetalk", "humo", "minimax_h3")
              for f in sorted((P.dir / "ai" / d).glob(f"{name}_{tag}.mp4")) + sorted((P.dir / "ai" / d).glob(f"{name}_{tag}_sd*.mp4"))]
         cands = done(cands)
-        hand = (man.get(name) or {}).get("file")
-        extra = [P.path(hand)] if hand and P.path(hand).exists() and P.path(hand).resolve() not in \
-            {c.resolve() for c in cands} and clips.meta_path(P.path(hand)).exists() else []
+        known = {c.resolve() for c in cands}
+        extra = [f for f in done(sorted((P.dir / "ai" / "lipsync").glob(f"{name}_*_s*.mp4"))
+                                 + [g for d in ("s2v", "infinitetalk", "humo", "minimax_h3")
+                                    for g in sorted((P.dir / "ai" / d).glob(f"{name}_*.mp4"))])
+                 if f.resolve() not in known and clips.meta_path(f).exists()]   # other start images: page only
         if not cands and not extra:
             continue
         curves = curves or mouth.vocal_curves(P.dir, curve)
@@ -286,6 +288,9 @@ def pick_clips(P, sel, log, rows, curve):
         if not rated:
             continue
         open_ = [x for x in rated if not x[4]] or rated
+        if s.get("engine", "ltx") == "ltx" and any(x[1].parent.name == "lipsync" for x in open_):
+            # the plan says LTX (test: after an engine switch the old S2V take won the automatic pick)
+            open_ = [x for x in open_ if x[1].parent.name == "lipsync"]
         score, c, lag, rl, closed, r = max(open_, key=lambda x: x[0])
         out[name] = {"file": relp(P, c), "lag": lag, "score": score, "r": rl, "r0": r["r0"], "range": r["range"]}
         log.append(f"clip {name}: {c.parent.name}/{c.name}  lag {lag:+d}  score {score}")

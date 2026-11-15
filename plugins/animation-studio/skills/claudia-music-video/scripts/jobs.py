@@ -148,6 +148,9 @@ def main():
     def add(kind, jid, out, **args):
         jobs.append({"id": jid, "kind": kind, "out": out, "args": args})
 
+    sf = P.dir / "selection.json"
+    sj = json.loads(sf.read_text(encoding="utf-8")) if sf.exists() else {}
+    sel_start = dict(sj.get("start") or {}, **((sj.get("manual") or {}).get("start") or {}))
     for s in P.sections():
         name, tech = s["name"], s["technique"]
         if only and name not in only:
@@ -172,6 +175,9 @@ def main():
                 out = f"ai/start/{name}_v{k}.png"
                 cands.append(out)
                 add("qwen_edit", f"{name}/start_v{k}", out, refs=use_refs, prompt=sp, neg=claudia.NEG_IMAGE, seed=base + k)
+            chosen = (sel_start.get(name) if not s.get("start_image") else None)
+            if chosen and P.path(chosen).exists() and chosen not in cands:
+                cands.append(chosen)                  # the start image picked before (test: a hand-made v4 was missing)
             img = {"pick": "start", "key": name, "candidates": cands}
             if not a.no_depth:
                 add("depth", f"{name}/depth", f"ai/depth/{name}_start_depth.png", image=img)
@@ -189,19 +195,26 @@ def main():
                 # a "timeline" shot is mixed by default: odd seeds the plain prompt (A), even seeds the timeline (B);
                 # "prompt_style": "timeline" | "plain" forces one style for all seeds
                 mode = s.get("prompt_style", "mixed") if s.get("timeline") else "plain"
-                lp_a = claudia.lipsync_prompt(s, wardrobe, look_vid, line, style="plain") if mode == "mixed" else lp
+                # A without the downbeat camera of B (test: "quick push-in on the downbeat" became a zoom jump in A)
+                s_a = {k: v for k, v in s.items() if k != "camera" or "downbeat" not in str(v).lower()}
+                lp_a = claudia.lipsync_prompt(s_a, wardrobe, look_vid, line, style="plain") if mode == "mixed" else lp
                 if mode == "plain" and s.get("timeline"):
                     lp = lp_a = claudia.lipsync_prompt(s, wardrobe, look_vid, line, style="plain")
                 if mode == "mixed":
                     pr["lipsync_plain"] = lp_a
                     problems += [f"{name} lipsync (plain): {e}" for e in claudia.check(lp_a, "lipsync")]
                 n_ltx = nseed if s.get("engine", "ltx") == "ltx" else 1      # s2v/infinitetalk: + 1 LTX seed
+                if mode == "mixed" and s.get("engine", "ltx") == "ltx" and not a.seeds:
+                    n_ltx = max(n_ltx, 4)                     # a real A/B: 2 seeds of each prompt
                 if s.get("engine", "ltx") != "ltx" and dur > 4.7:
                     n_ltx = 0                                 # longer than LTX can do in one clip (121 frames)
                 # mixed: odd seeds A, even seeds B; with a single LTX seed B (a timeline shot is one where B won)
                 plain_k = (lambda k: mode == "plain" or (mode == "mixed" and k % 2 == 1 and n_ltx > 1))
                 for k in range(1, n_ltx + 1):
-                    add("ltx_lipsync", f"{name}/ltx_s{k}", f"ai/lipsync/{name}_{{img}}_s{k}.mp4", image=img,
+                    # timeline shots: _pa / _pb in the name (test: the old s08_v4_s1.mp4 of the same seed, made with the
+                    # old prompt, counted as done and would have been shown as prompt A)
+                    pt = ("_pa" if plain_k(k) else "_pb") if s.get("timeline") else ""
+                    add("ltx_lipsync", f"{name}/ltx_s{k}", f"ai/lipsync/{name}_{{img}}_s{k}{pt}.mp4", image=img,
                         audio={"src": rel(P, vocals), "from": round(s["from"] - lead, 3), "dur": round(frames / 24 + 0.2, 3),
                                "quiet_start": True, "prepare": True},
                         prompt=lp_a if plain_k(k) else lp, neg=claudia.NEG_LIPSYNC, frames=frames,
