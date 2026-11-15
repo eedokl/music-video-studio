@@ -1,10 +1,13 @@
 # Runs inside Blender's Python (bpy) - imported by stage_actor.cast(), never run with uv.
-"""Two other makes of the same figures, applied after they are built (project.json "figures", or cast(style=...)):
+"""Three other makes of the same figures, applied after they are built (project.json "figures", or cast(style=...)):
 
   "ragdoll"   sewn rag dolls: woven linen, knit garments, plush tails, seams with hand stitches, coat-button eyes,
               a lumpy stuffing
   "puppet"    hand puppets for a puppet show: coloured fleece with a nap of fine hair, ping-pong eyes with felt
               pupils, a hinged flap mouth with a felt tongue, arm rods, no legs (they play behind a playboard)
+  "stopmotion" gothic stop-motion puppets, the hand-made armature kind: a big head on a narrow body, wire-thin limbs,
+              huge round porcelain eyes with pin pupils in dark sockets, pale sculpted clay skin with thumb marks,
+              black-and-bone striped costumes, a sewn mouth and a stitched skull, no brows
 
 The rig is not touched: joints, channels and the whole acting API keep working. The flap mouth of a puppet hangs on
 the figure's mouth channel, so say(), babble() and moods open it. What cannot work: a button or ping-pong eye does
@@ -37,7 +40,7 @@ import stage_core as C
 from stage_core import srgb
 
 TAU = math.tau
-STYLES = ("toy", "ragdoll", "puppet")
+STYLES = ("toy", "ragdoll", "puppet", "stopmotion")
 FLEECE = ("#EBA52C", "#DA5F26", "#A3BC66", "#8566B8", "#3F9BB0", "#E07A9A")     # given out in cast order
 PUPPET = {}                 # {figure name: options} - a project can steer a figure it cannot edit
 
@@ -325,9 +328,10 @@ def _stick(bm, a, b, r, seg=6):
     bmesh.ops.create_cone(bm, cap_ends=True, segments=seg, radius1=r, radius2=r, depth=d.length, matrix=m)
 
 
-def seam(o, co, no, pitch=0.011, length=0.009, r=0.0011, mat="thread", rng=None, groove="seam_line"):
+def seam(o, co, no, pitch=0.011, length=0.009, r=0.0011, mat="thread", rng=None, groove="seam_line", keep=None):
     """a sewn seam where the plane (object space) cuts the mesh: a thin line with hand stitches across it.
-    Keep the plane a little off the mesh's own edge loops (a slightly tilted normal), or the cut finds nothing."""
+    Keep the plane a little off the mesh's own edge loops (a slightly tilted normal), or the cut finds nothing.
+    keep(point) -> bool limits the seam to a part of the cut (e.g. only the front: a sewn mouth)."""
     rng = rng or random.Random(len(o.name))
     src = bmesh.new()
     src.from_mesh(o.data)
@@ -342,7 +346,7 @@ def seam(o, co, no, pitch=0.011, length=0.009, r=0.0011, mat="thread", rng=None,
         for (p0, n0), (p1, n1) in zip(pts, pts[1:]):
             d = p1 - p0
             L = d.length
-            if L < 1e-7:
+            if L < 1e-7 or (keep and not (keep(p0) and keep(p1))):
                 continue
             _stick(ln, p0 + n0 * 0.0004, p1 + n1 * 0.0004, r * 0.75, 5)
             while nxt <= acc + L:
@@ -591,7 +595,8 @@ def flap_mouth(S, c, zcut, hinge_y, parts=r"(head|snout|muzzle|cheek.*)", tongue
     return jaw
 
 
-def puppet_eyes(c, r, flat=1.0, lift=0.02, push=0.0, cross=0.2, lid=0.0, skin="fur", pupil=0.42, down=0.06):
+def puppet_eyes(c, r, flat=1.0, lift=0.02, push=0.0, cross=0.2, lid=0.0, skin="fur", pupil=0.42, down=0.06,
+                white="peye", black="ppupil"):
     """ping-pong eyes with felt pupils (a little cross-eyed), optional heavy lids in the skin fleece"""
     n, head = c.name, c.head.obj
     for side in "LR":
@@ -601,11 +606,11 @@ def puppet_eyes(c, r, flat=1.0, lift=0.02, push=0.0, cross=0.2, lid=0.0, skin="f
         sx = 1 if e.location.x > 0 else -1
         ctr = V((e.location.x, e.location.y + push, e.location.z + lift))
         blank(e)
-        C.ell(f"{n}_peye{side}", (r, r * flat, r), ctr, "peye", head, seg=40)
+        C.ell(f"{n}_peye{side}", (r, r * flat, r), ctr, white, head, seg=40)
         d = V((-sx * cross, -1.0, -down)).normalized()
         p = ctr + V((d.x * r, d.y * r * flat, d.z * r)) * 0.975
         rp = r * pupil
-        C.ell(f"{n}_ppupil{side}", (rp, rp * 0.22, rp), p, "ppupil", head, seg=24)
+        C.ell(f"{n}_ppupil{side}", (rp, rp * 0.22, rp), p, black, head, seg=24)
         if lid > 0:
             o = C.ell(f"{n}_plid{side}", (r * 1.07, r * flat * 1.09, r * 1.07), ctr, skin, head, seg=40)
             bm = bmesh.new()
@@ -777,13 +782,171 @@ def puppet(S, cast):
     return jaws
 
 
+# ====================================================================== gothic stop-motion puppets
+BONE, INK, PALE = "#CFCABB", "#131317", "#B4BCC8"
+
+
+def clay(m, color, dark="#646C7E", lumps=0.45):
+    """hand-sculpted modelling clay / foam latex: matte, soft thumb marks, a little paint in the hollows"""
+    nt, b = _base(m)
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    big = _noise(nt, tc.outputs["Object"], 26.0, 2.0)
+    fine = _noise(nt, tc.outputs["Object"], 420.0, 2.0)
+    nt.links.new(_mix(nt, _math(nt, "MULTIPLY", _math(nt, "SUBTRACT", 1.0, big), 0.55), color, dark),
+                 b.inputs["Base Color"])
+    C._set(b, **{"Roughness": 0.62, "Specular IOR Level": 0.35, "Subsurface Weight": 0.12, "Subsurface Scale": 0.02,
+                 "Sheen Weight": 0.1})
+    _bump(nt, b, _math(nt, "ADD", big, _math(nt, "MULTIPLY", fine, 0.06)), lumps, 0.006)
+    m.diffuse_color = _rgba(color)
+    return m
+
+
+def _stripe_fac(nt, tc, n=14, rings=None):
+    """0/1 stripes, a little wobbly as if painted by hand: n around the local Z axis, or rings of a height along Z"""
+    sx = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(tc.outputs["Object"], sx.inputs[0])
+    if rings:
+        v = _math(nt, "MULTIPLY", sx.outputs["Z"], TAU / rings)
+    else:
+        v = _math(nt, "MULTIPLY", _math(nt, "ARCTAN2", sx.outputs["X"], sx.outputs["Y"]), float(n))
+    wob = _math(nt, "MULTIPLY", _noise(nt, tc.outputs["Object"], 30.0, 2.0), 1.2)
+    return _math(nt, "GREATER_THAN", _math(nt, "SINE", _math(nt, "ADD", v, wob)), 0.0)
+
+
+def stripes(m, a=INK, b_=BONE, n=14, rings=None):
+    nt, b = _base(m)
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    nt.links.new(_mix(nt, _stripe_fac(nt, tc, n, rings), a, b_), b.inputs["Base Color"])
+    C._set(b, **{"Roughness": 0.85, "Sheen Weight": 0.5, "Sheen Roughness": 0.4, "Specular IOR Level": 0.2})
+    _bump(nt, b, _noise(nt, tc.outputs["Object"], 600.0, 2.0), 0.25, 0.002)
+    m.diffuse_color = _rgba(b_)
+    return m
+
+
+def stripes_over(m, a=INK, b_=BONE, n=16):
+    """a vest material with its shirt V-neck: the vest gets the stripes"""
+    nt = m.node_tree
+    tc = next((x for x in nt.nodes if x.type == "TEX_COORD"), None)
+    mx = next((x for x in nt.nodes if x.type == "MIX"), None)
+    if tc is None or mx is None:
+        return m
+    nt.links.new(_mix(nt, _stripe_fac(nt, tc, n), a, b_), mx.inputs["A"])
+    mx.inputs["B"].default_value = srgb("#BEB8A8")
+    return m
+
+
+def _pale(col):
+    """the clay colour of a fur colour: white stays the pale grey-blue, a colour is kept as a greyed tint of it"""
+    if _near_white(col):
+        return srgb(PALE)
+    p, (r, g, b) = srgb(PALE), col[:3]
+    lum = 0.3 * r + 0.6 * g + 0.1 * b
+    return tuple(0.55 * p[i] + 0.45 * (0.5 * (r, g, b)[i] + 0.5 * lum) for i in range(3)) + (1.0,)
+
+
+def _stopmotion_materials():
+    M = C._MATS
+    for k, m in list(M.items()):
+        if m.get("stage_look"):
+            continue
+        if k.startswith("fur_tail"):
+            stripes(m, rings=0.05)
+        elif k.startswith("fur"):
+            clay(m, _pale(_color_of(m)))
+        elif k == "shirt":
+            clay(m, "#C9C4B4", "#857F74", lumps=0.2)
+        elif k.startswith("vest_"):
+            stripes_over(m)
+        elif k.startswith(("knit", "accent")) and m.node_tree and m.node_tree.nodes.get("Principled BSDF"):
+            if k.endswith("_d") or "_d_" in k:
+                soften(m, INK)
+            else:
+                stripes(m, n=12)
+        elif k == "shell":
+            quilt(m, "#4A4460", "#1E1B2A", scale=11.0)
+        elif k in ("shell_rim", "shell_plate"):
+            soften(m, "#262232")
+        else:
+            continue
+        m["stage_look"] = 1
+    for k, col, kw in (("nose", "#0E0E11", {}), ("mouth_in", "#1A0A10", {}), ("tongue", "#8A4A58", {}),
+                       ("tooth", "#CFC6A2", {}), ("beak", "#A9A28C", {}), ("gold", "#6E6038", {"rough": 0.5, "sheen": 0.1})):
+        if k in M:
+            soften(M[k], col, **kw)
+    C.mat("sm_eye", "#F4F2EA", rough=0.18, coat=0.6, sss=0.05)          # porcelain
+    C.mat("sm_pupil", "#050506", rough=0.3)
+    C.mat("sm_socket", "#2A2130", rough=0.95)
+    C.mat("sm_thread", "#0F0F12", rough=0.85, sheen=0.4)
+    C.mat("sm_seam", "#6B6470", rough=1.0)
+
+
+def stopmotion(S, cast, thin=0.5, head=1.16, waist=0.86):
+    """turn built figures into gothic stop-motion puppets. A figure's class attribute `stopmotion = {...}` (or the
+    same key in a bundled figure's cast entry) can set thin / head / waist / eye / pupil."""
+    _stopmotion_materials()
+    for name, c in cast.items():
+        o = dict(getattr(c, "stopmotion", None) or {})
+        o.update((getattr(c, "look_d", None) or {}).get("stopmotion") or {})
+        th, hd, wa = o.get("thin", thin), o.get("head", head), o.get("waist", waist)
+        # ---- proportions: a big head on a narrow body, wire limbs
+        if "body" in c.J:
+            c.J["body"].obj.scale = (wa, wa, 1.0)
+        c.head.obj.scale = (hd / wa, hd / wa, hd)
+        for q in objs(name):
+            if q.type != "MESH":
+                continue
+            s = _suffix(q, name)
+            if re.fullmatch(r"(arm|fore|leg|shin)[LR]_m", s):
+                q.scale = (th, th, 1.0)
+            elif re.fullmatch(r"arm[LR]_h", s):
+                q.scale = (0.7, 0.7, 1.15)                    # long narrow hands
+            elif re.fullmatch(r"foot[LR]", s):
+                q.scale = (0.62, 1.2, 0.7)                    # long pointed shoes
+            elif s == "neck":
+                q.scale = (0.55, 0.55, 1.0)
+        # ---- eyes: huge, round, pin pupils, dark sockets; no brows
+        e = c.J.get("eyeL")
+        if e is not None and e.obj.type == "MESH" and e.obj.data.vertices:
+            gl = next((q for q in c.head.obj.children if re.fullmatch(r"gl-?\d", _suffix(q, name))), None)
+            r0 = _bbox(e.obj, 0)[1]
+            locs = {s: c.J["eye" + s].obj.location.copy() for s in "LR" if "eye" + s in c.J}
+            if gl is not None:
+                R, flat, lift = o.get("eye", _bbox(gl, 0)[1] * 0.8), 0.3, 0.0
+                push = gl.location.y + 0.004 - e.obj.location.y
+            else:
+                R, flat, lift, push = o.get("eye", r0 * 1.95), 0.85, r0 * 1.2, -0.25 * r0
+            puppet_eyes(c, R, flat=flat, lift=lift, push=push, cross=0.06, pupil=o.get("pupil", 0.15), down=0.0,
+                        white="sm_eye", black="sm_pupil")
+            if gl is None:
+                for s, p in locs.items():
+                    C.ell(f"{name}_socket{s}", (R * 1.2, R * 0.4, R * 1.2), (p.x, p.y + push + R * 0.5, p.z + lift),
+                          "sm_socket", c.head, seg=32)
+            for s in "LR":
+                if "brow" + s in c.J:
+                    for q in c.J["brow" + s].obj.children:
+                        blank(q)
+        # ---- the stitched skull and the sewn mouth
+        kids = {(_suffix(q, name)): q for q in c.head.obj.children if q.type == "MESH" and q.data.polygons}
+        if "head" in kids:
+            seam(kids["head"], (0.02, 0, 0.0), (1, 0.12, 0.45), pitch=0.016, length=0.013, r=0.0013, mat="sm_thread",
+                 groove="sm_seam")
+        mouth = next((q for q in c.head.obj.children if _suffix(q, name) == "mouth"), None)
+        mz = kids.get("muzzle") or kids.get("snout")
+        if mouth is not None and mz is not None:
+            z = mouth.location.z + 0.012 - mz.location.z
+            seam(mz, (0, 0, z), (0.02, 0.03, 1), pitch=0.012, length=0.016, r=0.0012, mat="sm_thread", groove="sm_thread",
+                 keep=lambda p: p.y < -0.01)
+
+
 # ====================================================================== entry
 def dress(S, cast, style):
-    """apply a make to built figures (called by stage_actor.cast). style: "toy" | "ragdoll" | "puppet" """
+    """apply a make to built figures (called by stage_actor.cast): "toy" | "ragdoll" | "puppet" | "stopmotion" """
     if style in (None, "", "toy"):
         return None
     if style == "ragdoll":
         return ragdoll(S, cast)
     if style == "puppet":
         return puppet(S, cast)
+    if style == "stopmotion":
+        return stopmotion(S, cast)
     raise ValueError(f'figures "{style}" unknown - one of {", ".join(STYLES)}')

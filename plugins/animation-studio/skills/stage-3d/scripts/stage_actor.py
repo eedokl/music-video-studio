@@ -19,7 +19,7 @@ OPEN = {"A": 0.04, "B": 0.3, "C": 0.55, "D": 1.0, "E": 0.7, "F": 0.28, "G": 0.22
 _LINES = None
 LIPS = {"strong": False}    # strong: wider mouth opening while speaking (speech_gain per figure); project.json "lips"
 SAID = []                   # (clip, first frame, last frame, line id, start frame) of every spoken line
-FIGURES = {"style": None}   # the make of the figures: None / "toy", "ragdoll", "puppet" (stage_looks); project.json "figures"
+FIGURES = {"style": None}   # the make of the figures: None / "toy", "ragdoll", "puppet", "stopmotion" (stage_looks); project.json "figures"
 
 
 def lines():
@@ -749,7 +749,7 @@ class Toy(Char):
 def cast(S, figures, style=None):
     """build figures: {"name": "bear" | {"look": "cat", "size": 0.9, "glasses": True} | a Char subclass}.
     Returns {name: figure}; every figure starts in its rest pose. style: the make of the figures - "toy" (as
-    modelled), "ragdoll" or "puppet" (stage_looks); default: project.json "figures"."""
+    modelled), "ragdoll", "puppet" or "stopmotion" (stage_looks); default: project.json "figures"."""
     materials()
     out = {}
     for nm, spec in figures.items():

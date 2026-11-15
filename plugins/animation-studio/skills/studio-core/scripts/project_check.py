@@ -156,8 +156,9 @@ FILM3D = {                                            # animated-3d-film project
     "palette": {"type": (STR, DICT),
                 "doc": '"ivory" (default), "petrol", "forest" or {"base": "ivory", "accent": "#C24F2D"}'},
     "lips": {"type": (STR,), "values": ("soft", "strong")},
-    "figures": {"type": (STR,), "values": ("toy", "ragdoll", "puppet"),
-                "doc": 'the make of the figures: "toy" (default), "ragdoll" (sewn cloth) or "puppet" (hand puppets)'},
+    "figures": {"type": (STR,), "values": ("toy", "ragdoll", "puppet", "stopmotion"),
+                "doc": 'the make of the figures: "toy" (default), "ragdoll" (sewn cloth), "puppet" (hand puppets) or '
+                       '"stopmotion" (gothic stop-motion puppets)'},
     "cast": {"type": (DICT,), "doc": '{"mo": "bear", "kit": {"look": "cat", "glasses": true}} - the bundled toy figures'},
     "final": {"type": (STR,)},
 }

@@ -352,8 +352,9 @@ def main():
     n.add_argument("--cast", help="name:look pairs, looks: bear, cat, bunny (e.g. mo:bear,kit:cat)")
     n.add_argument("--seed", type=int)
     n.add_argument("--size", default="1920x1080")
-    n.add_argument("--figures", choices=("toy", "ragdoll", "puppet"), default="toy",
-                   help="the make of the figures: felt toys (default), sewn rag dolls or hand puppets")
+    n.add_argument("--figures", choices=("toy", "ragdoll", "puppet", "stopmotion"), default="toy",
+                   help="the make of the figures: felt toys (default), sewn rag dolls, hand puppets or gothic "
+                        "stop-motion puppets")
     c = sub.add_parser("clip")
     c.add_argument("folder")
     c.add_argument("name")

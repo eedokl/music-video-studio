@@ -91,9 +91,9 @@ All figures breathe, sway and blink on their own; `c.follow(f)` lets ears / tail
 Give every figure a body language and keep it through the film (slow and deliberate vs. never still; what the
 ears, the tail, the brows do when it doubts or is sure) – that is what makes a cast recognisable.
 
-### Other makes: rag dolls and hand puppets (stage_looks)
+### Other makes: rag dolls, hand puppets, stop-motion puppets (stage_looks)
 
-project.json `"figures": "ragdoll"` or `"puppet"` (or `K.cast(S, {...}, style=...)` for one clip) re-dresses the
+project.json `"figures": "ragdoll"`, `"puppet"` or `"stopmotion"` (or `K.cast(S, {...}, style=...)` for one clip) re-dresses the
 built figures; scenes, poses and lip sync stay as they are.
 
 - **Rag dolls** read through texture and seams, so they need light that rakes across the cloth (a clear key from
@@ -105,6 +105,11 @@ built figures; scenes, poses and lip sync stay as they are.
   behind the board. They act with the whole head: big head turns and tilts, bounces on the beat, arms thrown up -
   small finger acting is lost. `jaws = K.dress(...)` / `stage_looks.puppet()` returns the jaw nodes; a jaw also
   takes keys of its own (`jaw.rot(f, x=28)`, degrees) on top of the mouth channel, e.g. for singing on the beat.
+- **Stop-motion puppets** have no brows and eyes that cannot change: they act with the tilt of the big head, the
+  shoulders and long holds - play them slower, hold poses a beat longer, and move in clear steps rather than in
+  flowing arcs (key poses with `ease="hold"` or short `"out"` moves, a held pose every few frames, reads as animated
+  "on twos"). Light them low-key and cold with one warm practical; compose with a lot of dark around the figure.
+  An own class can set `stopmotion = {"thin": 0.5, "head": 1.16, "waist": 0.86, "eye": 0.06, "pupil": 0.15}`.
 - An own figure steers its puppet make with a class attribute, e.g. `puppet = {"fleece": "#EBA52C", "parts":
   "muzzle", "hinge": -0.03}` for a long snout (cut only the muzzle - cutting head and muzzle gives a stacked mouth),
   `{"lid": 0.4}` for heavy eyelids; `stage_looks.PUPPET["name"] = {...}` does the same from a scene.
