@@ -167,9 +167,19 @@ def main():
                 add("depth", f"{name}/depth", f"ai/depth/{name}_start_depth.png", image=img)
             if tech == "lipsync":
                 frames, lead = clips.ltx_fit(dur)
-                lp = claudia.lipsync_prompt(s, wardrobe, look_vid, s.get("sing") or s.get("line"))
+                line = s.get("sing") or s.get("line")
+                lp = claudia.lipsync_prompt(s, wardrobe, look_vid, line)
                 pr["lipsync"] = lp
                 problems += [f"{name} lipsync: {e}" for e in claudia.check(lp, "lipsync")]
+                # a "timeline" shot is mixed by default: odd seeds the plain prompt (A), even seeds the timeline (B);
+                # "prompt_style": "timeline" | "plain" forces one style for all seeds
+                mode = s.get("prompt_style", "mixed") if s.get("timeline") else "plain"
+                lp_a = claudia.lipsync_prompt(s, wardrobe, look_vid, line, style="plain") if mode == "mixed" else lp
+                if mode == "plain" and s.get("timeline"):
+                    lp = lp_a = claudia.lipsync_prompt(s, wardrobe, look_vid, line, style="plain")
+                if mode == "mixed":
+                    pr["lipsync_plain"] = lp_a
+                    problems += [f"{name} lipsync (plain): {e}" for e in claudia.check(lp_a, "lipsync")]
                 n_ltx = nseed if s.get("engine", "ltx") == "ltx" else 1      # s2v/infinitetalk: + 1 LTX seed
                 if s.get("engine", "ltx") != "ltx" and dur > 4.7:
                     n_ltx = 0                                 # longer than LTX can do in one clip (121 frames)
@@ -177,9 +187,13 @@ def main():
                     add("ltx_lipsync", f"{name}/ltx_s{k}", f"ai/lipsync/{name}_{{img}}_s{k}.mp4", image=img,
                         audio={"src": rel(P, vocals), "from": round(s["from"] - lead, 3), "dur": round(frames / 24 + 0.2, 3),
                                "quiet_start": True, "prepare": True},
-                        prompt=lp, neg=claudia.NEG_LIPSYNC, frames=frames, seed=base + 100 + k,
+                        prompt=lp if (mode != "mixed" or k % 2 == 0) else lp_a, neg=claudia.NEG_LIPSYNC, frames=frames,
+                        seed=base + 100 + k,
                         strength=STRENGTHS[(k - 1) % 4],
-                        meta={"song_start": round(s["from"] - lead, 3), "lead_in": lead, "shot": name})
+                        meta={"song_start": round(s["from"] - lead, 3), "lead_in": lead, "shot": name,
+                              # takes.py shows it: the user compares A / B by eye
+                              **({"prompt_style": "plain" if mode == "plain" or (mode == "mixed" and k % 2) else "timeline"}
+                                 if s.get("timeline") else {})})
                 if s.get("engine") == "infinitetalk":
                     import infinitetalk
                     n, li = infinitetalk.frames_for(dur), infinitetalk.LEAD_IN
@@ -218,7 +232,8 @@ def main():
             else:
                 inst = inst or instrumental(P)
                 frames, lead = clips.ltx_fit(dur)
-                mp = claudia.moving_prompt(s.get("motion") or s.get("action") or "She moves slowly, her hair moves slightly",
+                mp = claudia.moving_prompt((claudia.timeline_text(s["timeline"]) if s.get("timeline") else None)
+                                           or s.get("motion") or s.get("action") or "She moves slowly, her hair moves slightly",
                                            s.get("camera", "slow push-in"), look_vid)
                 pr["moving"] = mp
                 problems += [f"{name} moving: {e}" for e in claudia.check(mp, "moving")]

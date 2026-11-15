@@ -81,6 +81,12 @@ Then **write the creative brief** (this is the film - do not skip it, do not cop
     e.g. "the wind blows her hair", "a slight sway of the head" - plan.py proposes both from the look. The LTX prompt
     is built like the Europe 2031 night run V1: "she sings <manner>, <action>. She sings the words "...". <mouth>".
     "deadpan" is her face, not a way to sing: bound to the words ("sings deadpan: ...") it kept mouths shut.)
+  - Only for shots with two or three separate actions on the beat (gesture lists, chorus energy, "Hey!" shouts):
+    add a `timeline` `[[0, 1.0, "she punches her fist up on each Hey"], [1.0, 3.1, "she walks ..., one step on every
+    beat"]]` - one concrete action per span, no hold words ("small head movements", "static camera", "upright"), and a
+    camera move on the downbeat. Such a shot renders mixed: odd seeds with the plain prompt (A), even seeds with the
+    timeline prompt (B), the user picks by eye (`prompt_style`: "timeline" / "plain" forces one). Close-ups, spoken
+    and quiet shots stay plain: in the A/B test (2026-11-15, 8 shots) B won 3 of 3 multi-action shots, A the other 5.
   - broll: `subject` (what we see, people only anonymous/from behind), `motion` (what moves), `look`
 - Record every idea: `creative.add_idea(P, "ai", idea, shot)`; user ideas (`by: "user"`) always win.
 Reference shots (Europe 2031: projector screens, paper stacks, storms, server halls) show *techniques*; each song gets

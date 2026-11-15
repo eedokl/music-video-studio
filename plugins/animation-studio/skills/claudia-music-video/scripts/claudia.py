@@ -151,17 +151,19 @@ def start_image_prompt(s, wardrobe, look_img, version="studio"):
     return " ".join(p for p in parts if p)
 
 
-def lipsync_prompt(s, wardrobe, look_vid, line):
+def lipsync_prompt(s, wardrobe, look_vid, line, style=None):
     """LTX prompt of a singing shot, built like the Europe 2031 night run V1: one action sentence with mood and movement
     ("she sings softly, a slight sway of the head"), then the words in a sentence of their own, then the mouth sentence.
     "manner" = how she sings (an adverb phrase), "action" = what she does / how she moves; "deadpan" belongs to her face
     in the action, never right before the sung words (a mood bound to the words, "deadpan: ...", kept mouths shut)."""
     words = re.sub(r"\s+", " ", (line or "").replace('"', "").replace("„", "").replace("“", "")).strip()
     words = words.rstrip(",;:.")                                 # ?! stay; the sentence ends after the quote
+    if s.get("timeline") and (style or "timeline") == "timeline":   # style "plain" = the A prompt of a timeline shot
+        return timeline_prompt(s, wardrobe, look_vid, words)
     manner = (s.get("manner") or "into the camera").strip().rstrip(".")
     if manner.lower() in ("deadpan", "deadpanned"):              # the canon face, as a face, not as a way to sing
         manner = "into the camera with a dry, deadpan face"
-    action = (s.get("action") or "a slight sway of the head").strip().rstrip(".")
+    action = (s.get("action") or timeline_action(s.get("timeline")) or "a slight sway of the head").strip().rstrip(".")
     act = action[4:] if action.lower().startswith("she ") else action
     first = act if act.lower().startswith("sings") else f"sings {manner}, {act}"
     sing = f' She sings the words "{words}".' if words else ""
@@ -169,6 +171,34 @@ def lipsync_prompt(s, wardrobe, look_vid, line):
     return (f"{s.get('framing', 'Medium shot').capitalize()} of {ID_VIDEO}, wearing {wardrobe}, she {first}.{sing} "
             f"{MOUTH}{(' ' + place[0].upper() + place[1:] + '.') if place else ''} "
             f"{s.get('camera', 'Static camera').capitalize()}, cinematic photographic 35mm film look, {look_vid}.")
+
+
+HOLD_WORDS = re.compile(r"\b(small head movements?|upright|static camera|faces the camera|stands still|"
+                        r"motionless)\b", re.I)
+
+
+def timeline_action(timeline):
+    """The timeline as one plain action ("she counts on her fingers, then she shrugs") for the A prompt of a mixed shot."""
+    return ", then ".join(HOLD_WORDS.sub("", str(a)).strip(" ,.") for _, _, a in (timeline or []))
+
+
+def timeline_text(timeline):
+    """[[0, 1.2, "she punches her fist up"], [1.2, 2.5, "she walks ... on the downbeat"]] -> "0-1.2s: ... 1.2-2.5s: ..." """
+    return " ".join(f"{float(t0):g}-{float(t1):g}s: {HOLD_WORDS.sub('', str(a)).strip(' ,.')}." for t0, t1, a in timeline)
+
+
+def timeline_prompt(s, wardrobe, look_vid, words):
+    """Timeline style (B) for shots with several actions on the beat (A/B test 2026-11-15: B won gesture lists, chorus
+    and "Hey" shots, A won close-ups, spoken and quiet shots), after the Claudia wiki rules / live film V2 / motion test
+    B: no posture or hold words ("small head movements", "static camera" froze her), one concrete action per time span,
+    one camera move bound to the beat, short; "static, frozen" stay in the negative prompt (NEG_LIPSYNC)."""
+    sing = f' She sings "{words}", her lips forming each word exactly when it sounds.' if words else ""
+    place = s.get("set_short") or s.get("set", "")
+    cam = HOLD_WORDS.sub("", s.get("camera") or "").strip(" ,.") or "slow push-in on the downbeat"
+    return (f"{s.get('framing', 'Medium shot').capitalize()} of {ID_VIDEO}, wearing {wardrobe}. "
+            f"{timeline_text(s['timeline'])}{sing}"
+            f"{(' ' + place[0].upper() + place[1:] + '.') if place else ''} Camera: {cam}. "
+            f"Cinematic photographic 35mm film look, {look_vid}.")
 
 
 SING_MOODS_ANY = [("into the camera", "a slight sway of the head"), ("softly", "she tilts her head, small movements"),

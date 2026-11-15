@@ -174,6 +174,7 @@ function show(i, autoplay = true) {
     u.appendChild(el('span', 'title', label(t) + (t.image && t.file !== 'still' ? ' · ' + t.image : '')));
     if (t.file === s.auto) u.appendChild(el('span', 'badge auto', 'automatic pick'));
     if (t.file === s.manual) u.appendChild(el('span', 'badge mine', 'your choice'));
+    if (t.style) u.appendChild(el('span', 'badge', t.style));
     if (t.score != null) u.appendChild(el('span', 'badge', 'lip ' + t.score.toFixed(2)));
     if (t.motion != null) u.appendChild(el('span', 'badge', 'motion ' + t.motion));
     if (t.lag) u.appendChild(el('span', 'badge', 'lag ' + (t.lag > 0 ? '+' : '') + t.lag));

@@ -34,3 +34,9 @@
 
 Weak spots that stayed (no model solved them): lips closing on short p/b/m; fast spoken lines with plosives
 (LTX r ~ 0 there; HuMo 1.7B / MiniMax were better but rejected for other reasons).
+
+- **Plain vs timeline prompt (A/B test 2026-11-15, Europe 2031 live, 8 shots x 2 seeds, same seeds/images/audio):**
+  metrics equal (lip 0.198 vs 0.206, motion 4.39 vs 4.24). By eye the timeline prompt won the multi-action shots
+  (gesture list, chorus head bob + arms, "Hey" fist + walk); the plain prompt won close-ups, spoken lines, the quiet
+  bridge and the run + jump (weak in all takes). Hence: plain by default, `timeline` only for multi-action shots,
+  rendered mixed (A on odd, B on even seeds).

@@ -178,8 +178,10 @@ def build(P, only=None, rebuild=False):
                 warn.append(f"made on start image {tag}, not the chosen {chosen_tag} - check mic / streak")
             if tag and tag.endswith("m"):
                 warn.append("start image is a mic repair - check the cheek")
+            style = (clips.read_meta(c) if clips.meta_path(c).exists() else {}).get("prompt_style")
             rows.append(dict(file=rel, preview=pv.relative_to(P.dir).as_posix(), lag=lag, score=li.get("score"),
-                             motion=li.get("motion"), warn="; ".join(warn), kind=c.parent.name, image=tag))
+                             motion=li.get("motion"), warn="; ".join(warn), kind=c.parent.name, image=tag,
+                             style={"plain": "prompt A (plain)", "timeline": "prompt B (timeline)"}.get(style)))
         if still:
             pv = P.dir / "takes" / s["name"] / "_still.mp4"
             if rebuild or not pv.exists() or pv.stat().st_mtime < P.path(still).stat().st_mtime:
