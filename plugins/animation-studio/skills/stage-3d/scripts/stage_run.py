@@ -159,8 +159,8 @@ def cmd_film(a):
         over = a.overwrite
         if len(miss) < n:                              # frames exist: made from the same scene / settings / lines?
             old = json.loads(kf.read_text(encoding="utf-8")) if kf.exists() else None
-            if old is None:
-                print(f"{c}: frames without source.json (older version) - taken as they are", flush=True)
+            if old is None or "lines" not in old:    # none (before 0.5.2) or the 0.5.2 one-key format
+                print(f"{c}: frames without a current source.json (older version) - taken as they are", flush=True)
             elif not same_source(old, k):
                 # the old frames are deleted BEFORE the new key is stored: a re-render stopped half way resumes
                 # with only new frames (keeping them mixed old/new frames as "complete")
