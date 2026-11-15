@@ -14,7 +14,7 @@ Material per shot, best first:
   + "typo" (typo.py): NEWSFLASH, stamps on the sung words, departure board, title - drawn on its own ground or over
     the material above (technique "typo" has no material)
 Finish (project.json "finish", defaults as in the reference films): film grain sigma 5.5, vignette 0.38,
-darker band under the lyrics, fade in 0.5 s at the song start and out 2.5 s at its end; "ai_label" (text) is shown
+darker band under the lyrics, fade in 0.5 s at the song start and out 2.5 s at its end (at most 40 % of the last shot); "ai_label" (text) is shown
 in the last 3 s of the last shot (LTX licence + plugin rule: AI content is labelled).
 Usage: uv run render_shots.py [<project>]
          [--only s02,s05] [--labels]   (--labels: shot/technique/material in the corner, for the animatic)
@@ -132,7 +132,7 @@ def source(P, s, sel):
     """-> (object with .frame(u, t) or None, description)"""
     name = s["name"]
     c = (sel.get("clip") or {}).get(name)
-    if c and P.path(c["file"]).exists():
+    if c and not c.get("still") and c.get("file") and P.path(c["file"]).exists():   # "still": the still by choice
         return ClipSource(P.path(c["file"]), c.get("lag", 0)), f"clip {c['file']} lag {c.get('lag', 0):+d}"
     grp = "broll" if s["technique"] == "broll" else "start"
     img = (sel.get(grp) or {}).get(name)
@@ -161,6 +161,9 @@ def main():
     song_len = duration(P.song)
     secs = P.sections()
     last = secs[-1]["name"] if secs else None
+    if secs and "fade_out" not in (P.get("finish") or {}):
+        # claudia3: 2.5 s darkened almost the whole 3 s last shot - at most 40 % of the last shot (>= 0.8 s)
+        fin["fade_out"] = min(fin["fade_out"], max(0.8, 0.4 * (song_len - secs[-1]["from"])))
     yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
     rr = np.sqrt(((xx - W / 2) / (W / 2)) ** 2 + ((yy - H / 2) / (H / 2)) ** 2)
     vign = (1 - fin["vignette"] * np.clip((rr - 0.55) / 0.85, 0, 1) ** 1.6)[..., None]
@@ -213,6 +216,13 @@ def main():
             fr.save(out / f"f.{fi:04d}.png", compress_level=1)
         rep.append(f"{s['name']} {s['from']:7.2f}-{s['to']:7.2f} {s['technique']:14s} {desc}")
         print(rep[-1], flush=True)
+    if only and (P.dir / "render.log").exists():   # --only: keep the lines of the other shots (takes.py reads them)
+        new = {ln.split()[0]: ln for ln in rep}
+        old = [ln for ln in (P.dir / "render.log").read_text(encoding="utf-8").splitlines() if ln.strip()]
+        have = {ln.split()[0] for ln in old}
+        rep = [new.get(ln.split()[0], ln) for ln in old] + [ln for ln in rep if ln.split()[0] not in have]
+        order = {s["name"]: i for i, s in enumerate(secs)}
+        rep.sort(key=lambda ln: order.get(ln.split()[0], 1 << 20))
     with open(P.dir / "render.log", "w", encoding="utf-8") as f:
         f.write("\n".join(rep) + "\n")
 

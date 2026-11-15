@@ -187,8 +187,9 @@ def main():
     cnt = {t: sum(s["technique"] == t for s in shots) for t in ("lipsync", "broll", "claudia_moving")}
     print(f"-> {len(shots)} shots ({cnt}), seed {seed}, version {version}, look {default_look}")
     for s in shots:
-        print(f"  {s['name']} {s['from']:7.2f}-{s['to']:7.2f} {s['technique']:14s} {s['framing'] or '':22s} "
-              f"{s['camera']:22s} {s['line'][:40]}")
+        eng = s.get("engine", "ltx") if s["technique"] == "lipsync" else ""
+        print(f"  {s['name']} {s['from']:7.2f}-{s['to']:7.2f} {s['technique']:14s} {eng:4s} {s['framing'] or '':22s} "
+              f"{s['camera']:22s} {s['line'][:40]}" + (f"  ({s['engine_reason']})" if s.get("engine_reason") else ""))
     print("Next: write the creative brief into each shot (idea, action, set, set_short / subject, motion) - see SKILL.md")
 
 

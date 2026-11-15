@@ -73,6 +73,24 @@ def run_claudia(ctx):
     ctx.uv(RENDER, d, timeout=900)
     log = (d / "render.log").read_text(encoding="utf-8")
     expect(log.count(" clip ") == 2 and "card" not in log, f"render_shots did not use both clips:\n{log}")
+    # the still instead of the clip (takes page "still"), render --only keeps the other render.log lines, changed()
+    (d / "ai" / "broll").mkdir(parents=True, exist_ok=True)
+    ctx.ff("-f", "lavfi", "-i", "testsrc2=s=1280x704", "-frames:v", "1", d / "ai" / "broll" / "s02_v1.png")
+    sel = read_json(d / "selection.json")
+    sel["broll"] = {"s02": "ai/broll/s02_v1.png"}
+    write_json(d / "selection.json", sel)
+    ctx.uv(TAKES, d, "--only", "s02")
+    tj = read_json(d / "takes" / "takes.json")
+    expect([s["name"] for s in tj["shots"]] == ["s01", "s02"]
+           and any(t["file"] == "still" for t in tj["shots"][1]["takes"]), f"takes --only s02 / still take: {tj['shots']}")
+    drv = (f"import sys; sys.path.insert(0, r'{TAKES.parent}'); import takes; from song_project import Project; "
+           f"P = Project(r'{d}'); assert takes.changed(P) == [], takes.changed(P); "
+           "takes.choose(P, 's02', 'still'); assert takes.changed(P) == ['s02'], takes.changed(P); print('still ok')")
+    out = ctx.run(["python", "-c", drv])
+    expect("still ok" in out.stdout, f"takes still / changed:\n{out.stdout}")
+    ctx.uv(RENDER, d, "--only", "s02", timeout=900)
+    log = (d / "render.log").read_text(encoding="utf-8").splitlines()
+    expect(len(log) == 2 and " clip " in log[0] and "still ai/broll/s02_v1.png" in log[1], f"render.log after --only:\n{log}")
     for s in P["sections"]:
         n = len(list((d / "scenes" / s["name"]).glob("f.*.png")))
         want = round(s["to"] * FPS) - round(s["from"] * FPS)

@@ -189,19 +189,33 @@ def pick_clips(P, sel, log, rows, curve):
         img = src.get(name)
         tag = Path(img).stem.split("_")[-1] if img else None
         if tech in ("broll", "claudia_moving"):
-            c = P.dir / "ai" / "moving" / f"{name}_{tag}.mp4" if tag else None
-            if c and c.exists():
+            # every seed of the picked still (<shot>_<img>.mp4, <shot>_<img>_sd<seed>.mp4): a clean one first, then the
+            # newest (a new seed is made because the old one failed); takes.py shows all of them
+            cs = done(sorted((P.dir / "ai" / "moving").glob(f"{name}_{tag}.mp4"))
+                      + sorted((P.dir / "ai" / "moving").glob(f"{name}_{tag}_sd*.mp4"))) if tag else []
+            best = None
+            for c in cs:
                 q = mouth.motion_check(c)
                 warn = [w for w, bad in (("HIDDEN CUT", q["cuts"]), ("FROZEN", q["frozen"]),
                                          ("little motion", q["motion"] < 3)) if bad]
-                out[name] = {"file": relp(P, c), "lag": 0, "qa": q, "warn": warn}
                 rows.append((c, f"moving  motion {q['motion']}  cuts {q['cuts']}  frozen run {q['frozen_run']}  "
                                 + " ".join(warn)))
+                if len(cs) > 1:
+                    log.append(f"  moving {c.name}  motion {q['motion']} cuts {q['cuts']} frozen {q['frozen']}"
+                               + (f"  -> {', '.join(warn)}" if warn else ""))
+                rank = (not warn, c.stat().st_mtime)
+                if best is None or rank > best[0]:
+                    best = (rank, c, q, warn)
+            if best:
+                _, c, q, warn = best
+                out[name] = {"file": relp(P, c), "lag": 0, "qa": q, "warn": warn}
                 log.append(f"clip {name}: {c.name}  motion {q['motion']} cuts {q['cuts']} frozen {q['frozen']}"
-                           + (f"  -> {', '.join(warn)}: re-render with another seed" if warn else ""))
+                           + (f"  -> {', '.join(warn)}: re-render with another seed (project.json shot \"seed\"), "
+                              "or take the still on the takes page" if warn else ""))
             continue
         cands = sorted((P.dir / "ai" / "lipsync").glob(f"{name}_{tag}_s*.mp4")) + \
-            [f for d in ("s2v", "infinitetalk", "humo", "minimax_h3") for f in sorted((P.dir / "ai" / d).glob(f"{name}_{tag}.mp4"))]
+            [f for d in ("s2v", "infinitetalk", "humo", "minimax_h3")
+             for f in sorted((P.dir / "ai" / d).glob(f"{name}_{tag}.mp4")) + sorted((P.dir / "ai" / d).glob(f"{name}_{tag}_sd*.mp4"))]
         cands = done(cands)
         if not cands:
             continue

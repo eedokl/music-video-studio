@@ -120,13 +120,25 @@ S2V/InfiniteTalk clips are 832x480: `"$A/upscale.py" clip.mp4 clip_720p.mp4` (Re
 look soft (render_shots otherwise scales with Lanczos). The clip's json is copied to `clip_720p.json`; use it with
 `selection.json["manual"]["clip"]["s07"] = {"file": "ai/s2v/s07_v2_720p.mp4", "lag": <lag of the original pick>}`.
 
-**Checkpoint - compare the takes by eye (optional, no GPU):** `uv run "$S/takes.py" <proj> --serve` makes a small
-preview of every take on the song (placed exactly as render_shots places it, with the song's sound) and opens a page:
-per shot all takes side by side, lip score / motion / warnings from picks.log, the automatic pick marked; ▶ plays a
-shot's takes together; a click on a take saves it to `selection.json` "manual" (and "clip") at once, "back to
-automatic" undoes it. Offer it to the user before the cut: in the Europe 2031 night run the eye preferred natural
-movement over the highest lip score (V3 took the V1 take in 11 of 17 singing shots). Then `render_shots.py --only
-<changed shots>`. Previews take ~0.2 s each (CPU); the page is local only (127.0.0.1).
+**Checkpoint - compare the takes by eye (recommended, no GPU):** `uv run "$S/takes.py" <proj> --serve` makes a small
+preview of every take on the song (placed exactly as render_shots places it, with the song's sound) and opens a page
+built like the user's own V1/V2 compare tool: the shot list on the left (badge = current take, yellow dot = changed
+since the last cut), the takes of one shot side by side (lip score / motion / warnings from picks.log, automatic pick
+marked), keys 1-9 choose, up/down change the shot, space plays all takes together (sound from the chosen one), loop,
+"next shot after a choice". Every shot also offers its **still** (start image / B-roll picture with the depth camera
+move) instead of a clip - the official way when every seed of a moving clip fails (claudia3: LTX drove the ferry into
+the camera). A take made on a start image that is no longer the chosen one is marked yellow ("made on start image v2,
+not the chosen v4 - check mic / streak"; claudia3 had a second mic in the film that way), as is a take on a mic repair.
+**Build cut** runs `render_shots.py --only <changed shots>` + `make_film.py` and shows the new film on the page.
+Offer it to the user before the cut, and let the user choose - do not pre-choose for them: in the Europe 2031 night
+run the eye preferred natural movement over the highest lip score (V3 took the V1 take in 11 of 17 singing shots), in
+claudia3 the user took LTX in 3 of 4 shots where S2V measured (and looked to the tester) better. Previews take ~0.2 s
+each (CPU); the page is local only (127.0.0.1).
+**More takes later:** project.json shot `"seed"` (moving clip) or `"s2v_seed"` / `"s2v_seeds": 2` (S2V) - a seed
+other than the default goes into the file name (`<shot>_<img>_sd<seed>.mp4`), so the old take stays and the night
+run does not skip the job as done; `jobs.py --only s01,s08` replaces only those shots' jobs in jobs.json / prompts.json.
+The mic measurement of start images is a hint, not a proof (claudia3: a repaired image with two booms measured "ok"):
+look at `sheet_start.jpg` yourself before the lip-sync phase.
 
 ## 6. Cut
 

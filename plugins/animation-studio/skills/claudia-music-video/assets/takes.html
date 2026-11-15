@@ -5,104 +5,267 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Takes</title>
 <style>
-  :root { --bg: #14161b; --card: #1d2027; --ink: #e8e6e1; --dim: #8d8f96; --accent: #d97757; --ok: #5fb3a1; --warn: #e0b04a; }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.4 system-ui, sans-serif; }
-  header { position: sticky; top: 0; z-index: 2; background: var(--bg); padding: 12px 20px; border-bottom: 1px solid #2a2d35;
-           display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap; }
-  h1 { font-size: 18px; margin: 0; }
-  .hint { color: var(--dim); }
-  main { padding: 8px 20px 60px; }
-  section { margin: 18px 0 26px; }
-  .head { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; margin-bottom: 8px; }
-  .head b { font-size: 16px; }
-  .line { color: var(--dim); font-style: italic; }
-  button { background: #2a2d35; color: var(--ink); border: 0; padding: 6px 12px; border-radius: 6px; cursor: pointer; font: inherit; }
-  button:hover { background: #353945; }
-  .row { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 4px; }
-  .take { flex: 0 0 320px; background: var(--card); border: 2px solid transparent; border-radius: 8px; padding: 6px; cursor: pointer; }
-  .take.chosen { border-color: var(--accent); }
-  .take video { width: 100%; display: block; border-radius: 4px; background: #000; }
-  .meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 6px; font-size: 12px; }
-  .badge { padding: 1px 6px; border-radius: 4px; background: #2a2d35; }
-  .badge.auto { background: var(--ok); color: #0b1a17; }
-  .badge.mine { background: var(--accent); color: #1a0e09; }
-  .badge.warn { background: var(--warn); color: #1d1503; }
-  .file { color: var(--dim); word-break: break-all; }
-  .saved { color: var(--ok); margin-left: 8px; font-size: 12px; }
+:root {
+  --bg: #121214; --panel: #1b1b1f; --panel2: #232328; --line: #2f2f36;
+  --text: #ece8e1; --muted: #9a958d; --clay: #d97757; --clay-dim: #d9775733; --ok: #8fb996; --warn: #e0b04a;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+body { display: grid; grid-template-rows: auto 1fr; }
+header { display: flex; align-items: center; gap: 16px; padding: 10px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+header h1 b { color: var(--clay); font-weight: 600; }
+.muted { color: var(--muted); }
+.spacer { flex: 1; }
+button { font: inherit; color: var(--text); background: var(--panel2); border: 1px solid var(--line);
+  border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+button:hover { border-color: var(--muted); }
+button.primary { background: var(--clay); border-color: var(--clay); color: #1a0f0a; font-weight: 600; }
+button:disabled { opacity: .5; cursor: default; }
+label.switch { display: flex; gap: 6px; align-items: center; color: var(--muted); cursor: pointer; user-select: none; }
+main { display: grid; grid-template-columns: 300px 1fr; min-height: 0; }
+nav { border-right: 1px solid var(--line); overflow-y: auto; }
+.shot { display: grid; grid-template-columns: 34px 1fr auto; gap: 8px; align-items: center; padding: 7px 12px;
+  border-bottom: 1px solid #1f1f24; cursor: pointer; }
+.shot:hover { background: var(--panel); }
+.shot.active { background: var(--panel2); box-shadow: inset 3px 0 0 var(--clay); }
+.shot .nr { color: var(--muted); font-variant-numeric: tabular-nums; }
+.shot .line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.shot .line small { display: block; color: var(--muted); font-size: 11px; }
+.badge { font-size: 11px; padding: 2px 7px; border-radius: 10px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.badge.mine { color: #1a0f0a; background: var(--clay); border-color: var(--clay); font-weight: 600; }
+.badge.auto { color: #0f1a11; background: var(--ok); border-color: var(--ok); }
+.badge.warn { color: #1d1503; background: var(--warn); border-color: var(--warn); }
+.dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); margin-left: 4px; }
+section.stage { display: flex; flex-direction: column; gap: 14px; padding: 16px; overflow-y: auto; min-height: 0; }
+.head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.head h2 { margin: 0; font-size: 20px; }
+.head .time { color: var(--muted); font-variant-numeric: tabular-nums; }
+.head .sung { font-style: italic; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
+.take { background: var(--panel); border: 2px solid var(--line); border-radius: 10px; overflow: hidden; cursor: pointer; transition: border-color .15s; }
+.take:hover { border-color: var(--muted); }
+.take.chosen { border-color: var(--clay); box-shadow: 0 0 0 3px var(--clay-dim); }
+.take video { display: block; width: 100%; aspect-ratio: 16 / 9; background: #000; }
+.take .under { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 10px; }
+.take .title { font-weight: 600; margin-right: 4px; }
+.take .file { color: var(--muted); font-size: 11px; width: 100%; word-break: break-all; }
+.take .key { margin-left: auto; font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; }
+.bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.hint { color: var(--muted); font-size: 13px; }
+.hint kbd { border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; background: var(--panel2); font: 12px ui-monospace, monospace; }
+.note { background: var(--panel); border: 1px dashed var(--line); padding: 8px 12px; border-radius: 8px; color: var(--muted); }
+#filmbox { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: none; }
+#filmbox video { width: 100%; max-width: 960px; display: block; margin-top: 8px; border-radius: 6px; background: #000; }
+#filmbox pre { white-space: pre-wrap; color: var(--muted); font-size: 12px; max-height: 160px; overflow: auto; }
+#status.ok { color: var(--ok); }
+#status.bad { color: var(--warn); }
+@media (max-width: 900px) {
+  main { grid-template-columns: 1fr; grid-template-rows: 200px 1fr; }
+  nav { border-right: 0; border-bottom: 1px solid var(--line); }
+  .grid { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
 <header>
   <h1 id="title">Takes</h1>
-  <span class="hint">Click a take to choose it (saved at once). ▶ plays all takes of a shot together, sound from the chosen one.
-    Then: <code>render_shots.py --only &lt;changed shots&gt;</code> and <code>make_film.py</code>.</span>
+  <span class="muted" id="progress"></span>
+  <span class="spacer"></span>
+  <label class="switch"><input type="checkbox" id="next" checked> next shot after a choice</label>
+  <span id="status" class="muted"></span>
+  <button class="primary" id="build">Build cut</button>
 </header>
-<main id="main"></main>
+<main>
+  <nav id="list"></nav>
+  <section class="stage">
+    <div class="head">
+      <h2 id="shotname">Shot</h2>
+      <span class="time" id="time"></span>
+      <span class="sung" id="sung"></span>
+    </div>
+    <div id="notes"></div>
+    <div class="grid" id="grid"></div>
+    <div class="bar">
+      <button id="prev">← previous</button>
+      <button id="play">▶ play shot</button>
+      <button id="nextshot">next →</button>
+      <button id="auto">back to automatic</button>
+      <label class="switch"><input type="checkbox" id="loop" checked> loop</label>
+      <label class="switch"><input type="checkbox" id="sound" checked> sound</label>
+    </div>
+    <p class="hint">Click a take or press <kbd>1</kbd>…<kbd>9</kbd> to choose it (saved at once) · <kbd>Space</kbd> play/stop ·
+      <kbd>↑</kbd> <kbd>↓</kbd> change the shot · <kbd>R</kbd> from the start · <kbd>A</kbd> back to automatic.
+      All takes play together, the sound comes from the chosen one. A yellow dot in the list = changed since the last cut.
+      <b>Build cut</b> renders only the changed shots and the film.</p>
+    <div id="filmbox">
+      <strong>Film</strong> <span id="filminfo" class="hint"></span>
+      <video id="film" controls preload="metadata"></video>
+      <pre id="buildlog"></pre>
+    </div>
+  </section>
+</main>
 <script>
-const main = document.getElementById('main');
-let data = null;
+const $ = id => document.getElementById(id);
+let data = null, idx = 0, playing = false, changed = [];
 
 function fmt(t) { const m = Math.floor(t / 60); return m + ':' + (t - 60 * m).toFixed(2).padStart(5, '0'); }
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function current(s) { return s.manual || s.auto; }
+function label(t) {
+  if (t.file === 'still') return 'still';
+  return t.kind === 's2v' ? 'S2V' : t.kind === 'lipsync' ? 'LTX ' + (t.file.match(/_s(\d+)\.mp4$/) || ['', ''])[1]
+       : t.kind === 'moving' ? 'clip' : t.kind;
+}
 
-async function choose(shot, file, node) {
+async function load() {
+  data = await (await fetch('/api/takes')).json();
+  changed = data.changed || [];
+  $('title').innerHTML = 'Takes · <b></b>'; $('title').querySelector('b').textContent = data.title;
+  list();
+  show(0, false);
+  buildStatus();
+}
+
+function list() {
+  const nav = $('list'); nav.innerHTML = '';
+  data.shots.forEach((s, i) => {
+    const d = el('div', 'shot' + (i === idx ? ' active' : ''));
+    d.appendChild(el('span', 'nr', s.name));
+    const ln = el('span', 'line'); ln.textContent = s.line || (s.technique === 'broll' ? 'B-roll' : '');
+    if (!s.line) ln.style.fontStyle = 'italic';
+    const sm = el('small', null, s.technique + (s.engine && s.engine !== 'ltx' ? ' · ' + s.engine.toUpperCase() + ' planned' : '')
+                            + ' · ' + s.takes.length + ' takes');
+    if (changed.includes(s.name)) sm.appendChild(el('span', 'dot'));
+    ln.appendChild(sm); d.appendChild(ln);
+    const t = s.takes.find(x => x.file === current(s));
+    const warned = t && t.warn;
+    d.appendChild(el('span', 'badge' + (s.manual ? ' mine' : '') + (warned && !s.manual ? ' warn' : ''),
+                     t ? label(t) : '–'));
+    d.onclick = () => show(i);
+    nav.appendChild(d);
+  });
+  const mine = data.shots.filter(s => s.manual).length;
+  $('progress').textContent = `${mine} of ${data.shots.length} shots chosen by hand · ${changed.length} changed since the last cut`;
+  $('build').textContent = changed.length ? `Build cut (${changed.length} shot${changed.length > 1 ? 's' : ''})` : 'Build cut';
+}
+
+function vids() { return [...$('grid').querySelectorAll('video')]; }
+
+function show(i, autoplay = true) {
+  stop();
+  idx = Math.max(0, Math.min(data.shots.length - 1, i));
+  const s = data.shots[idx];
+  $('shotname').textContent = s.name;
+  $('time').textContent = `${fmt(s.start)}–${fmt(s.end)} · ${(s.end - s.start).toFixed(1)} s · ${s.technique}`
+                        + (s.engine === 's2v' ? ' (S2V planned)' : '');
+  $('sung').textContent = s.line ? '„' + s.line + '“' : '';
+  const notes = $('notes'); notes.innerHTML = '';
+  if (s.vocalise) notes.appendChild(el('div', 'note', 'Vocalise (no real words): the lip score says little here - judge the expression.'));
+  $('auto').disabled = !s.manual;
+  const grid = $('grid'); grid.innerHTML = '';
+  s.takes.forEach((t, k) => {
+    const card = el('div', 'take' + (t.file === current(s) ? ' chosen' : ''));
+    const v = el('video'); v.src = '/' + t.preview; v.preload = 'auto'; v.muted = true; v.playsInline = true;
+    v.dataset.file = t.file;
+    card.appendChild(v);
+    const u = el('div', 'under');
+    u.appendChild(el('span', 'title', label(t) + (t.image && t.file !== 'still' ? ' · ' + t.image : '')));
+    if (t.file === s.auto) u.appendChild(el('span', 'badge auto', 'automatic pick'));
+    if (t.file === s.manual) u.appendChild(el('span', 'badge mine', 'your choice'));
+    if (t.score != null) u.appendChild(el('span', 'badge', 'lip ' + t.score.toFixed(2)));
+    if (t.motion != null) u.appendChild(el('span', 'badge', 'motion ' + t.motion));
+    if (t.lag) u.appendChild(el('span', 'badge', 'lag ' + (t.lag > 0 ? '+' : '') + t.lag));
+    if (t.warn) t.warn.split('; ').forEach(w => u.appendChild(el('span', 'badge warn', w)));
+    if (k < 9) u.appendChild(el('span', 'key', String(k + 1)));
+    u.appendChild(el('span', 'file', t.file === 'still' ? 'the picked still with a slow camera move: ' + t.still : t.file));
+    card.appendChild(u);
+    card.onclick = () => choose(t.file);
+    grid.appendChild(card);
+  });
+  list();
+  document.querySelector('.shot.active')?.scrollIntoView({ block: 'nearest' });
+  if (autoplay) setTimeout(play, 150);
+}
+
+async function choose(file) {
+  const s = data.shots[idx];
+  if (file && file === s.manual) return;
   const r = await fetch('/api/choose', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                         body: JSON.stringify({ shot: shot.name, file }) });
-  if (!r.ok) { alert((await r.json()).error || 'could not save'); return; }
-  shot.manual = file;
-  render();
-  const s = document.getElementById('shot-' + shot.name);
-  const ok = el('span', 'saved', 'saved'); s.querySelector('.head').appendChild(ok); setTimeout(() => ok.remove(), 1500);
+                                         body: JSON.stringify({ shot: s.name, file }) });
+  const d = await r.json();
+  if (!r.ok) { alert(d.error || 'could not save'); return; }
+  s.manual = file; changed = d.changed || changed;
+  const keep = idx;
+  show(keep, false);
+  if (file && $('next').checked && idx < data.shots.length - 1) setTimeout(() => show(keep + 1), 350);
 }
 
-function current(shot) { return shot.manual || shot.auto; }
-
-function play(sec, shot) {
-  const vids = [...sec.querySelectorAll('video')];
-  vids.forEach(v => { v.pause(); v.currentTime = 0; v.muted = v.dataset.file !== current(shot); });
-  if (!vids.some(v => !v.muted) && vids.length) vids[0].muted = false;
-  vids.forEach(v => v.play());
+function play() {
+  const s = data.shots[idx], vs = vids();
+  vs.forEach(v => { v.currentTime = 0; v.muted = !$('sound').checked || v.dataset.file !== current(s); });
+  if ($('sound').checked && !vs.some(v => !v.muted) && vs.length) vs[0].muted = false;
+  Promise.all(vs.map(v => v.play())).catch(() => {});
+  playing = true; $('play').textContent = '❚❚ stop';
 }
+function stop() { vids().forEach(v => v.pause()); playing = false; $('play').textContent = '▶ play shot'; }
 
-function render() {
-  main.innerHTML = '';
-  for (const shot of data.shots) {
-    const sec = el('section'); sec.id = 'shot-' + shot.name;
-    const head = el('div', 'head');
-    head.append(el('b', null, shot.name), el('span', null, shot.technique + (shot.engine === 's2v' ? ' (S2V planned)' : '')
-                + '  ' + fmt(shot.start) + '–' + fmt(shot.end)), el('span', 'line', shot.line ? '„' + shot.line + '“' : ''));
-    if (shot.vocalise) head.appendChild(el('span', 'badge warn', 'vocalise: no words, the lip score says little - judge the expression'));
-    const bPlay = el('button', null, '▶ play'); bPlay.onclick = () => play(sec, shot);
-    head.appendChild(bPlay);
-    if (shot.manual) { const bAuto = el('button', null, 'back to automatic'); bAuto.onclick = () => choose(shot, null); head.appendChild(bAuto); }
-    sec.appendChild(head);
-    const row = el('div', 'row');
-    for (const t of shot.takes) {
-      const card = el('div', 'take' + (t.file === current(shot) ? ' chosen' : ''));
-      const v = el('video'); v.src = '/' + t.preview; v.preload = 'metadata'; v.muted = true; v.playsInline = true;
-      v.dataset.file = t.file;
-      card.appendChild(v);
-      const meta = el('div', 'meta');
-      if (t.file === shot.auto) meta.appendChild(el('span', 'badge auto', 'automatic pick'));
-      if (t.file === shot.manual) meta.appendChild(el('span', 'badge mine', 'your choice'));
-      if (t.score != null) meta.appendChild(el('span', 'badge', 'lip score ' + t.score.toFixed(2)));
-      if (t.motion != null) meta.appendChild(el('span', 'badge', 'motion ' + t.motion));
-      if (t.lag) meta.appendChild(el('span', 'badge', 'lag ' + (t.lag > 0 ? '+' : '') + t.lag));
-      if (t.warn) meta.appendChild(el('span', 'badge warn', t.warn));
-      meta.appendChild(el('span', 'file', t.file));
-      card.appendChild(meta);
-      card.onclick = () => { if (t.file !== current(shot) || !shot.manual) choose(shot, t.file); };
-      row.appendChild(card);
+function tick() {
+  if (playing) {
+    const vs = vids(), lead = vs.find(v => !v.muted) || vs[0];
+    if (lead) {
+      vs.forEach(v => { if (v !== lead && Math.abs(v.currentTime - lead.currentTime) > 0.08) v.currentTime = lead.currentTime; });
+      if (lead.ended || lead.currentTime >= lead.duration - 0.03) {
+        if ($('loop').checked) { vs.forEach(v => { v.currentTime = 0; }); Promise.all(vs.map(v => v.play())).catch(() => {}); }
+        else stop();
+      }
     }
-    sec.appendChild(row);
-    main.appendChild(sec);
+  }
+  requestAnimationFrame(tick);
+}
+
+async function buildStatus() {
+  const st = await (await fetch('/api/build')).json();
+  changed = st.changed || changed; list();
+  const b = $('build'), status = $('status');
+  b.disabled = st.running;
+  status.className = '';
+  if (st.running) { status.textContent = 'building: ' + st.step + ' …'; setTimeout(buildStatus, 3000); return; }
+  if (st.ok === false) { status.textContent = 'build failed (log below)'; status.className = 'bad'; }
+  else if (st.ok) { status.textContent = 'cut ready'; status.className = 'ok'; }
+  else status.textContent = '';
+  if (st.film || st.log) {
+    $('filmbox').style.display = 'block';
+    if (st.film) { $('film').src = '/film.mp4?' + st.film_time; $('filminfo').textContent = st.film; }
+    $('buildlog').textContent = st.log ? st.log.trim().split('\n').slice(-12).join('\n') : '';
   }
 }
 
-fetch('/api/takes').then(r => r.json()).then(d => {
-  data = d; document.getElementById('title').textContent = 'Takes – ' + d.title; render();
+$('build').onclick = async () => {
+  stop();
+  const r = await fetch('/api/build', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+  if (!r.ok) alert((await r.json()).error || 'could not start');
+  buildStatus();
+};
+$('play').onclick = () => playing ? stop() : play();
+$('prev').onclick = () => show(idx - 1);
+$('nextshot').onclick = () => show(idx + 1);
+$('auto').onclick = () => choose(null);
+$('sound').onchange = () => { if (playing) play(); };
+$('film').onplay = stop;
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || !data) return;
+  const s = data.shots[idx];
+  if (/^[1-9]$/.test(e.key) && s.takes[+e.key - 1]) choose(s.takes[+e.key - 1].file);
+  else if (e.key === ' ') { e.preventDefault(); playing ? stop() : play(); }
+  else if (e.key === 'ArrowDown') { e.preventDefault(); show(idx + 1); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); show(idx - 1); }
+  else if (e.key.toLowerCase() === 'r') play();
+  else if (e.key.toLowerCase() === 'a' && s.manual) choose(null);
 });
+requestAnimationFrame(tick);
+load();
 </script>
 </body>
 </html>

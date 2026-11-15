@@ -4,23 +4,30 @@
 # [tool.uv]
 # exclude-newer = "2026-11-14T00:00:00Z"
 # ///
-"""Compare the takes of every shot by eye and ear, pick by hand -> selection.json "manual" (pick.py: manual wins).
+"""Compare the takes of every shot by eye and ear, pick by hand -> selection.json "manual" (pick.py: manual wins),
+then build the cut from the page.
 
 pick.py chooses the takes by the measured lip score. The Europe 2031 night run showed that the eye often prefers
-another take (natural movement over the widest mouth: V3 took the V1 take in 11 of 17 singing shots). This page shows
-all takes of a shot side by side, each placed on the song exactly as render_shots.py would place it (clip start,
-tempo, LTX delay, lag) with the song's sound, the measured score / warnings from picks.log, the automatic pick marked.
-No GPU: the takes exist already (2-4 LTX seeds per singing shot, the moving clips of B-roll / claudia_moving shots).
+another take (natural movement over the widest mouth: V3 took the V1 take in 11 of 17 singing shots; claudia3: the user
+took LTX in 3 of 4 shots where S2V measured better). The page is built like the user's own V1/V2 compare tool: the shot
+list on the left, the takes of one shot side by side on the stage, each placed on the song exactly as render_shots.py
+would place it (clip start, tempo, LTX delay, lag) with the song's sound, the measured score / warnings from picks.log,
+the automatic pick marked; keys 1-9 choose, up/down change the shot, space plays; "Build cut" runs
+render_shots.py --only <changed shots> + make_film.py and shows the new film.
+Every shot can also take its still (start image / B-roll picture with the depth camera move) instead of a clip.
+A take made on a start image that is no longer the chosen one (re-made because of two mics, a wrong streak ...) is
+marked: it still shows the old image's faults.
+No GPU: the takes exist already (2-4 LTX seeds per singing shot, S2V, the moving clips of B-roll / claudia_moving).
 
   uv run takes.py [<project>] [--only s02,s05] [--rebuild]   previews -> takes/<shot>/<take>.mp4 + takes/takes.json
   uv run takes.py [<project>] --serve [--port 0]           the page (URL printed); a click saves the choice at once
-After choosing: uv run render_shots.py <project> --only <the changed shots>, then make_film.py.
 """
 import argparse
 import json
 import re
 import subprocess
 import sys
+import threading
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -35,6 +42,7 @@ HERE = Path(__file__).resolve().parent
 PAGE = HERE.parent / "assets" / "takes.html"
 LIP_DIRS = ("lipsync", "s2v", "infinitetalk", "humo", "minimax_h3")
 VOCALISE = {"oh", "ooh", "oooh", "ah", "aah", "la", "na", "mm", "mmm", "hm", "uh", "whoa", "wo", "yeah", "ha", "hey"}
+STILL = "still"                                            # the pseudo take "the picked still instead of a clip"
 
 
 def vocalise(line):
@@ -68,11 +76,27 @@ def log_info(P):
             info["ai/" + m.group(1)] = {"score": float(m.group(4)), "lag": int(m.group(3)),
                                         "warn": m.group(5).strip()}
             continue
-        m = re.match(r"clip (\S+): (\S+\.mp4)\s+motion ([\d.]+).*?(->.*)?$", ln)
+        m = re.match(r"\s*(?:clip \S+: |moving )(\S+\.mp4)\s+motion ([\d.]+).*?(->.*)?$", ln)
         if m:
-            info["ai/moving/" + Path(m.group(2)).name] = {"motion": float(m.group(3)),
-                                                          "warn": (m.group(4) or "").lstrip("-> ").split(":")[0]}
+            info["ai/moving/" + Path(m.group(1)).name] = {"motion": float(m.group(2)),
+                                                          "warn": (m.group(3) or "").lstrip("-> ").split(":")[0]}
     return info
+
+
+def still_of(P, s, sel):
+    """The picked still of a shot (start image or B-roll picture) or None."""
+    grp = "broll" if s.get("technique") == "broll" else "start"
+    img = (sel.get(grp) or {}).get(s["name"])
+    return img if img and P.path(img).exists() else None
+
+
+def image_tag(P, clip):
+    """The start image a take was made on: 'v2' / 'v2m' (from its meta "image", else from the file name)."""
+    meta = clips.read_meta(clip) if clips.meta_path(clip).exists() else {}
+    if meta.get("image"):
+        return Path(str(meta["image"]).replace("\\", "/")).stem.split("_")[-1]
+    parts = clip.stem.split("_")
+    return parts[1] if len(parts) > 1 else None
 
 
 def placement(clip, s, lag):
@@ -86,24 +110,40 @@ def placement(clip, s, lag):
     return (max(t0, 0.0), tempo, max(-t0, 0.0) / tempo)
 
 
+def _encode(P, s, inputs, vf, out):
+    dur = s["to"] - s["from"]
+    out.parent.mkdir(parents=True, exist_ok=True)
+    tmp = out.with_name(out.stem + ".part.mp4")
+    subprocess.run([ffmpeg(), "-y", "-v", "error", *inputs, "-ss", f"{s['from']:.4f}", "-t", f"{dur:.4f}",
+                    "-i", str(P.song), "-filter_complex", f"[0:v]{vf}[v]", "-map", "[v]", "-map", "1:a",
+                    "-t", f"{dur:.4f}", "-c:v", "libx264", "-crf", "26", "-preset", "veryfast", "-pix_fmt", "yuv420p",
+                    "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", str(tmp)], check=True)
+    tmp.replace(out)
+
+
 def preview(P, clip, s, lag, out):
     dur = s["to"] - s["from"]
     t0, tempo, pad = placement(clip, s, lag)
     vf = (f"setpts=(PTS-STARTPTS)/{tempo},fps=24,scale=640:-2,"
           + (f"tpad=start_duration={pad:.3f}:start_mode=clone," if pad > 0 else "")
           + f"tpad=stop_duration={dur:.3f}:stop_mode=clone")
-    out.parent.mkdir(parents=True, exist_ok=True)
-    tmp = out.with_name(out.stem + ".part.mp4")
-    subprocess.run([ffmpeg(), "-y", "-v", "error", "-ss", f"{t0:.4f}", "-i", str(clip), "-ss", f"{s['from']:.4f}",
-                    "-t", f"{dur:.4f}", "-i", str(P.song), "-filter_complex", f"[0:v]{vf}[v]", "-map", "[v]",
-                    "-map", "1:a", "-t", f"{dur:.4f}", "-c:v", "libx264", "-crf", "26", "-preset", "veryfast",
-                    "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", str(tmp)],
-                   check=True)
-    tmp.replace(out)
+    _encode(P, s, ["-ss", f"{t0:.4f}", "-i", str(clip)], vf, out)
+
+
+def preview_still(P, img, s, out):
+    """The still with a slow push-in (render_shots adds the depth parallax; close enough to judge)."""
+    n = max(2, round((s["to"] - s["from"]) * 24))
+    vf = f"scale=1280:-2,zoompan=z='1+0.06*on/{n}':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d={n}:s=640x360:fps=24"
+    _encode(P, s, ["-loop", "1", "-framerate", "24", "-i", str(P.path(img))], vf, out)
+
+
+def read_sel(P):
+    f = P.dir / "selection.json"
+    return json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
 
 
 def build(P, only=None, rebuild=False):
-    sel = json.loads((P.dir / "selection.json").read_text(encoding="utf-8")) if (P.dir / "selection.json").exists() else {}
+    sel = read_sel(P)
     auto = sel.get("clip") or {}
     manual = (sel.get("manual") or {}).get("clip") or {}
     info = log_info(P)
@@ -112,13 +152,17 @@ def build(P, only=None, rebuild=False):
     shots = []
     for s in P.sections():
         if only and s["name"] not in only:
+            if s["name"] in prev:
+                shots.append(prev[s["name"]])
             continue
         cands = candidates(P, s)
-        if not cands:
+        still = still_of(P, s, sel)
+        if not cands and not still:
             continue
         a_ent = auto.get(s["name"]) or {}
         if a_ent.get("manual"):                            # "clip" holds a hand choice: keep the automatic one known
             a_ent = (prev.get(s["name"]) or {}).get("auto_entry") or {}
+        chosen_tag = Path(still).stem.split("_")[-1] if still else None
         rows = []
         for c in cands:
             rel = c.resolve().relative_to(P.dir).as_posix()
@@ -127,14 +171,37 @@ def build(P, only=None, rebuild=False):
             pv = P.dir / "takes" / s["name"] / (c.stem + ".mp4")
             if rebuild or not pv.exists() or pv.stat().st_mtime < c.stat().st_mtime:
                 preview(P, c, s, lag, pv)
+            tag = image_tag(P, c)
+            warn = [w for w in [li.get("warn", "")] if w]
+            if s.get("technique") != "broll" and tag and chosen_tag and tag != chosen_tag:
+                # claudia3: a take on the discarded s08_v2 (two mics) was chosen and the second mic was in the film
+                warn.append(f"made on start image {tag}, not the chosen {chosen_tag} - check mic / streak")
+            if tag and tag.endswith("m"):
+                warn.append("start image is a mic repair - check the cheek")
             rows.append(dict(file=rel, preview=pv.relative_to(P.dir).as_posix(), lag=lag, score=li.get("score"),
-                             motion=li.get("motion"), warn=li.get("warn", ""), kind=c.parent.name))
+                             motion=li.get("motion"), warn="; ".join(warn), kind=c.parent.name, image=tag))
+        if still:
+            pv = P.dir / "takes" / s["name"] / "_still.mp4"
+            if rebuild or not pv.exists() or pv.stat().st_mtime < P.path(still).stat().st_mtime:
+                preview_still(P, still, s, pv)
+            rows.append(dict(file=STILL, preview=pv.relative_to(P.dir).as_posix(), lag=0, score=None, motion=None,
+                             warn="", kind="still", image=chosen_tag, still=still))
+        auto_file = STILL if a_ent.get("still") else a_ent.get("file")
+        if auto_file and auto_file != STILL and not P.path(auto_file).exists():
+            auto_file = STILL if still else None           # a clip that does not exist: render_shots takes the still
+        if not auto_file and still and not cands:
+            auto_file = STILL
+        m_ent = manual.get(s["name"]) or {}
+        mine = STILL if m_ent.get("still") else m_ent.get("file")
+        if mine and mine != STILL and not P.path(mine).exists():
+            mine = STILL                                   # old trick: a hand "clip" that does not exist = the still
         shots.append(dict(name=s["name"], start=s["from"], end=s["to"], technique=s.get("technique"),
-                          line=s.get("line") or "", auto=a_ent.get("file"), auto_entry=a_ent,
-                          vocalise=s.get("technique") == "lipsync" and vocalise(s.get("line")), engine=s.get("engine"),
-                          manual=(manual.get(s["name"]) or {}).get("file"), takes=rows))
+                          line=s.get("line") or "", auto=auto_file,
+                          auto_entry=a_ent, vocalise=s.get("technique") == "lipsync" and vocalise(s.get("line")),
+                          engine=s.get("engine"), manual=mine, takes=rows))
         print(f"  {s['name']}: {len(rows)} takes" + (f", auto {Path(shots[-1]['auto']).name}" if shots[-1]["auto"] else ""))
-    data = dict(title=P.get("title") or P.dir.name, shots=shots)
+    data = dict(title=P.get("title") or P.dir.name, shots=shots,
+                dirty=json.loads(tj.read_text(encoding="utf-8")).get("dirty", []) if tj.exists() else [])
     (P.dir / "takes").mkdir(exist_ok=True)
     (P.dir / "takes" / "takes.json").write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"-> takes/takes.json ({len(shots)} shots); look at them: uv run takes.py {P.dir} --serve")
@@ -142,32 +209,114 @@ def build(P, only=None, rebuild=False):
 
 
 def choose(P, shot, file):
-    """file = a take (relative path) -> selection.json manual.clip[shot]; None -> back to the automatic pick."""
+    """file = a take (relative path) or "still" -> selection.json manual.clip[shot]; None -> back to the automatic pick."""
     f = P.dir / "selection.json"
-    sel = json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
+    sel = read_sel(P)
     man = sel.setdefault("manual", {}).setdefault("clip", {})
     data = json.loads((P.dir / "takes" / "takes.json").read_text(encoding="utf-8"))
     s = next((x for x in data["shots"] if x["name"] == shot), None)
     take = next((t for t in (s or {}).get("takes", []) if t["file"] == file), None) if file else None
     if file and not take:
         raise ValueError(f"{file} is not a take of {shot}")
-    if take:
+    sel["clip"] = dict(sel.get("clip") or {})
+    if take and file == STILL:                             # render_shots: "still" skips the clip -> still + depth move
+        man[shot] = {"still": True}
+        sel["clip"][shot] = {"still": True, "manual": True}
+    elif take:                                             # render_shots reads "clip": the manual choice goes there too
         man[shot] = {"file": take["file"], "lag": take["lag"]}
+        sel["clip"][shot] = {"file": take["file"], "lag": take["lag"], "manual": True}
     else:
         man.pop(shot, None)
-    sel["clip"] = dict(sel.get("clip") or {})
-    if take:                                               # render_shots reads "clip": the manual choice goes there too
-        sel["clip"][shot] = {"file": take["file"], "lag": take["lag"], "manual": True}
-    elif s and s.get("auto_entry"):                        # back to the automatic pick
-        sel["clip"][shot] = s["auto_entry"]
+        if s and s.get("auto_entry"):                      # back to the automatic pick
+            sel["clip"][shot] = s["auto_entry"]
+        else:
+            sel["clip"].pop(shot, None)
     f.write_text(json.dumps(sel, ensure_ascii=False, indent=1), encoding="utf-8")
     if s:
         s["manual"] = take["file"] if take else None
+        data["dirty"] = sorted(set(data.get("dirty", [])) | {shot})   # chosen since the last cut
         (P.dir / "takes" / "takes.json").write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+
+
+def rendered(P):
+    """render.log -> {shot: description} (what the scenes/ frames were last made from)."""
+    f = P.dir / "render.log"
+    out = {}
+    if f.exists():
+        for ln in f.read_text(encoding="utf-8", errors="replace").splitlines():
+            m = re.match(r"(\S+)\s+[\d.]+-\s*[\d.]+\s+\S+\s+(.*)$", ln)
+            if m:
+                out[m.group(1)] = m.group(2).strip()
+    return out
+
+
+def changed(P):
+    """Shots whose scenes/ frames do not show the current choice (or were never rendered)."""
+    sel, done_ = read_sel(P), rendered(P)
+    tj = P.dir / "takes" / "takes.json"
+    dirty = set(json.loads(tj.read_text(encoding="utf-8")).get("dirty", [])) if tj.exists() else set()
+    out = []
+    for s in P.sections():
+        name = s["name"]
+        d = done_.get(name)
+        c = (sel.get("clip") or {}).get(name) or {}
+        if not (P.dir / "scenes" / name).exists():
+            out.append(name)
+        elif d is None:                                    # rendered, but render.log lost the line (old --only run)
+            if name in dirty:
+                out.append(name)
+        elif c.get("still"):
+            if not d.startswith("still"):
+                out.append(name)
+        elif c.get("file") and P.path(c["file"]).exists():
+            if d != f"clip {c['file']} lag {c.get('lag', 0):+d}":
+                out.append(name)
+    return out
+
+
+class Builder:
+    """render_shots.py --only <changed> + make_film.py in a thread; the page polls the state."""
+
+    def __init__(self, P):
+        self.P, self.state, self.lock = P, dict(running=False, ok=None, step="", log="", shots=[]), threading.Lock()
+
+    def start(self):
+        with self.lock:
+            if self.state["running"]:
+                return False
+            todo = changed(self.P)
+            self.state.update(running=True, ok=None, step="", log="", shots=todo)
+        threading.Thread(target=self._run, args=(todo,), daemon=True).start()
+        return True
+
+    def _run(self, todo):
+        steps = ([("scenes " + ",".join(todo), ["uv", "run", str(HERE / "render_shots.py"), str(self.P.dir), "--only",
+                                                 ",".join(todo)])] if todo else []) + \
+                [("film", ["uv", "run", str(HERE / "make_film.py"), str(self.P.dir)])]
+        for label, cmd in steps:
+            self.state["step"] = label
+            r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+            self.state["log"] = (self.state["log"] + (r.stdout or "")[-1500:] + (r.stderr or "")[-1500:])[-3000:]
+            if r.returncode:
+                self.state.update(running=False, ok=False)
+                return
+        tj = self.P.dir / "takes" / "takes.json"
+        d = json.loads(tj.read_text(encoding="utf-8"))
+        d["dirty"] = []
+        tj.write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
+        self.state.update(running=False, ok=True, step="done")
+
+
+def film_file(P):
+    for n in ("film_small.mp4", "film.mp4"):
+        if (P.dir / n).exists():
+            return P.dir / n
+    return None
 
 
 def serve(P, port=0, host="127.0.0.1"):
     allowed_hosts = ("127.0.0.1", "localhost", "[::1]", host)
+    builder = Builder(P)
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *a):
@@ -183,8 +332,8 @@ def serve(P, port=0, host="127.0.0.1"):
             self.wfile.write(body)
 
         def file(self, path, ctype):
-            if not path.exists():
-                return self.reply(404, {"error": f"{path.name} missing"})
+            if not path or not path.exists():
+                return self.reply(404, {"error": "missing"})
             size = path.stat().st_size
             m = re.match(r"bytes=(\d*)-(\d*)", self.headers.get("Range", ""))
             a, b = 0, size - 1
@@ -203,6 +352,7 @@ def serve(P, port=0, host="127.0.0.1"):
             self.send_header("Content-Type", ctype)
             self.send_header("Accept-Ranges", "bytes")
             self.send_header("Content-Length", str(b - a + 1))
+            self.send_header("Cache-Control", "no-store")
             if m:
                 self.send_header("Content-Range", f"bytes {a}-{b}/{size}")
             self.end_headers()
@@ -230,7 +380,15 @@ def serve(P, port=0, host="127.0.0.1"):
             if p in ("/", "/index.html"):
                 return self.file(PAGE, "text/html; charset=utf-8")
             if p == "/api/takes":
-                return self.file(P.dir / "takes" / "takes.json", "application/json; charset=utf-8")
+                d = json.loads((P.dir / "takes" / "takes.json").read_text(encoding="utf-8"))
+                d["changed"] = changed(P)
+                return self.reply(200, d)
+            if p == "/api/build":
+                f = film_file(P)
+                return self.reply(200, dict(builder.state, changed=changed(P), film=f.name if f else None,
+                                            film_time=f.stat().st_mtime if f else None))
+            if p == "/film.mp4":
+                return self.file(film_file(P), "video/mp4")
             if p.startswith("/takes/") and p.endswith(".mp4"):
                 f = (P.dir / p.lstrip("/")).resolve()
                 if (P.dir / "takes").resolve() in f.parents:
@@ -244,14 +402,18 @@ def serve(P, port=0, host="127.0.0.1"):
             same = origin is None or urllib.parse.urlsplit(origin).netloc in {f"{h}:{port_}" for h in allowed_hosts}
             if ctype != "application/json" or not self.host_ok() or not same:
                 return self.reply(403, {"error": "only the page itself may post (application/json, same origin)"})
-            if self.path != "/api/choose":
-                return self.reply(404, {"error": "unknown"})
             try:
                 d = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
-                choose(P, str(d["shot"]), d.get("file"))
+                if self.path == "/api/choose":
+                    choose(P, str(d["shot"]), d.get("file"))
+                    return self.reply(200, {"ok": True, "changed": changed(P)})
+                if self.path == "/api/build":
+                    if not builder.start():
+                        return self.reply(409, {"error": "a cut is being built already"})
+                    return self.reply(200, {"ok": True})
             except (ValueError, KeyError) as e:
                 return self.reply(400, {"error": str(e)})
-            self.reply(200, {"ok": True})
+            self.reply(404, {"error": "unknown"})
 
     httpd = ThreadingHTTPServer((host, port), Handler)
     print(f"takes: http://{host}:{httpd.server_address[1]}/   (Ctrl+C to stop)", flush=True)
@@ -274,4 +436,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
