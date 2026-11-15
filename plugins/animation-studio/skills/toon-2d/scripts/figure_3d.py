@@ -31,6 +31,8 @@ fig3d.json (paths relative to it; all keys optional except figure):
    "decal_depth": 0.12, "outline": 1.0,  # outline = factor on stroke width / 2
    "skip": ["pupille_x"],                # part ids left out
    "wrap": ["#4a3426"],                  # ids / fill colours that also cover the back (hair drawn as a front cap)
+   "cast_shadows": false,                # Blender 5.3+: form shading only (no hair shadow on the face); default true
+   "shadow_tint": "#ada3cf",             # Blender 5.3+: shadow side = fill x this colour (default: fill x 0.72)
    "actions": [{"action": "morph", "frames": 24, "order": "bottom_up", "last": ["haare_hinten", "#6b4cc0"],
                 "spin": 12, "lift": 0.1},
                {"action": "turn", "frames": 23, "degrees": 360, "lift": 0.6},
@@ -497,6 +499,47 @@ def blender_main(argv):
     sc.collection.objects.link(sun)
 
     mats = {}
+    # "cast_shadows": false / "shadow_tint" need the EEVEE light nodes of Blender 5.3+ (Shader to RGB cannot separate
+    # the form shading from cast shadows); without them, or on an older Blender, the shader below is used unchanged
+    cast = bool(cfg.get("cast_shadows", True))
+    tint = lin(cfg["shadow_tint"])[:3] if cfg.get("shadow_tint") else None
+    light_nodes = (not cast or tint is not None) and hasattr(bpy.types, "ShaderNodeLightAccumulation")
+    if (not cast or tint is not None) and not light_nodes:
+        print(f"note: cast_shadows / shadow_tint need Blender 5.3 or newer (this is {bpy.app.version_string}) - "
+              "rendering with the standard toon shading", flush=True)
+
+    def toon_light(nt, o, b, shade):
+        """dark side as emission + step(N.L [x cast shadow]) x (base - dark), summed over the lights."""
+        def value(op, x, y):
+            n = nt.nodes.new("ShaderNodeMath")
+            n.operation = op
+            nt.links.new(x, n.inputs[0])
+            if isinstance(y, float):
+                n.inputs[1].default_value = y
+            else:
+                nt.links.new(y, n.inputs[1])
+            return n.outputs[0]
+
+        def colour(c):
+            n = nt.nodes.new("ShaderNodeRGB")
+            n.outputs[0].default_value = (*c, 1)
+            return n.outputs[0]
+
+        dark = tuple(c * t for c, t in zip(b, tint)) if tint is not None else tuple(c * shade for c in b[:3])
+        lit = nt.nodes.new("ShaderNodeLightEvaluation").outputs["Factor"]
+        if cast:
+            sh = nt.nodes.new("ShaderNodeShadowRaycast")
+            sh.inputs["Softness"].default_value = 0.0          # hard cel edge
+            lit = value("MULTIPLY", lit, sh.outputs["Color"])
+        emi = nt.nodes.new("ShaderNodeEmission")
+        nt.links.new(colour(dark), emi.inputs["Color"])
+        acc = nt.nodes.new("ShaderNodeLightAccumulation")
+        nt.links.new(value("GREATER_THAN", lit, 0.12), acc.inputs["Diffuse Light"])
+        nt.links.new(colour(tuple(x - d for x, d in zip(b, dark))), acc.inputs["Diffuse Color"])
+        add = nt.nodes.new("ShaderNodeAddShader")
+        nt.links.new(emi.outputs[0], add.inputs[0])
+        nt.links.new(acc.outputs[0], add.inputs[1])
+        nt.links.new(add.outputs[0], o.inputs[0])
 
     def toon(hexcol, shade=0.72):
         if hexcol in mats:
@@ -507,6 +550,10 @@ def blender_main(argv):
         for nd in list(nt.nodes):
             nt.nodes.remove(nd)
         o = nt.nodes.new("ShaderNodeOutputMaterial")
+        if light_nodes:
+            toon_light(nt, o, lin(hexcol), shade)
+            mats[hexcol] = m
+            return m
         dif = nt.nodes.new("ShaderNodeBsdfDiffuse")
         s2r = nt.nodes.new("ShaderNodeShaderToRGB")
         ramp = nt.nodes.new("ShaderNodeValToRGB")

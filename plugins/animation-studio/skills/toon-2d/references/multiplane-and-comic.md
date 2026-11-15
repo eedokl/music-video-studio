@@ -129,6 +129,9 @@ From the "Prompts!" credits gag (Lia becomes round part by part, turns once and 
   pupils, cheeks, the mouth) hugs its surface as a thin decal (`decal_depth`). Stacking follows the drawing order,
   so the front view equals the drawing; the flat start state is the drawing in painter order.
 - Toon material (2 tones, hard edge) + ink outline (inverted hull, thickness = stroke width / 2 × `outline`).
+- With Blender 5.3+ (EEVEE light nodes): `"cast_shadows": false` keeps the form shading but drops cast shadows (no
+  hair shadow on the face), `"shadow_tint": "#ada3cf"` makes the shadow side fill × that colour (cool violet instead
+  of just darker). Without these keys, or on an older Blender (a note is printed), the look is unchanged.
 - Framing: `px_per_svg_px` + `feet_screen` = where the SVG feet point lands; `flat_2d.png` is the Inkscape export in
   exactly this framing (with the same default mouth) – the crossfade input.
 - Actions: `morph` (`order` bottom_up | top_down | list of ids, `last` ids or fill colours, `spin`, `lift`),
