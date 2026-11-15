@@ -34,6 +34,7 @@ Usage: uv run pick.py auto|start|broll|clips|all [<project>] [--curve rhubarb|le
 """
 import argparse
 import json
+import time
 from pathlib import Path
 
 import _studio  # noqa: E402
@@ -51,8 +52,43 @@ def load(P):
     return json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
 
 
+def write_atomic(path, text):
+    """Temp file + replace: a reader (takes.py page, render_shots) never sees a half-written selection.json."""
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    for k in range(20):
+        try:
+            tmp.replace(path)
+            return
+        except PermissionError:                       # Windows: the other side has it open for a moment
+            if k == 19:
+                raise
+            time.sleep(0.1)
+
+
+def auto_of(e):
+    """The automatic entry of a "clip" entry (a hand choice keeps the automatic one under "auto")."""
+    return (e.get("auto") or None) if e.get("manual") else e
+
+
 def save(P, sel):
-    (P.dir / "selection.json").write_text(json.dumps(sel, ensure_ascii=False, indent=1), encoding="utf-8")
+    """The hand choices are read again just before writing: pick.py runs for minutes (night-run hook) and the user may
+    choose on the takes page meanwhile - the page's "manual" wins, the automatic pick stays known under "auto"
+    (takes.py: "back to automatic"; the page badges "automatic pick" from it)."""
+    fresh = load(P)
+    man = (fresh.get("manual") or {}).get("clip") or {}
+    sel.setdefault("manual", {})
+    sel["manual"] = dict(fresh.get("manual") or sel["manual"])
+    clip = sel.setdefault("clip", {})
+    for name in sorted(set(clip) | set(man)):
+        auto = auto_of(clip.get(name) or {})
+        if name in man:
+            clip[name] = dict(man[name], manual=True, **({"auto": auto} if auto else {}))
+        elif auto:
+            clip[name] = auto
+        else:
+            clip.pop(name, None)
+    write_atomic(P.dir / "selection.json", json.dumps(sel, ensure_ascii=False, indent=1))
 
 
 def relp(P, p):
@@ -164,10 +200,8 @@ def pick_clips(P, sel, log, rows, curve):
     curves = None
     for s in P.sections():
         name, tech = s["name"], s["technique"]
-        if name in man:
-            out[name] = man[name]
-            log.append(f"clip {name}: by hand {man[name]}")
-            continue
+        if name in man:                               # still rated: the takes page needs every take's lag / score
+            log.append(f"clip {name}: by hand {man[name]} (the takes are rated anyway)")
         if tech == "typo":
             continue
         if tech == "placed":                          # existing singing clip: entry frame + tempo by mouth curve
@@ -244,8 +278,8 @@ def pick_clips(P, sel, log, rows, curve):
         score, c, lag, rl, closed, r = max(open_, key=lambda x: x[0])
         out[name] = {"file": relp(P, c), "lag": lag, "score": score, "r": rl, "r0": r["r0"], "range": r["range"]}
         log.append(f"clip {name}: {c.parent.name}/{c.name}  lag {lag:+d}  score {score}")
-        if all((x[3] or 0) < 0 for x in rated) and curve == "rhubarb":
-            log.append(f"  WARNING {name}: every take correlates NEGATIVELY with the Rhubarb curve - the curve, not the "
+        if all((x[3] or 0) < 0 for x in rated) and curve in ("rhubarb", "mix"):
+            log.append(f"  WARNING {name}: every take correlates NEGATIVELY with the {curve} curve - the curve, not the "
                        "clips, may be off (user test: -0.6 with rhubarb, +0.77 with the level): pick again with --curve level")
 
 

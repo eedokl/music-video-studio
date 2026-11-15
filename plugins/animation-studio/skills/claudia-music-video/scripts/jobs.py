@@ -87,9 +87,19 @@ def instrumental(P):
     return dm
 
 
-def seed_tag(seed, default):
-    """'' for the default seed (old file names stay), else '_sd<seed>' - a new seed must not overwrite / count as done."""
-    return "" if seed == default else f"_sd{seed}"
+def seed_tag(seed, default, P=None, folder=None, shot=None):
+    """'' for the default seed (old file names stay), else '_sd<seed>' - a new seed must not overwrite / count as done.
+    A clip of that seed rendered before 0.4.28 under the plain name (<shot>_<img>.mp4, meta "seed" the same) keeps its
+    name: night_run finds it done instead of rendering the same seed again as a duplicate take."""
+    if seed == default:
+        return ""
+    if P is not None:
+        for f in sorted((P.dir / "ai" / folder).glob(f"{shot}_*.mp4")):
+            if "_sd" in f.stem or ".part." in f.name or ".encoding." in f.name or not clips.meta_path(f).exists():
+                continue
+            if clips.read_meta(f).get("seed") == seed:
+                return ""
+    return f"_sd{seed}"
 
 
 def merged(path, new, shots, key):
@@ -168,6 +178,11 @@ def main():
             if tech == "lipsync":
                 frames, lead = clips.ltx_fit(dur)
                 line = s.get("sing") or s.get("line")
+                if s.get("timeline") and lead:
+                    # the spans count from the shot start; the LTX clip starts `lead` s earlier (the first span also
+                    # covers the lead-in)
+                    s = dict(s, timeline=[[0 if float(t0) <= 0 else round(float(t0) + lead, 2),
+                                           round(float(t1) + lead, 2), act] for t0, t1, act in s["timeline"]])
                 lp = claudia.lipsync_prompt(s, wardrobe, look_vid, line)
                 pr["lipsync"] = lp
                 problems += [f"{name} lipsync: {e}" for e in claudia.check(lp, "lipsync")]
@@ -183,16 +198,18 @@ def main():
                 n_ltx = nseed if s.get("engine", "ltx") == "ltx" else 1      # s2v/infinitetalk: + 1 LTX seed
                 if s.get("engine", "ltx") != "ltx" and dur > 4.7:
                     n_ltx = 0                                 # longer than LTX can do in one clip (121 frames)
+                # mixed: odd seeds A, even seeds B; with a single LTX seed B (a timeline shot is one where B won)
+                plain_k = (lambda k: mode == "plain" or (mode == "mixed" and k % 2 == 1 and n_ltx > 1))
                 for k in range(1, n_ltx + 1):
                     add("ltx_lipsync", f"{name}/ltx_s{k}", f"ai/lipsync/{name}_{{img}}_s{k}.mp4", image=img,
                         audio={"src": rel(P, vocals), "from": round(s["from"] - lead, 3), "dur": round(frames / 24 + 0.2, 3),
                                "quiet_start": True, "prepare": True},
-                        prompt=lp if (mode != "mixed" or k % 2 == 0) else lp_a, neg=claudia.NEG_LIPSYNC, frames=frames,
+                        prompt=lp_a if plain_k(k) else lp, neg=claudia.NEG_LIPSYNC, frames=frames,
                         seed=base + 100 + k,
                         strength=STRENGTHS[(k - 1) % 4],
                         meta={"song_start": round(s["from"] - lead, 3), "lead_in": lead, "shot": name,
                               # takes.py shows it: the user compares A / B by eye
-                              **({"prompt_style": "plain" if mode == "plain" or (mode == "mixed" and k % 2) else "timeline"}
+                              **({"prompt_style": "plain" if plain_k(k) else "timeline"}
                                  if s.get("timeline") else {})})
                 if s.get("engine") == "infinitetalk":
                     import infinitetalk
@@ -224,8 +241,9 @@ def main():
                     seed0 = s.get("s2v_seed", base + 200)
                     for k in range(max(1, int(s.get("s2v_seeds", 1)))):
                         sd = seed0 + 17 * k
+                        tg = seed_tag(sd, base + 200, P, "s2v", name)
                         add("s2v", f"{name}/s2v" + (f"_sd{sd}" if sd != base + 200 else ""),
-                            f"ai/s2v/{name}_{{img}}{seed_tag(sd, base + 200)}.mp4", image=img,
+                            f"ai/s2v/{name}_{{img}}{tg}.mp4", image=img,
                             audio={"src": rel(P, vocals), "from": s["from"], "dur": round(n / 16 + 0.2, 3)},
                             prompt=sp2, frames=n, steps=s.get("s2v_steps", 20), seed=sd,
                             meta={"song_start": s["from"], "shot": name})
@@ -238,7 +256,8 @@ def main():
                 pr["moving"] = mp
                 problems += [f"{name} moving: {e}" for e in claudia.check(mp, "moving")]
                 sd = s.get("seed", base + 300)
-                add("ltx_moving", f"{name}/moving" + seed_tag(sd, base + 300), f"ai/moving/{name}_{{img}}{seed_tag(sd, base + 300)}.mp4",
+                add("ltx_moving", f"{name}/moving" + seed_tag(sd, base + 300),
+                    f"ai/moving/{name}_{{img}}{seed_tag(sd, base + 300, P, 'moving', name)}.mp4",
                     image=img,
                     audio={"src": rel(P, inst), "from": round(s["from"] - lead, 3), "dur": round(frames / 24 + 0.2, 3)},
                     prompt=mp, neg=claudia.NEG_MOVING, frames=frames, seed=sd,
@@ -267,7 +286,8 @@ def main():
             pr["moving"] = mp
             problems += [f"{name} moving: {e}" for e in claudia.check(mp, "moving")]
             sd = s.get("seed", base + 300)
-            add("ltx_moving", f"{name}/moving" + seed_tag(sd, base + 300), f"ai/moving/{name}_{{img}}{seed_tag(sd, base + 300)}.mp4",
+            add("ltx_moving", f"{name}/moving" + seed_tag(sd, base + 300),
+                f"ai/moving/{name}_{{img}}{seed_tag(sd, base + 300, P, 'moving', name)}.mp4",
                 image=img,
                 audio={"src": rel(P, inst), "from": round(s["from"] - lead, 3), "dur": round(frames / 24 + 0.2, 3)},
                 prompt=mp, neg=claudia.NEG_MOVING, frames=frames, seed=sd,

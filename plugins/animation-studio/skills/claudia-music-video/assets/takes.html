@@ -124,7 +124,9 @@ async function load() {
   changed = data.changed || [];
   $('title').innerHTML = 'Takes · <b></b>'; $('title').querySelector('b').textContent = data.title;
   list();
-  show(0, false);
+  if (!data.shots.length) {
+    $('notes').appendChild(el('div', 'note', 'No takes yet: run the night run (or pick.py) first, then takes.py again.'));
+  } else show(0, false);
   buildStatus();
 }
 
@@ -162,6 +164,7 @@ function show(i, autoplay = true) {
                         + (s.engine === 's2v' ? ' (S2V planned)' : '');
   $('sung').textContent = s.line ? '„' + s.line + '“' : '';
   const notes = $('notes'); notes.innerHTML = '';
+  if (s.note) notes.appendChild(el('div', 'note', s.note));
   if (s.vocalise) notes.appendChild(el('div', 'note', 'Vocalise (no real words): the lip score says little here - judge the expression.'));
   $('auto').disabled = !s.manual;
   const grid = $('grid'); grid.innerHTML = '';

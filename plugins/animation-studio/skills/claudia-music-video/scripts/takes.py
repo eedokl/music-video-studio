@@ -28,6 +28,7 @@ import re
 import subprocess
 import sys
 import threading
+import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -137,9 +138,43 @@ def preview_still(P, img, s, out):
     _encode(P, s, ["-loop", "1", "-framerate", "24", "-i", str(P.path(img))], vf, out)
 
 
+LOCK = threading.RLock()                                  # the page's threads: one read-modify-write at a time
+
+
+def _read_json(f, default):
+    for k in range(10):                                     # a writer replacing the file on Windows: try again
+        try:
+            return json.loads(f.read_text(encoding="utf-8")) if f.exists() else default
+        except (PermissionError, json.JSONDecodeError):
+            if k == 9:
+                raise
+            time.sleep(0.1)
+
+
+def write_atomic(path, data):
+    """Temp file + replace: pick.py / render_shots / the page never read a half-written file."""
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+    for k in range(20):
+        try:
+            tmp.replace(path)
+            return
+        except PermissionError:
+            if k == 19:
+                raise
+            time.sleep(0.1)
+
+
 def read_sel(P):
-    f = P.dir / "selection.json"
-    return json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
+    return _read_json(P.dir / "selection.json", {})
+
+
+def auto_entry_of(e, prev=None):
+    """The automatic pick of a "clip" entry: a hand choice carries it under "auto" (pick.py / choose); older files
+    without it: the one remembered in the last takes.json."""
+    if not e.get("manual"):
+        return e
+    return e.get("auto") or (prev or {}).get("auto_entry") or {}
 
 
 def build(P, only=None, rebuild=False):
@@ -148,7 +183,7 @@ def build(P, only=None, rebuild=False):
     manual = (sel.get("manual") or {}).get("clip") or {}
     info = log_info(P)
     tj = P.dir / "takes" / "takes.json"
-    prev = {x["name"]: x for x in json.loads(tj.read_text(encoding="utf-8"))["shots"]} if tj.exists() else {}
+    prev = {x["name"]: x for x in _read_json(tj, {}).get("shots", [])}
     shots = []
     for s in P.sections():
         if only and s["name"] not in only:
@@ -159,17 +194,20 @@ def build(P, only=None, rebuild=False):
         still = still_of(P, s, sel)
         if not cands and not still:
             continue
-        a_ent = auto.get(s["name"]) or {}
-        if a_ent.get("manual"):                            # "clip" holds a hand choice: keep the automatic one known
-            a_ent = (prev.get(s["name"]) or {}).get("auto_entry") or {}
+        a_ent = auto_entry_of(auto.get(s["name"]) or {}, prev.get(s["name"]))
         chosen_tag = Path(still).stem.split("_")[-1] if still else None
+        old_keys = {t["file"]: t.get("key") for t in (prev.get(s["name"]) or {}).get("takes", [])}
         rows = []
         for c in cands:
             rel = c.resolve().relative_to(P.dir).as_posix()
             li = info.get(rel, {})
             lag = a_ent.get("lag", li.get("lag", 0)) if a_ent.get("file") == rel else li.get("lag", 0)
-            pv = P.dir / "takes" / s["name"] / (c.stem + ".mp4")
-            if rebuild or not pv.exists() or pv.stat().st_mtime < c.stat().st_mtime:
+            # folder in the name: ai/s2v/s04_v1.mp4 and ai/infinitetalk/s04_v1.mp4 must not share one preview
+            pv = P.dir / "takes" / s["name"] / f"{c.parent.name}_{c.stem}.mp4"
+            # the placement is part of the key: a new lag or shot from/to makes the preview again (it is what
+            # choose saves and render_shots places)
+            key = f"{s['from']:.3f}-{s['to']:.3f} lag {lag} {c.stat().st_mtime:.0f}"
+            if rebuild or not pv.exists() or old_keys.get(rel) != key:
                 preview(P, c, s, lag, pv)
             tag = image_tag(P, c)
             warn = [w for w in [li.get("warn", "")] if w]
@@ -179,14 +217,15 @@ def build(P, only=None, rebuild=False):
             if tag and tag.endswith("m"):
                 warn.append("start image is a mic repair - check the cheek")
             style = (clips.read_meta(c) if clips.meta_path(c).exists() else {}).get("prompt_style")
-            rows.append(dict(file=rel, preview=pv.relative_to(P.dir).as_posix(), lag=lag, score=li.get("score"),
+            rows.append(dict(file=rel, preview=pv.relative_to(P.dir).as_posix(), lag=lag, key=key, score=li.get("score"),
                              motion=li.get("motion"), warn="; ".join(warn), kind=c.parent.name, image=tag,
                              style={"plain": "prompt A (plain)", "timeline": "prompt B (timeline)"}.get(style)))
         if still:
             pv = P.dir / "takes" / s["name"] / "_still.mp4"
-            if rebuild or not pv.exists() or pv.stat().st_mtime < P.path(still).stat().st_mtime:
+            key = f"{s['from']:.3f}-{s['to']:.3f} {still} {P.path(still).stat().st_mtime:.0f}"
+            if rebuild or not pv.exists() or old_keys.get(STILL) != key:
                 preview_still(P, still, s, pv)
-            rows.append(dict(file=STILL, preview=pv.relative_to(P.dir).as_posix(), lag=0, score=None, motion=None,
+            rows.append(dict(file=STILL, preview=pv.relative_to(P.dir).as_posix(), lag=0, key=key, score=None, motion=None,
                              warn="", kind="still", image=chosen_tag, still=still))
         auto_file = STILL if a_ent.get("still") else a_ent.get("file")
         if auto_file and auto_file != STILL and not P.path(auto_file).exists():
@@ -195,49 +234,61 @@ def build(P, only=None, rebuild=False):
             auto_file = STILL
         m_ent = manual.get(s["name"]) or {}
         mine = STILL if m_ent.get("still") else m_ent.get("file")
+        note = ""
         if mine and mine != STILL and not P.path(mine).exists():
-            mine = STILL                                   # old trick: a hand "clip" that does not exist = the still
+            # a deleted take (or the old trick "a hand clip that does not exist"): render_shots takes the still
+            note = (f"Your hand choice {mine} no longer exists - the cut uses the still. Choose a take or go back to "
+                    "the automatic pick.")
+            mine = STILL
         shots.append(dict(name=s["name"], start=s["from"], end=s["to"], technique=s.get("technique"),
                           line=s.get("line") or "", auto=auto_file,
                           auto_entry=a_ent, vocalise=s.get("technique") == "lipsync" and vocalise(s.get("line")),
-                          engine=s.get("engine"), manual=mine, takes=rows))
+                          engine=s.get("engine"), manual=mine, note=note, takes=rows))
         print(f"  {s['name']}: {len(rows)} takes" + (f", auto {Path(shots[-1]['auto']).name}" if shots[-1]["auto"] else ""))
-    data = dict(title=P.get("title") or P.dir.name, shots=shots,
-                dirty=json.loads(tj.read_text(encoding="utf-8")).get("dirty", []) if tj.exists() else [])
     (P.dir / "takes").mkdir(exist_ok=True)
-    (P.dir / "takes" / "takes.json").write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+    with LOCK:
+        data = dict(title=P.get("title") or P.dir.name, shots=shots, dirty=_read_json(tj, {}).get("dirty", []))
+        write_atomic(tj, data)
     print(f"-> takes/takes.json ({len(shots)} shots); look at them: uv run takes.py {P.dir} --serve")
     return data
 
 
 def choose(P, shot, file):
     """file = a take (relative path) or "still" -> selection.json manual.clip[shot]; None -> back to the automatic pick."""
+    with LOCK:
+        _choose(P, shot, file)
+
+
+def _choose(P, shot, file):
     f = P.dir / "selection.json"
     sel = read_sel(P)
     man = sel.setdefault("manual", {}).setdefault("clip", {})
-    data = json.loads((P.dir / "takes" / "takes.json").read_text(encoding="utf-8"))
+    data = _read_json(P.dir / "takes" / "takes.json", {"shots": []})
     s = next((x for x in data["shots"] if x["name"] == shot), None)
     take = next((t for t in (s or {}).get("takes", []) if t["file"] == file), None) if file else None
     if file and not take:
         raise ValueError(f"{file} is not a take of {shot}")
     sel["clip"] = dict(sel.get("clip") or {})
+    auto = auto_entry_of(sel["clip"].get(shot) or {}, s) or (s or {}).get("auto_entry") or {}
+    keep = {"auto": auto} if auto else {}                  # the automatic pick stays known (pick.py does the same)
     if take and file == STILL:                             # render_shots: "still" skips the clip -> still + depth move
         man[shot] = {"still": True}
-        sel["clip"][shot] = {"still": True, "manual": True}
+        sel["clip"][shot] = {"still": True, "manual": True, **keep}
     elif take:                                             # render_shots reads "clip": the manual choice goes there too
         man[shot] = {"file": take["file"], "lag": take["lag"]}
-        sel["clip"][shot] = {"file": take["file"], "lag": take["lag"], "manual": True}
+        sel["clip"][shot] = {"file": take["file"], "lag": take["lag"], "manual": True, **keep}
     else:
         man.pop(shot, None)
-        if s and s.get("auto_entry"):                      # back to the automatic pick
-            sel["clip"][shot] = s["auto_entry"]
+        if auto:                                           # back to the automatic pick
+            sel["clip"][shot] = auto
         else:
             sel["clip"].pop(shot, None)
-    f.write_text(json.dumps(sel, ensure_ascii=False, indent=1), encoding="utf-8")
+    write_atomic(f, sel)
     if s:
         s["manual"] = take["file"] if take else None
+        s["note"] = ""
         data["dirty"] = sorted(set(data.get("dirty", [])) | {shot})   # chosen since the last cut
-        (P.dir / "takes" / "takes.json").write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+        write_atomic(P.dir / "takes" / "takes.json", data)
 
 
 def rendered(P):
@@ -252,11 +303,11 @@ def rendered(P):
     return out
 
 
-def changed(P):
+def changed(P, sel=None):
     """Shots whose scenes/ frames do not show the current choice (or were never rendered)."""
-    sel, done_ = read_sel(P), rendered(P)
+    sel, done_ = sel if sel is not None else read_sel(P), rendered(P)
     tj = P.dir / "takes" / "takes.json"
-    dirty = set(json.loads(tj.read_text(encoding="utf-8")).get("dirty", [])) if tj.exists() else set()
+    dirty = set(_read_json(tj, {}).get("dirty", []))
     out = []
     for s in P.sections():
         name = s["name"]
@@ -303,9 +354,11 @@ class Builder:
                 self.state.update(running=False, ok=False)
                 return
         tj = self.P.dir / "takes" / "takes.json"
-        d = json.loads(tj.read_text(encoding="utf-8"))
-        d["dirty"] = []
-        tj.write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
+        with LOCK:                                         # only the shots that were built: a choice made during the
+            d = _read_json(tj, {"shots": []})              # build stays "changed"
+            sel = read_sel(self.P)
+            d["dirty"] = [n for n in d.get("dirty", []) if n not in self.state["shots"] or n in changed(self.P, sel)]
+            write_atomic(tj, d)
         self.state.update(running=False, ok=True, step="done")
 
 
@@ -345,7 +398,7 @@ def serve(P, port=0, host="127.0.0.1"):
                     b = min(int(m.group(2)) if m.group(2) else size - 1, size - 1)
                 else:
                     a = max(0, size - int(m.group(2) or 0))
-                if a >= size:
+                if a >= size or b < a:
                     self.send_response(416)
                     self.send_header("Content-Range", f"bytes */{size}")
                     self.end_headers()
@@ -382,7 +435,7 @@ def serve(P, port=0, host="127.0.0.1"):
             if p in ("/", "/index.html"):
                 return self.file(PAGE, "text/html; charset=utf-8")
             if p == "/api/takes":
-                d = json.loads((P.dir / "takes" / "takes.json").read_text(encoding="utf-8"))
+                d = _read_json(P.dir / "takes" / "takes.json", {"shots": []})
                 d["changed"] = changed(P)
                 return self.reply(200, d)
             if p == "/api/build":
@@ -406,6 +459,8 @@ def serve(P, port=0, host="127.0.0.1"):
                 return self.reply(403, {"error": "only the page itself may post (application/json, same origin)"})
             try:
                 d = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+                if not isinstance(d, dict):
+                    raise ValueError("send a JSON object")
                 if self.path == "/api/choose":
                     choose(P, str(d["shot"]), d.get("file"))
                     return self.reply(200, {"ok": True, "changed": changed(P)})
@@ -413,7 +468,7 @@ def serve(P, port=0, host="127.0.0.1"):
                     if not builder.start():
                         return self.reply(409, {"error": "a cut is being built already"})
                     return self.reply(200, {"ok": True})
-            except (ValueError, KeyError) as e:
+            except (ValueError, KeyError, TypeError) as e:
                 return self.reply(400, {"error": str(e)})
             self.reply(404, {"error": "unknown"})
 

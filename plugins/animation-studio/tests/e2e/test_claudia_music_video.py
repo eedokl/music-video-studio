@@ -7,6 +7,8 @@ NEW = script("song-analysis", "new_project.py")
 RENDER = script("claudia-music-video", "render_shots.py")
 FILM = script("claudia-music-video", "make_film.py")
 TAKES = script("claudia-music-video", "takes.py")
+PICK = script("claudia-music-video", "pick.py")
+JOBS = script("claudia-music-video", "jobs.py")
 
 SONG = 3.30
 WORDS = [("Light", 0.20, 0.60, 0), ("the", 0.60, 0.75, 0), ("city", 0.80, 1.40, 0),
@@ -88,6 +90,36 @@ def run_claudia(ctx):
            "takes.choose(P, 's02', 'still'); assert takes.changed(P) == ['s02'], takes.changed(P); print('still ok')")
     out = ctx.run(["python", "-c", drv])
     expect("still ok" in out.stdout, f"takes still / changed:\n{out.stdout}")
+    # pick.py saves minutes after loading (night-run hook): a choice made on the page meanwhile wins, the hand choice
+    # keeps "manual": true and the automatic pick under "auto" ("back to automatic" restores that one, not the hand one)
+    drv = "\n".join([
+        f"import sys, json; sys.path.insert(0, r'{TAKES.parent}'); import pick, takes; from song_project import Project",
+        f"P = Project(r'{d}'); sel = json.load(open(P.dir / 'selection.json'))",
+        "sel['clip']['s02'] = {'file': 'ai/broll/s02_v1.mp4', 'lag': 0}",
+        "takes.choose(P, 's01', 'ai/lipsync/s01_v1_s2.mp4')",
+        "pick.save(P, sel)",
+        "s = json.load(open(P.dir / 'selection.json'))",
+        "c = s['clip']['s01']; assert c['manual'] and c['file'].endswith('s2.mp4') and c['auto']['file'].endswith('s1.mp4'), s",
+        "assert s['clip']['s02'] == {'still': True, 'manual': True, 'auto': {'file': 'ai/broll/s02_v1.mp4', 'lag': 0}}, s",
+        "tj = takes.build(P, {'s01'}); assert tj['shots'][0]['auto'].endswith('s1.mp4'), tj['shots'][0]",
+        "takes.choose(P, 's01', None); s = json.load(open(P.dir / 'selection.json'))",
+        "assert s['clip']['s01'] == {'file': 'ai/lipsync/s01_v1_s1.mp4', 'lag': 0}, s['clip']['s01']",
+        "print('pick save ok')", ""])
+    out = ctx.py(drv, deps_from=[PICK], name="pick_save.py")
+    expect("pick save ok" in out.stdout, f"pick.save / hand choice:\n{out.stdout}")
+    # a seed rendered before 0.4.28 under the plain name keeps it (no duplicate render of the same seed)
+    write_json(d / "ai" / "s2v" / "s09_v1.json", {"kind": "s2v", "seed": 777})
+    (d / "ai" / "s2v" / "s09_v1.mp4").write_bytes(b"")
+    drv = "\n".join([
+        f"import sys; sys.path.insert(0, r'{JOBS.parent}'); import jobs; from song_project import Project",
+        f"P = Project(r'{d}')",
+        "assert jobs.seed_tag(777, 5, P, 's2v', 's09') == '', 'old name not adopted'",
+        "assert jobs.seed_tag(778, 5, P, 's2v', 's09') == '_sd778'",
+        "print('seed tag ok')", ""])
+    out = ctx.py(drv, deps_from=[JOBS], name="seed_tag.py")
+    expect("seed tag ok" in out.stdout, f"jobs.seed_tag:\n{out.stdout}")
+    for f in ("s09_v1.json", "s09_v1.mp4"):
+        (d / "ai" / "s2v" / f).unlink()
     ctx.uv(RENDER, d, "--only", "s02", timeout=900)
     log = (d / "render.log").read_text(encoding="utf-8").splitlines()
     expect(len(log) == 2 and " clip " in log[0] and "still ai/broll/s02_v1.png" in log[1], f"render.log after --only:\n{log}")
