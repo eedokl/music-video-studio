@@ -18,7 +18,7 @@ animation-studio/
 Two kinds of folders under skills/:
 - **User skills** (one per kind of video the user asks for): thin. Interview → creative brief → build →
   review checkpoints. Their SKILL.md is what the user sees; frontmatter `name` + a "pushy" `description`.
-- **Building blocks** (studio-core, song-analysis, toon-2d, film-finish, characters, voice, ai-video, bricks-3d):
+- **Building blocks** (studio-core, song-analysis, toon-2d, film-finish, characters, voice, ai-video, bricks-3d, stage-3d):
   scripts + knowledge used by several user skills, written once. Their doc is `BLOCK.md` (no frontmatter), NOT a
   SKILL.md: Claude Code loads the description of every skill into every session, so blocks stay out of that list
   and cost no context until a user skill sends Claude to read them. Every user SKILL.md carries the standard

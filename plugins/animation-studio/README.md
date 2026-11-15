@@ -1,7 +1,7 @@
 # animation-studio
 
 A Claude Code plugin that makes music videos and short animated films on your own machine – classical 2D cartoons
-in which characters really sing, brick films, typographic lyric videos, photorealistic AI-singer videos, animated
+in which characters really sing, brick films, 3D character films in an advertisement look, typographic lyric videos, photorealistic AI-singer videos, animated
 presentation figures, talking characters and short 2D scenes. Every kind of film is one **user skill**; everything two
 kinds of film share lives once in a **building block**.
 
@@ -19,6 +19,7 @@ Every user skill was tested by rebuilding finished films of its kind and measuri
 | `animated-powerpoint` | "Let the four figures from slide 5 step out of the slide." | figures cut from the deck, rigged, animated in classic style (entrances, gestures, walk, lip sync for raster figures), a 2.5D stage for whole scenes, a deck intro with page turns and a finale – clips that fit back into the deck |
 | `talking-character` | "Tim asks the Computer about context windows – 20 seconds." | script → character voices (Qwen3-TTS / Piper / system) → lip sync → dialogue direction |
 | `animated-short` | "A bouncing-ball exercise", "Pip finds a flower", "a new Fips gag." | the 12 principles as keyframes, editable Synfig scenes, sound cues |
+| `animated-3d-film` | "Tell this script as a 3D film with toy characters, like a premium ad." | Blender scenes written as Python (Cycles on the GPU): acting figures with lip sync, sets with light moods, close-ups and cutaways, a fast whole-film preview before the film render, cinema look |
 | `video-review` | "Show me V1 and V2 side by side per shot and cut the best of both." | synced browser comparison, picks per shot, frame-exact cut without re-rendering |
 | `film-tools` | "Put the film look on this video", "make it small enough for e-mail", "check this file". | quick finishing jobs on any existing video: look, small/mail versions, contact sheet, decode check, cutting clips into a film |
 
@@ -33,13 +34,15 @@ Every user skill was tested by rebuilding finished films of its kind and measuri
 | `voice` | fixed character voices, text-to-speech with Whisper checks and retakes |
 | `ai-video` | ComfyUI client, FLUX / Qwen-Image-Edit images, LTX-2.3 and Wan2.2-S2V video, Depth Anything, mouth measurement, canon checks, night runs with milestones |
 | `bricks-3d` | LDraw importer, minifig rig, decals, sets, EEVEE film runner |
-| `film-finish` | gag (text and picture) and lyrics overlays, sound effects, full cut on the song timeline, frame-computed transitions (zoom through, glow, screen zoom, iris, flash, dip), title, end credits with gags and outtakes, pop-up version, second audio language, 48 fps, cuts for films without a song, generated film music, subtitles, Kdenlive hand-off, Shaders looks, the standard film look, output sizes (full / < 30 MB / ~12 MB mail), decode checks |
+| `stage-3d` | Blender stage for character films: animation tracks with easing, toy rig with acting API and lip sync, props, office set with five light moods, colour palettes, shot helpers, resumable draft / film renders, contact sheets |
+| `film-finish` | gag (text and picture) and lyrics overlays, sound effects, full cut on the song timeline, frame-computed transitions (zoom through, glow, screen zoom, iris, flash, dip), title, end credits with gags and outtakes, pop-up version, second audio language, 48 fps, cuts for films without a song, generated film music, subtitles, Kdenlive hand-off, the cut of 3D films from rendered clips with the cinema / ad look, Shaders looks, the standard film look, output sizes (full / < 30 MB / ~12 MB mail), decode checks |
 
 ```
  user skills      animated-music-video  bricks-music-video  lyric-music-video  claudia-music-video
                   animated-powerpoint   talking-character   animated-short     video-review
+                  animated-3d-film
                           │                    │                   │                 │
- building blocks  song-analysis · toon-2d · characters · voice · ai-video · bricks-3d · film-finish
+ building blocks  song-analysis · toon-2d · characters · voice · ai-video · bricks-3d · stage-3d · film-finish
                           └──────────────────────┬──────────────────────────────────┘
  foundation                                  studio-core
 ```

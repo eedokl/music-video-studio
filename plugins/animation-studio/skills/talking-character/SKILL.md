@@ -12,7 +12,7 @@ Scripts: `${CLAUDE_PLUGIN_ROOT}/skills/talking-character/scripts/`. Run them wit
 `uv run "<script>" ...`.
 
 **Building blocks** (shared code + docs of this plugin, not skills - read the one you need):
-`${CLAUDE_PLUGIN_ROOT}/skills/<block>/BLOCK.md` for `studio-core`, `song-analysis`, `toon-2d`, `characters`, `voice`, `ai-video`, `bricks-3d`, `film-finish`. In those files
+`${CLAUDE_PLUGIN_ROOT}/skills/<block>/BLOCK.md` for `studio-core`, `song-analysis`, `toon-2d`, `characters`, `voice`, `ai-video`, `bricks-3d`, `stage-3d`, `film-finish`. In those files
 `<plugin>` stands for `${CLAUDE_PLUGIN_ROOT}`. First use on a machine: `python "${CLAUDE_PLUGIN_ROOT}/skills/studio-core/scripts/check_tools.py" --setup` (finds the programs).
 
 ## 1 Interview (short)

@@ -128,10 +128,34 @@ DECK = {                                              # animated-powerpoint clip
     "background": {"type": (STR,)}, "name": {"type": (STR,)},
     "lang": {"type": (STR,), "doc": "language of the narration for the word times, e.g. \"de\" (default: detected)"},
 }
-SCHEMAS = {"song": SONG, "talk": TALK, "short": SHORT, "deck": DECK}
+FILM3D = {                                            # animated-3d-film project.json (stage-3d stage_project.py)
+    "title": {"type": (STR,)}, "kind": {"type": (STR,)}, "name": {"type": (STR,)},
+    "fps": {"type": (NUM,), "min": 24, "max": 24, "doc": "24 (the 3D stage animates at 24 frames per second)"},
+    "size": {"type": (LIST,), "doc": "[width, height] in pixels, even numbers, e.g. [1920, 1080]"},
+    "seed": {"type": (INT,)}, "ideas": {"type": (LIST,), "items": DICT},
+    "clips": {"type": (LIST,), "items": DICT, "need": ("name", "frames"),
+              "fields": {"name": {"type": (STR,)}, "frames": {"type": (INT,), "min": 1},
+                         "xfade": {"type": (INT,), "min": 0}, "about": {"type": (STR,)}},
+              "doc": 'the edit in order: [{"name": "c01_intro", "frames": 240, "xfade": 0}, ...]'},
+    "audio": {"type": (STR, NULL), "doc": "the finished sound track of the film, e.g. \"sound/film.wav\""},
+    "lines": {"type": (LIST,), "items": DICT, "need": ("id", "text"),
+              "fields": {"id": {"type": (STR,)}, "who": {"type": (STR,)}, "text": {"type": (STR,)},
+                         "audio": {"type": (STR,)}, "words": {"type": (LIST,), "items": DICT, "need": ("word", "t")}},
+              "doc": 'spoken lines [{"id": "l01", "who": "mo", "text": "Hello!", "audio": "speech/l01.wav"}]'},
+    "voices": {"type": (DICT,), "each": {"type": (DICT,)}, "doc": '{"<who>": {"engine": ..., "design": ...}}'},
+    "language": {"type": (STR,)}, "pronounce": {"type": (DICT,)},
+    "look": {"type": (STR, NULL), "values": ("cinema", "ad", "standard", "none"),
+             "doc": '"cinema" (default), "ad", "standard" or "none"'},
+    "palette": {"type": (STR, DICT),
+                "doc": '"ivory" (default), "petrol", "forest" or {"base": "ivory", "accent": "#C24F2D"}'},
+    "lips": {"type": (STR,), "values": ("soft", "strong")},
+    "cast": {"type": (DICT,), "doc": '{"mo": "bear", "kit": {"look": "cat", "glasses": true}} - the bundled toy figures'},
+    "final": {"type": (STR,)},
+}
+SCHEMAS = {"song": SONG, "talk": TALK, "short": SHORT, "deck": DECK, "film3d": FILM3D}
 FAMILY = {"animated-music-video": "song", "bricks-music-video": "song", "claudia-music-video": "song",
           "lyric-music-video": "song", "song-analysis": "song", "talking-character": "talk",
-          "animated-short": "short", "animated-powerpoint": "deck"}      # film-finish / video-review: detected
+          "animated-short": "short", "animated-powerpoint": "deck", "animated-3d-film": "film3d"}      # film-finish / video-review: detected
 
 
 # ------------------------------------------------------------------ helpers
@@ -199,6 +223,8 @@ def _value(R, key, v, spec):
         return
     if "min" in spec and _is(v, NUM) and v < spec["min"]:
         R.err(key, f"must be >= {spec['min']}, got {v}")
+    if "max" in spec and _is(v, NUM) and v > spec["max"]:
+        R.err(key, f"must be <= {spec['max']}, got {v}")
     if "values" in spec and isinstance(v, str) and v not in spec["values"]:
         R.err(key, f'"{v}" is not one of {", ".join(spec["values"])}{_mean(v, spec["values"])}')
     entries = []
@@ -397,16 +423,38 @@ def _deck_mouths(R, p, base):
 
 def _look(R, p, base):
     lk = p.get("look")
-    if not isinstance(lk, str) or lk in ("none", "standard"):
+    if not isinstance(lk, str) or lk in ("none", "standard", "ad", "cinema"):     # ad / cinema: clip_film.py
         return
     cands = [SKILLS / "film-finish" / "assets" / "look" / lk, Path(lk)] + ([base / lk] if base else [])
     if not any(c.is_dir() for c in cands):
         R.warn("look", f'"{lk}" is neither a look of film-finish (standard, none) nor a look folder')
 
 
+def _film3d(R, p, base):
+    """clips: unique names, a scene module each; lines: unique ids; the sound track exists."""
+    clips = [c for c in p.get("clips") or [] if isinstance(c, dict) and _is(c.get("name"), STR)]
+    seen = set()
+    for c in clips:
+        if c["name"] in seen:
+            R.err("clips", f'the clip name "{c["name"]}" is used twice')
+        seen.add(c["name"])
+        if not c["name"].isidentifier():
+            R.err("clips", f'"{c["name"]}" is not a valid clip name (letters, digits, _ - it is a Python module name)')
+        elif base and not (base / "scenes" / f'{c["name"]}.py').exists():
+            R.warn("clips", f'scenes/{c["name"]}.py does not exist yet')
+    ids = [ln.get("id") for ln in p.get("lines") or [] if isinstance(ln, dict)]
+    for i in sorted({i for i in ids if ids.count(i) > 1}):
+        R.err("lines", f'the line id "{i}" is used twice')
+    au = p.get("audio")
+    if base and _is(au, STR) and not (base / au).exists():
+        R.warn("audio", f"{au} does not exist (the film is built without sound)")
+
+
 def detect(p, src=None):
     if src is not None and Path(src).name == "short.json":
         return "short"
+    if "clips" in p or p.get("kind") == "film3d":
+        return "film3d"
     if "script" in p or "recording" in p:
         return "talk"
     if ("deck" in p or "slide" in p or "narration" in p or "layers" in p) and "sections" not in p:
@@ -460,6 +508,8 @@ def check(P, skill=None, base=None):
             R.err("title", f'"from" {t["from"]} must be smaller than "to" {t["to"]}')
     if R.family == "deck":
         _deck_mouths(R, p, base)
+    if R.family == "film3d":
+        _film3d(R, p, base)
     _look(R, p, base)
     return R.items
 
