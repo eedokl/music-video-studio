@@ -46,6 +46,7 @@ def main():
     pj = project / "project.json"
     P = json.loads(pj.read_text(encoding="utf-8")) if pj.exists() else {}
     K.LIPS["strong"] = P.get("lips") == "strong"
+    K.FIGURES["style"] = P.get("figures")
     C.set_palette(P.get("palette"))
     t0 = time.time()
     mod = importlib.import_module("scenes." + clip)

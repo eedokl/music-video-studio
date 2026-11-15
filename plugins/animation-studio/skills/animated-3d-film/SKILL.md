@@ -26,7 +26,10 @@ Needs Blender 4.2+ (config key `blender`), ffmpeg, Rhubarb; a graphics card make
 - **What is the film?** A script or story the user brings, a remake of an existing film (then its sound track
   and timing may be reused), or "surprise me". How long? (30–90 s is a good size; minutes are a big render.)
 - **Who plays?** The bundled toy figures (bear, cat, bunny – colours, glasses, sizes free) or an own cast that must
-  stay recognisable (then every figure gets its own class – step 4).
+  stay recognisable (then every figure gets its own class – step 4). They can also be made of something else:
+  sewn **rag dolls** (cloth, seams, button eyes) or **hand puppets** for a puppet show (fleece, flap mouths,
+  played from behind a playboard) - project.json `"figures": "ragdoll"` / `"puppet"`, see stage-3d BLOCK.md
+  "Figures"; an existing film can be re-rendered in another make without changing a scene.
 - **Sound?** Spoken lines by the voice block, recorded wavs, an existing finished sound track, music.
 - **Look?** Default: ivory walls, dark walnut, one coral accent, low golden light, the darker "cinema" finish.
   Other palettes / a bright "ad" finish on request.

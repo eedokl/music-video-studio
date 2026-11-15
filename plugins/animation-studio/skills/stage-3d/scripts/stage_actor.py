@@ -19,6 +19,7 @@ OPEN = {"A": 0.04, "B": 0.3, "C": 0.55, "D": 1.0, "E": 0.7, "F": 0.28, "G": 0.22
 _LINES = None
 LIPS = {"strong": False}    # strong: wider mouth opening while speaking (speech_gain per figure); project.json "lips"
 SAID = []                   # (clip, first frame, last frame, line id, start frame) of every spoken line
+FIGURES = {"style": None}   # the make of the figures: None / "toy", "ragdoll", "puppet" (stage_looks); project.json "figures"
 
 
 def lines():
@@ -745,9 +746,10 @@ class Toy(Char):
         return self
 
 
-def cast(S, figures):
+def cast(S, figures, style=None):
     """build figures: {"name": "bear" | {"look": "cat", "size": 0.9, "glasses": True} | a Char subclass}.
-    Returns {name: figure}; every figure starts in its rest pose."""
+    Returns {name: figure}; every figure starts in its rest pose. style: the make of the figures - "toy" (as
+    modelled), "ragdoll" or "puppet" (stage_looks); default: project.json "figures"."""
     materials()
     out = {}
     for nm, spec in figures.items():
@@ -760,7 +762,18 @@ def cast(S, figures):
             c = Toy(S, nm, size, dict(LOOKS[look], **d) if isinstance(look, str) else dict(look, **d))
         c.pose(1, "rest", "hold")
         out[nm] = c
+    dress(S, out, style)
     return out
+
+
+def dress(S, figures, style=None):
+    """give built figures another make (see stage_looks): for a cast that is not built by cast() - call it once,
+    after all figures exist. Returns what the make returns (puppet: {name: jaw Node})."""
+    style = style or FIGURES["style"]
+    if style in (None, "", "toy"):
+        return None
+    import stage_looks
+    return stage_looks.dress(S, figures, style)
 
 
 def typing_generic(c, f0, f1, per=5, amp=10):

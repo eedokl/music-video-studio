@@ -144,5 +144,34 @@ def run_film(ctx):
     ctx.note(f"2 clips, 20 draft frames ({B['device']}), line moved to frame {line_at} heard at {t:.3f} s, narrator at {t2:.3f} s, only the changed clip re-rendered, looks cinema + ad")
 
 
-TESTS = [Test("animated-3d-film", run_film, about="film3d.py new/clip/line -> stage_speech -> Blender draft render "
+def run_makes(ctx):
+    """the makes of the figures: one tiny clip as rag dolls, hand puppets and toys - three different pictures"""
+    need("blender")
+    d = ctx.dir / "makes"
+    ctx.uv(FILM3D, "new", d, "--title", "E2E makes", "--seed", "7", "--cast", "mo:bear,kit:cat", "--size", "640x360",
+           "--figures", "ragdoll")
+    P = read_json(d / "project.json")
+    expect(P.get("figures") == "ragdoll", f"film3d.py new --figures ragdoll wrote {P.get('figures')!r}")
+    P["clips"][0]["frames"] = 4
+    write_json(d / "project.json", P)
+    (d / "scenes" / "c01_opening.py").write_text(SCENE.format(frames=4, mood="golden", cut=3, say="mo.babble(1, 4)"),
+                                                 encoding="utf-8")
+    still, seen = d / "out" / "c01_opening" / "stills_draft" / "f_0004.png", {}
+    for make in ("ragdoll", "puppet", "toy"):
+        P["figures"] = make
+        write_json(d / "project.json", P)
+        ctx.uv(RUN, "clip", d, "c01_opening", "--stills", "4", timeout=900)
+        expect(still.exists() and still.stat().st_size > 20000, f"figures {make}: no still")
+        seen[make] = still.read_bytes()
+    expect(len(set(seen.values())) == 3, "the three makes rendered the same picture")
+    P["figures"] = "wool"
+    write_json(d / "project.json", P)
+    out = ctx.run(["uv", "run", "--offline", RUN, "clip", d, "c01_opening", "--stills", "4"], check=False, timeout=600)
+    expect(out.returncode != 0, "an unknown make of the figures was not refused")
+    ctx.note("close-up of one figure as rag doll, hand puppet and toy: three different pictures; unknown make refused")
+
+
+TESTS = [Test("animated-3d-film-makes", run_makes, about="project.json figures: ragdoll / puppet / toy render and "
+                                                         "differ, an unknown make is refused"),
+         Test("animated-3d-film", run_film, about="film3d.py new/clip/line -> stage_speech -> Blender draft render "
                                                   "-> sound mix -> clip_film cut")]

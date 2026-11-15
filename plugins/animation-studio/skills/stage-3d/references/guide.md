@@ -91,6 +91,26 @@ All figures breathe, sway and blink on their own; `c.follow(f)` lets ears / tail
 Give every figure a body language and keep it through the film (slow and deliberate vs. never still; what the
 ears, the tail, the brows do when it doubts or is sure) – that is what makes a cast recognisable.
 
+### Other makes: rag dolls and hand puppets (stage_looks)
+
+project.json `"figures": "ragdoll"` or `"puppet"` (or `K.cast(S, {...}, style=...)` for one clip) re-dresses the
+built figures; scenes, poses and lip sync stay as they are.
+
+- **Rag dolls** read through texture and seams, so they need light that rakes across the cloth (a clear key from
+  the side) and at least a few shots close enough to see the stitches; in a wide shot they look like the toys in
+  cream. Button eyes cannot blink or widen: play surprise and doubt with the brows, the head and the whole body.
+- **Hand puppets** are played from below: only the upper body shows. Put a playboard, a desk or a wall edge in
+  front of them at chest height (`at(f, x, y, h, z=...)` lifts a figure so its chest meets the edge), let them come
+  up from below and sink away instead of walking on, and keep the camera at or below eye level so it does not look
+  behind the board. They act with the whole head: big head turns and tilts, bounces on the beat, arms thrown up -
+  small finger acting is lost. `jaws = K.dress(...)` / `stage_looks.puppet()` returns the jaw nodes; a jaw also
+  takes keys of its own (`jaw.rot(f, x=28)`, degrees) on top of the mouth channel, e.g. for singing on the beat.
+- An own figure steers its puppet make with a class attribute, e.g. `puppet = {"fleece": "#EBA52C", "parts":
+  "muzzle", "hinge": -0.03}` for a long snout (cut only the muzzle - cutting head and muzzle gives a stacked mouth),
+  `{"lid": 0.4}` for heavy eyelids; `stage_looks.PUPPET["name"] = {...}` does the same from a scene.
+- Check both makes on close-up stills first (`stage_run.py clip ... --stills`): mouth cut height, eyes behind
+  glasses and seams are the places that need a look.
+
 ## Props and sets (stage_props, stage_sets)
 
 `P.palette()` creates the shared materials (the office calls it). Props: `room, window, desk, shelf, plant, lamp,

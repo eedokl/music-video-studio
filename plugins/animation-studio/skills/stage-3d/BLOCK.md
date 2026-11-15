@@ -26,6 +26,7 @@ A film is a project folder: `project.json` (the clips in order, sizes, palette, 
 | `stage_film.py` | Blender | builds one clip and renders it (started by stage_run.py); writes `out/<clip>/build.json` (cuts, spoken lines with their frames) |
 | `stage_core.py` | Blender | `Stage`, `Node`, channels and easing, primitives, materials, text, cameras, lights, palettes, render settings |
 | `stage_actor.py` | Blender | the rig `Char` + acting API, poses, moods, lip sync, the bundled figure `Toy`, `cast()` |
+| `stage_looks.py` | Blender | two other makes of the same figures: `ragdoll` (cloth, seams, button eyes) and `puppet` (fleece, flap mouth, arm rods) |
 | `stage_props.py` / `stage_sets.py` / `stage_shots.py` | Blender | props; the office set with light moods; `closeup`, `medium`, `two_shot`, `ots` |
 | `stage_project.py` | any | `Film`: project.json, clips, frame paths, missing frames |
 
@@ -82,6 +83,21 @@ The full API (channels and easing, `Node`, camera, every acting call, poses, moo
   model, `vest_mat` gives a knit vest with a shirt V-neck), add own moves (ears, tail) as methods, and pass the
   class: `K.cast(S, {"olga": Olga})`. Keep a figure recognisable: silhouette (ears, tail), one garment, one habit.
 - Mouths: project.json `"lips": "soft"` (default) or `"strong"` (wider opening while speaking).
+- **The make of the figures** - project.json `"figures"`: `"toy"` (default: the smooth felt toys as modelled),
+  `"ragdoll"` or `"puppet"`. It re-dresses every figure `cast()` builds - bundled or own - and leaves the rig alone,
+  so a finished film can be rendered in another make without touching a scene. One clip only: `K.cast(S, {...},
+  style="puppet")`; a cast not built by `cast()`: `K.dress(S, figures)` once all figures exist.
+  - `"ragdoll"`: woven linen in the fur colour, knit garments, plush tails, sewn seams with hand stitches (head,
+    muzzle, torso, limbs, hands, feet), four-hole button eyes, a slightly lumpy stuffing. Costs no render time.
+  - `"puppet"`: hand puppets for a puppet show - fleece with a nap of fine hair, ping-pong eyes with felt pupils, a
+    hinged flap mouth with a felt tongue that hangs on the mouth channel (`say()`, `babble()` and moods open it),
+    arm rods, no legs: stage them behind a playboard or a desk edge that hides them from the chest down. White
+    figures get a fleece colour each (gold, rust, sage, plum ... in cast order; own: `{"look": "bear", "fleece":
+    "#DA5F26"}`). The hair about doubles the render time; `"fuzz": False` in a figure's options leaves it out.
+  - Limits: button and ping-pong eyes do not blink or widen (moods still move the brows); a figure with a beak or
+    without a modelled mouth keeps its own mouth. Details, the option keys (`cut`, `hinge`, `parts`, `eye`, `lid` ...)
+    and how an own `Char` class sets them: the docstring of `stage_looks.py` and
+    [references/guide.md](references/guide.md) "Other makes".
 
 ## Known limits
 - `Char.reach()` ignores the lean of the body (re-aim after a big `body=` override); a channel with a single key is

@@ -18,7 +18,7 @@ frames in out/<clip>/<q>_eevee/ (stage-3d BLOCK.md says what differs).
 Qualities: draft (half size, 24 samples - the whole-film preview and all contact sheets), preview, film (full size,
 40 samples + denoiser, motion blur), final (128 samples, hero stills). `film` skips frames that exist, so it can be
 stopped and started again. A clip whose scene module (or a helper module in scenes/), project settings (size,
-palette, lips, seed, cast, frames) or spoken lines changed since its frames were made is rendered again by `film`
+palette, lips, figures, seed, cast, frames) or spoken lines changed since its frames were made is rendered again by `film`
 (the key is out/<clip>/<q>/source.json); `clip ... --range a b --overwrite` renders a part again by hand.
 Output: <project>/out/<clip>/<q>/f_####.png, stills in out/<clip>/stills_<q>/, the sheet in out/<clip>/sheet.png.
 Blender comes from the config key `blender`; the shared GPU lock is held while it runs (job "stage3d_blender").
@@ -132,6 +132,8 @@ def source_key(F, clip, q, engine):
         L = {x["id"]: x for x in json.loads(lj.read_text(encoding="utf-8")).get("lines", [])}
         lines = {i: L.get(i) for i in said}
     spec = {k: F.get(k) for k in ("size", "palette", "lips", "seed", "cast")}
+    if F.get("figures") not in (None, "", "toy"):          # only when set: older frames keep their key
+        spec["figures"] = F.get("figures")
     spec.update(clip=clip, frames=F.clip(clip)[1], q=q, engine=engine)
     return {"key": derived.key(mods, spec), "lines": derived.key([], lines) if b.exists() else None}
 
