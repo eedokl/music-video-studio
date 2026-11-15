@@ -1,5 +1,9 @@
 """animated-3d-film: film3d.py new -> clip -> idea -> line (a synthetic wav) -> stage_speech prepare -> two tiny clips
 rendered in draft quality with Blender -> sound mix -> clip_film cut (dissolve, look, sound)."""
+import os
+import subprocess
+import time
+
 from common import (Test, audio_samples, expect, expect_film, first_loud, full, need, read_json, script, write_json)
 
 FILM3D = script("animated-3d-film", "film3d.py")
@@ -109,6 +113,34 @@ def run_film(ctx):
     expect(out.returncode != 0 and "make them the same" in out.stdout, f"FRAMES mismatch not reported:\n{out.stdout[-800:]}")
     P["clips"][0]["frames"] = 12
     write_json(d / "project.json", P)
+    # a changed clip whose re-render is stopped half way: the resume must render the rest (no old frame may stay)
+    (d / "scenes" / "c01_opening.py").write_text(SCENE.format(frames=12, mood="night", cut=9,
+                                                             say=f'mo.say("l01", {line_at})'), encoding="utf-8")
+    t_change = time.time() - 1
+    drafts = d / "out" / "c01_opening" / "draft"
+    cmd = ["uv", "run", "--offline", str(RUN), "film", str(d), "--q", "draft", "--clips", "c01_opening"]
+    ctx.log("$ " + " ".join(cmd) + "   (stopped after 2 frames)")
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace")
+    seen, stopped = 0, False
+    for ln in p.stdout:
+        ctx.log("  " + ln.rstrip())
+        seen += ln.startswith("RENDERED c01_opening")
+        if seen >= 2:
+            if os.name == "nt":                         # the whole tree: uv -> python -> Blender
+                subprocess.run(["taskkill", "/T", "/F", "/PID", str(p.pid)], capture_output=True)
+            else:
+                p.kill()
+            stopped = True
+            break
+    p.wait(60)
+    left = sorted(drafts.glob("f_*.png"))
+    expect(all(f.stat().st_mtime >= t_change for f in left),
+           f"old frames survived the start of the re-render: {[f.name for f in left if f.stat().st_mtime < t_change]}")
+    ctx.uv(RUN, "film", d, "--q", "draft", "--clips", "c01_opening", timeout=900)
+    left = sorted(drafts.glob("f_*.png"))
+    expect(len(left) == 12 and all(f.stat().st_mtime >= t_change for f in left),
+           f"after the resume: {len(left)} frames, old ones {[f.name for f in left if f.stat().st_mtime < t_change]}")
+    ctx.note(f"re-render {'stopped after 2 frames and ' if stopped else '(finished before the stop) '}resumed with new frames only")
     ctx.note(f"2 clips, 20 draft frames ({B['device']}), line moved to frame {line_at} heard at {t:.3f} s, narrator at {t2:.3f} s, only the changed clip re-rendered, looks cinema + ad")
 
 

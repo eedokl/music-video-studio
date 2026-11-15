@@ -119,8 +119,10 @@ def cmd_clip(a):
 
 
 def source_key(F, clip, q, engine):
-    """What the frames of a clip are made from: its scene module + the helper modules in scenes/ (not the other
-    clips), the project settings the stage reads, the spoken lines it says (last build.json)."""
+    """What the frames of a clip are made from -> {"key": scene module + helper modules in scenes/ (not the other
+    clips) + the project settings the stage reads, "lines": the spoken lines it says (from the last build.json) or
+    None before the first build}. Two keys: a first render stopped before build.json existed must not count as
+    changed on the resume (that threw its finished frames away)."""
     scenes = F.dir / "scenes"
     names = {c for c, _, _ in F.clips}
     mods = [scenes / f"{clip}.py"] + sorted(p for p in scenes.glob("*.py") if p.stem not in names and p.stem != "__init__")
@@ -130,8 +132,15 @@ def source_key(F, clip, q, engine):
         L = {x["id"]: x for x in json.loads(lj.read_text(encoding="utf-8")).get("lines", [])}
         lines = {i: L.get(i) for i in said}
     spec = {k: F.get(k) for k in ("size", "palette", "lips", "seed", "cast")}
-    spec.update(clip=clip, frames=F.clip(clip)[1], q=q, engine=engine, lines=lines)
-    return derived.key(mods, spec)
+    spec.update(clip=clip, frames=F.clip(clip)[1], q=q, engine=engine)
+    return {"key": derived.key(mods, spec), "lines": derived.key([], lines) if b.exists() else None}
+
+
+def same_source(old, new):
+    """old = source.json; a side without "lines" (no build.json then) is compatible with any lines"""
+    if old.get("key") != new["key"]:
+        return False
+    return old.get("lines") is None or new["lines"] is None or old["lines"] == new["lines"]
 
 
 def cmd_film(a):
@@ -149,15 +158,20 @@ def cmd_film(a):
         k, kf, miss = source_key(F, c, a.q, a.engine), F.out(c, fq) / "source.json", F.missing(c, fq)
         over = a.overwrite
         if len(miss) < n:                              # frames exist: made from the same scene / settings / lines?
-            old = json.loads(kf.read_text(encoding="utf-8")).get("key") if kf.exists() else None
+            old = json.loads(kf.read_text(encoding="utf-8")) if kf.exists() else None
             if old is None:
                 print(f"{c}: frames without source.json (older version) - taken as they are", flush=True)
-            elif old != k:
+            elif not same_source(old, k):
+                # the old frames are deleted BEFORE the new key is stored: a re-render stopped half way resumes
+                # with only new frames (keeping them mixed old/new frames as "complete")
+                gone = [f for f in F.out(c, fq).glob("f_*.png")]
+                for f in gone:
+                    f.unlink()
                 print(f"{c}: the scene, the project settings or its lines changed since these '{a.q}' frames - "
-                      "rendering the clip again", flush=True)
-                over = True
+                      f"{len(gone)} old frames deleted, rendering the clip again", flush=True)
+                miss = F.missing(c, fq)
         F.out(c, fq).mkdir(parents=True, exist_ok=True)
-        derived.write_text(kf, json.dumps({"key": k}))  # before rendering: a stopped run resumes with this key
+        derived.write_text(kf, json.dumps(k))          # before rendering: a stopped run resumes with this key
         todo.append((c, n, n if over else len(miss), over))
     total = sum(m for _, _, m, _ in todo)
     print(f"{F.dir.name}: {total} of {sum(n for _, n, _, _ in todo)} frames to render in quality '{a.q}'", flush=True)
@@ -167,7 +181,7 @@ def cmd_film(a):
             continue
         blender(F.dir, c, "--q", a.q, "--engine", a.engine, "--range", 1, n, *(["--overwrite"] if over else []))
         # again after the build: build.json now names the lines this clip says (the first run had none)
-        derived.write_text(F.out(c, fq) / "source.json", json.dumps({"key": source_key(F, c, a.q, a.engine)}))
+        derived.write_text(F.out(c, fq) / "source.json", json.dumps(source_key(F, c, a.q, a.engine)))
         done += m
         left = (time.time() - t0) / done * (total - done)
         print(f"FILM {c} done - {done}/{total} frames, about {left / 60:.0f} min left", flush=True)
