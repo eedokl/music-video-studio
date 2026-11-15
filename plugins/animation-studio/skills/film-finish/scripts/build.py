@@ -304,7 +304,7 @@ def film(P):
         if out.stat().st_size < mb * 1e6 and max(W, H) <= side:
             shutil.copy(out, target)                        # already small enough (bytes and pixels)
         else:                                               # never bigger than the film (user test: a 1280x720 film
-            encode_target(out, target, min(mb, out.stat().st_size / 1.024e6), w, h, ak, dur)   # got a _mail copy)
+            encode_target(out, target, min(mb, out.stat().st_size / 1.024e6), w, h, ak, dur, limit_mb=mb)   # got a _mail copy)
         results.append(place(target, P.dir / f"{name}.mp4"))
         targets[results[-1]] = mb
     for r in results:

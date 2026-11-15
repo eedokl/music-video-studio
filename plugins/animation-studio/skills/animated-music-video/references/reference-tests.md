@@ -10,7 +10,7 @@ section markers. The reference was built by hand-written project scripts; the sk
 | Lip-sync gaps | voice audible but no open mouth, ≥ 0.3 s | 0 |
 | Picture | contact sheets at 2, 6, 10, 14, 17, 21, 25 s side by side | same set, layout, screen face, dance on the chorus beats; differences: reference had song-specific props (GPU tower, tier badge) – now possible with `props` and `screen` events; Lia's aura now an option |
 | Film | build, look, three output sizes, decode check | 28.4 s, 0 decode errors, ~13 s build |
-| Variety | same project with seeds 1 and 2 | dance styles tim/lia: step/bounce vs. twist/arms |
+| Variety | same project with seeds 1 and 2 | dance styles tim/lia: step/bounce vs. twist/arms (measured before 0.4.19, when the style was drawn per figure AND section; since then one style per figure for the whole film - a re-run with the same seed draws other styles) |
 
 How to re-run: create a project with `new_project.py --from 38.3 --to 66.7 --lyrics-from "Nur noch mehr Prompts
 (Prompts!)" --lyrics-to "Nur noch mehr Prompts (Nur"`, run analyze/voices, one `stage` section, render, build;

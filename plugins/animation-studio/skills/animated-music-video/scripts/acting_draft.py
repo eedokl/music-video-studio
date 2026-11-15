@@ -31,7 +31,7 @@ import _studio  # noqa: E402
 _studio.use("song-analysis")
 import creative  # noqa: E402
 from media import decode  # noqa: E402
-from song_project import Project  # noqa: E402
+from song_project import Project, word_matches  # noqa: E402
 
 MOODS = ("neutral", "happy", "cheeky", "proud", "sad", "angry", "alarm", "question")
 REACT = {"happy": "grin", "cheeky": "grin", "proud": "skeptical", "sad": "sad", "angry": "shock", "alarm": "shock",
@@ -145,9 +145,20 @@ def apply(P, rows):
     data = json.loads(P.file.read_text(encoding="utf-8"))
     mine = [e for e in data.get("expressions") or [] if isinstance(e, dict) and not e.get("auto")]
     busy = {k: [] for k in rig}                                       # hand-set spans block the automatic ones
-    for e in mine:
-        if e.get("figure") in busy and e.get("from") is not None:
-            busy[e["figure"]].append((float(e["from"]), float(e.get("to", float(e["from"]) + e.get("duration", 1.5)))))
+    sheet = P.sheet()
+    for e in mine:                                # "word" / "line" / "from" resolved as scene_acting.expression_spans
+        k, dur = e.get("figure"), float(e.get("duration", 1.5))
+        if k not in busy:
+            continue
+        if e.get("word"):
+            busy[k] += [(w["t"] - 0.08, w["t"] - 0.08 + dur) for w in sheet.get("words", [])
+                        if word_matches(w["word"], str(e["word"]))]
+        elif e.get("line"):
+            busy[k] += [(float(ln["t"]), float(e["to"]) if e.get("to") is not None else float(ln["t"]) + dur)
+                        for ln in sheet.get("lines", [])
+                        if ln.get("text", "").lower().startswith(str(e["line"]).lower())]
+        elif e.get("from") is not None:
+            busy[k].append((float(e["from"]), float(e.get("to", float(e["from"]) + dur))))
     out = []
 
     def free(k, t0, t1):

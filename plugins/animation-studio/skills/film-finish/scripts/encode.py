@@ -45,11 +45,12 @@ def over_note(path, mb):
     return f" - OVER the {mb:g} MB target" if size > mb * 1.024e6 else ""
 
 
-def encode_target(src, out, mb, width, height, audio_k, dur):
+def encode_target(src, out, mb, width, height, audio_k, dur, limit_mb=None):
     """Two-pass encode aimed at mb (x 1.024 MB). The result is checked: one re-encode with a corrected bitrate when it
     came out too big. Never fails because of the size: returns Encoded(path, met, size_mb, target_mb, note) - met is
     False and note says why when the file is still over (the minimum bitrate was the limit = the film is too long
-    for this size, or x264 overshot even after the corrected re-encode)."""
+    for this size, or x264 overshot even after the corrected re-encode). limit_mb: the real size limit when mb is
+    only a cap at the source's own size (then a result over mb but under limit_mb at the minimum bitrate counts)."""
     out = Path(out)
     limit = mb * 1.024e6
     budget = mb * 8 * 1024 / max(dur, 1)                    # kbit/s for picture + sound
@@ -61,7 +62,9 @@ def encode_target(src, out, mb, width, height, audio_k, dur):
         _two_pass(src, out, width, height, vbit, audio_k)
         size = out.stat().st_size
         tries.append(vbit)
-        if size <= limit:
+        if size <= limit or (limit_mb and size <= limit_mb * 1.024e6 and vbit <= MIN_VIDEO_K):
+            # limit_mb: mb was only the source's own size (a tiny film that is scaled down) - under the real limit
+            # at the minimum bitrate is fine, even when it came out a little bigger than the source
             return Encoded(out, True, round(size / 1e6, 2), mb, "")
         if attempt == 1 and vbit > MIN_VIDEO_K:
             # over: scale the video bitrate by what was missed (audio part stays), a little extra margin
@@ -137,7 +140,7 @@ def main():
             shutil.copy(src, tmp)                       # already small enough (bytes and pixels)
         else:                                           # never bigger than the source: a small file that only
             target = min(mb, src.stat().st_size / 1.024e6)  # needs scaling down keeps (at most) its own size
-            encode_target(src, tmp, target, w, h, ak, dur)
+            encode_target(src, tmp, target, w, h, ak, dur, limit_mb=mb)
         out = place(tmp, final)
         err = check_video(out)
         print(f"-> {out.name}: {out.stat().st_size / 1e6:.1f} MB{over_note(out, mb)}"

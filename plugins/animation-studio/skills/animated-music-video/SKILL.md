@@ -54,6 +54,9 @@ overheating at "GPU glühen", Tim hiding behind the desk at "Limit"). Record eve
 user a short plan (one line per section: set, who, 2–3 ideas) and go on unless they want a say.
 The **seed** in project.json varies everything not fixed by an idea (dance style per figure: arms / bounce / step /
 twist, blink timing, ...): same seed → same film, new seed → a new take. Never rebuild "Prompts!" for another song.
+Since 0.4.19 the seed picks ONE dance style per figure for the whole film (before: one per figure and section): a
+project made before that without `"dance_style"` dances differently when re-rendered - pin the old styles with
+`"dance_style": {"tim": "step", ...}` (project or section) if the old film must stay as it was.
 
 ## 4. project.json (song seconds everywhere)
 

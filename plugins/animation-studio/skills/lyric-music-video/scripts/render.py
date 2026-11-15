@@ -153,7 +153,7 @@ def versions(full, dur):
             shutil.copy(ref, tmp)
             print(f"   {suffix}: a copy of {ref.name} (already under {mb:g} MB and {w} px)")
         else:
-            encode_target(full, tmp, min(mb, ref.stat().st_size / 1.024e6), w, h, ak, dur)
+            encode_target(full, tmp, min(mb, ref.stat().st_size / 1.024e6), w, h, ak, dur, limit_mb=mb)
         out.append(place(tmp, full.with_name(full.stem + suffix + ".mp4")))
         over = over_note(out[-1], mb)
         if over:

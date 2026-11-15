@@ -8,7 +8,8 @@ Checks:
   3. module names that exist in more than one skill are only the known ones (KNOWN_DUPLICATES); a new duplicate
      fails - rename it (the skill's own folder wins on sys.path, but a sibling's module of the same name is shadowed)
   4. no absolute machine paths (drive letters, user folders) in shipped text files
-  5. ${CLAUDE_PLUGIN_ROOT} only in SKILL.md files (Claude Code substitutes it nowhere else)
+  5. ${CLAUDE_PLUGIN_ROOT} only in SKILL.md files (Claude Code substitutes it nowhere else); no "<plugin>/"
+     commands in SKILL.md bodies
   6. every `--flag` that a SKILL.md shows right after a script name exists in that script
   7. `python <script> --help` exits 0 for every CLI with argparse; a missing third-party module is reported as
      "skipped", not as a failure
@@ -88,6 +89,10 @@ for p in ROOT.rglob("*"):
     if "${CLAUDE_PLUGIN_ROOT}" in t and p.name not in ("SKILL.md", "CONVENTIONS.md") and p.suffix == ".md" \
             and p.relative_to(ROOT).as_posix() not in PLUGIN_ROOT_OK:
         fail(f"${{CLAUDE_PLUGIN_ROOT}} is not substituted outside SKILL.md: {p.relative_to(ROOT)}")
+    if p.name == "SKILL.md" and '"<plugin>/' in t:     # the <plugin> legend is for BLOCK.md / references only
+        line = t[:t.index('"<plugin>/')].count("\n") + 1
+        fail(f"{p.relative_to(ROOT)}:{line}: a command with <plugin>/ in a SKILL.md - write ${{CLAUDE_PLUGIN_ROOT}}/ "
+             "(Claude Code substitutes it there)")
 
 # 6 SKILL.md flags vs. argparse
 by_name = {}

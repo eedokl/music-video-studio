@@ -28,7 +28,7 @@ Work in a project folder outside the plugin: `deck/`, `figures/`, `clips/<name>/
 1. **Interview + creative brief.** Which deck and slide(s)? Which figures step out, who just watches? Where will
    the clip play (after the slide = start on the slide; as a loop on the slide = `"ending": "return"`)? Text on the
    tags (name + role from the slide)? Read the slide text and notes (`deck.json`) and invent ideas from *this* deck
-   (a gesture that fits the role, who reacts to whom, an ending); record them: `python "<plugin>/skills/studio-core/scripts/creative.py" idea project.json ai "..." [where]`. User ideas win.
+   (a gesture that fits the role, who reacts to whom, an ending); record them: `python "${CLAUDE_PLUGIN_ROOT}/skills/studio-core/scripts/creative.py" idea project.json ai "..." [where]`. User ideas win.
    The decks can be internal: everything stays local, nothing is uploaded.
 2. **Import the deck** – `deck.py deck.pptx --slides 5 --out deck` (or a PDF, or slide images).
    PowerPoint (COM, read-only) exports `slide_NN.png`, `clean_NN.png` (no logo/footer/page number from the master,

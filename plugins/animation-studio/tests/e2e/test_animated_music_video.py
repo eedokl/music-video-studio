@@ -228,6 +228,14 @@ def run_acting_draft(ctx):
            f"an automatic expression of lia overlaps her hand-set one (0.2-1.0 s + 1 s gap): {auto}")
     ctx.uv(draft, "apply", "--project", proj)
     expect(read_json(proj / "project.json")["expressions"] == ex, "a second apply changed the expressions (same seed)")
+    # a hand-set expression on a WORD (SKILL.md's main example) blocks the automatic ones too
+    P2 = read_json(proj / "project.json")
+    P2["expressions"] = hand + [{"figure": "tim", "expression": "grin", "word": "over"}]
+    write_json(proj / "project.json", P2)
+    ctx.uv(draft, "apply", "--project", proj)
+    auto2 = [e for e in read_json(proj / "project.json")["expressions"] if e.get("auto")]
+    expect(not any(e["figure"] == "tim" and e["to"] > 1.67 - 1.0 and e["from"] < 3.17 + 1.0 for e in auto2),
+           f"an automatic tim expression overlaps his hand-set one on the word 'over' (1.67-3.17 s): {auto2}")
     d["lines"][1]["mood"] = "furious"
     write_json(proj / "analysis" / "acting.json", d)
     bad = ctx.uv(draft, "apply", "--project", proj, check=False)

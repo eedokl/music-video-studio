@@ -90,7 +90,11 @@ SONG = {**SHARED,                                     # music-video projects (so
         "actions": {"type": (LIST,), "items": DICT}, "props": {"type": (LIST,), "items": DICT},
         "screen_badges": {"type": (LIST,), "items": DICT}, "screen_meter": {"type": (DICT, NULL)},
         "silhouettes": {"type": (LIST,), "items": DICT},
-        "expressions": {"type": (LIST,), "items": DICT, "need": ("figure", "expression")},
+        "expressions": {"type": (LIST,), "items": DICT, "need": ("figure", "expression"),
+                        "fields": {"figure": {"type": (STR,)},     # names: animated-music-video scene_acting.EXPRESSIONS
+                                   "expression": {"type": (STR,), "values": ("grin", "skeptical", "shock", "angry", "sad")},
+                                   "word": {"type": (STR,)}, "line": {"type": (STR,)}, "from": {"type": (NUM,)},
+                                   "to": {"type": (NUM,)}, "duration": {"type": (NUM,), "min": 0.1}}},
         "acting": {"type": (BOOL, DICT), "doc": 'true / false or {"strength": 1.0, "glances": true, "nods": true, "brows": true}'},
         "lyrics_style": {"type": (STR, DICT)}, "lyrics_lines": {"type": (LIST,), "items": DICT},
         "lyrics_skip": {"type": (LIST,)}, "gag_size": {"type": (NUM,)},
@@ -524,6 +528,10 @@ def check(P, skill=None, base=None):
         t = p.get("title")
         if isinstance(t, dict) and _is(t.get("from"), NUM) and _is(t.get("to"), NUM) and t["from"] >= t["to"]:
             R.err("title", f'"from" {t["from"]} must be smaller than "to" {t["to"]}')
+    if R.family == "song" and isinstance(p.get("figures"), dict):
+        for e in p.get("expressions") or []:          # an unknown figure was silently dropped by scene_acting
+            if isinstance(e, dict) and _is(e.get("figure"), STR) and e["figure"] not in p["figures"]:
+                R.err("expressions", f'figure "{e["figure"]}" is not in "figures"{_mean(e["figure"], list(p["figures"]))}')
     if R.family == "deck":
         _deck_mouths(R, p, base)
     if R.family == "film3d":
