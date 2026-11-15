@@ -177,7 +177,7 @@ def auto_entry_of(e, prev=None):
     return e.get("auto") or (prev or {}).get("auto_entry") or {}
 
 
-def build(P, only=None, rebuild=False):
+def build(P, only=None, rebuild=False, quiet=False):
     sel = read_sel(P)
     auto = sel.get("clip") or {}
     manual = (sel.get("manual") or {}).get("clip") or {}
@@ -244,12 +244,14 @@ def build(P, only=None, rebuild=False):
                           line=s.get("line") or "", auto=auto_file,
                           auto_entry=a_ent, vocalise=s.get("technique") == "lipsync" and vocalise(s.get("line")),
                           engine=s.get("engine"), manual=mine, note=note, takes=rows))
-        print(f"  {s['name']}: {len(rows)} takes" + (f", auto {Path(shots[-1]['auto']).name}" if shots[-1]["auto"] else ""))
+        if not quiet:
+            print(f"  {s['name']}: {len(rows)} takes" + (f", auto {Path(shots[-1]['auto']).name}" if shots[-1]["auto"] else ""))
     (P.dir / "takes").mkdir(exist_ok=True)
     with LOCK:
         data = dict(title=P.get("title") or P.dir.name, shots=shots, dirty=_read_json(tj, {}).get("dirty", []))
         write_atomic(tj, data)
-    print(f"-> takes/takes.json ({len(shots)} shots); look at them: uv run takes.py {P.dir} --serve")
+    if not quiet:
+        print(f"-> takes/takes.json ({len(shots)} shots); look at them: uv run takes.py {P.dir} --serve")
     return data
 
 
@@ -435,7 +437,11 @@ def serve(P, port=0, host="127.0.0.1"):
             if p in ("/", "/index.html"):
                 return self.file(PAGE, "text/html; charset=utf-8")
             if p == "/api/takes":
-                d = _read_json(P.dir / "takes" / "takes.json", {"shots": []})
+                # built again on every load: pick.py / a night run may have changed the automatic picks, lags or
+                # takes meanwhile (user test 0.5.3: the page kept the old "automatic pick", A restored another);
+                # previews are only made again when their placement key changed
+                with LOCK:
+                    d = build(P, quiet=True)
                 d["changed"] = changed(P)
                 return self.reply(200, d)
             if p == "/api/build":

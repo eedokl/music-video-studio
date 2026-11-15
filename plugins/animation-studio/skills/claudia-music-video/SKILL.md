@@ -111,7 +111,8 @@ Keep other big programs closed (LTX peaks near 45 GB RAM). Only ever one GPU job
 
 `uv run "$S/pick.py" all <proj>` - canon check for start images, lip score for every seed (best lag within +-3
 frames, closed mouths, hidden scene cuts and frozen stretches rejected; moving clips warned when they barely
-move), contact sheets `sheet_start.jpg`, `sheet_broll.jpg`, `sheet_clips.jpg`, log in
+move; when every moving clip of a shot has a hidden cut or freezes, the automatic pick is the still with the depth
+move - the clips stay on the takes page; a hand pick on another start image is rated but never the automatic pick), contact sheets `sheet_start.jpg`, `sheet_broll.jpg`, `sheet_clips.jpg`, log in
 `picks.log`. Start images that fail only on the microphone (two booms, or the boom on the wrong cheek) are
 repaired automatically in the night-run hook (`pick.py start --repair-mic`, ai-video `mic_repair.py`: wrong boom
 retouched + FLUX texture, else Qwen-Edit "change only the microphone"; result `ai/start/<shot>_v<k>m.png`,

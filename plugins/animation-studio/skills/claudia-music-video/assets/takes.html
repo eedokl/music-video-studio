@@ -43,7 +43,7 @@ section.stage { display: flex; flex-direction: column; gap: 14px; padding: 16px;
 .head h2 { margin: 0; font-size: 20px; }
 .head .time { color: var(--muted); font-variant-numeric: tabular-nums; }
 .head .sung { font-style: italic; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
 .take { background: var(--panel); border: 2px solid var(--line); border-radius: 10px; overflow: hidden; cursor: pointer; transition: border-color .15s; }
 .take:hover { border-color: var(--muted); }
 .take.chosen { border-color: var(--clay); box-shadow: 0 0 0 3px var(--clay-dim); }
@@ -108,7 +108,7 @@ section.stage { display: flex; flex-direction: column; gap: 14px; padding: 16px;
 </main>
 <script>
 const $ = id => document.getElementById(id);
-let data = null, idx = 0, playing = false, changed = [];
+let data = null, idx = 0, playing = false, changed = [], building = false;
 
 function fmt(t) { const m = Math.floor(t / 60); return m + ':' + (t - 60 * m).toFixed(2).padStart(5, '0'); }
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
@@ -117,6 +117,12 @@ function label(t) {
   if (t.file === 'still') return 'still';
   return t.kind === 's2v' ? 'S2V' : t.kind === 'lipsync' ? 'LTX ' + (t.file.match(/_s(\d+)\.mp4$/) || ['', ''])[1]
        : t.kind === 'moving' ? 'clip' : t.kind;
+}
+
+async function reload() {
+  data = await (await fetch('/api/takes')).json();
+  changed = data.changed || [];
+  list();
 }
 
 async function load() {
@@ -143,7 +149,7 @@ function list() {
     ln.appendChild(sm); d.appendChild(ln);
     const t = s.takes.find(x => x.file === current(s));
     const warned = t && t.warn;
-    d.appendChild(el('span', 'badge' + (s.manual ? ' mine' : '') + (warned && !s.manual ? ' warn' : ''),
+    d.appendChild(el('span', 'badge' + (s.manual ? ' mine' : '') + (warned ? ' warn' : ''),
                      t ? label(t) : '–'));
     d.onclick = () => show(i);
     nav.appendChild(d);
@@ -161,7 +167,7 @@ function show(i, autoplay = true) {
   const s = data.shots[idx];
   $('shotname').textContent = s.name;
   $('time').textContent = `${fmt(s.start)}–${fmt(s.end)} · ${(s.end - s.start).toFixed(1)} s · ${s.technique}`
-                        + (s.engine === 's2v' ? ' (S2V planned)' : '');
+                        + (s.engine === 's2v' && !s.manual ? ' (S2V planned)' : '');
   $('sung').textContent = s.line ? '„' + s.line + '“' : '';
   const notes = $('notes'); notes.innerHTML = '';
   if (s.note) notes.appendChild(el('div', 'note', s.note));
@@ -200,8 +206,8 @@ async function choose(file) {
                                          body: JSON.stringify({ shot: s.name, file }) });
   const d = await r.json();
   if (!r.ok) { alert(d.error || 'could not save'); return; }
-  s.manual = file; changed = d.changed || changed;
   const keep = idx;
+  await reload();                                   // the server's view: automatic pick, lags, changed shots
   show(keep, false);
   if (file && $('next').checked && idx < data.shots.length - 1) setTimeout(() => show(keep + 1), 350);
 }
@@ -235,13 +241,15 @@ async function buildStatus() {
   const b = $('build'), status = $('status');
   b.disabled = st.running;
   status.className = '';
-  if (st.running) { status.textContent = 'building: ' + st.step + ' …'; setTimeout(buildStatus, 3000); return; }
+  if (st.running) { building = true; status.textContent = 'building: ' + st.step + ' …'; setTimeout(buildStatus, 3000); return; }
+  const justBuilt = building; building = false;
   if (st.ok === false) { status.textContent = 'build failed (log below)'; status.className = 'bad'; }
   else if (st.ok) { status.textContent = 'cut ready'; status.className = 'ok'; }
   else status.textContent = '';
   if (st.film || st.log) {
     $('filmbox').style.display = 'block';
-    if (st.film) { $('film').src = '/film.mp4?' + st.film_time; $('filminfo').textContent = st.film; }
+    if (st.film) { $('film').src = '/film.mp4?' + st.film_time + '#t=1.5'; $('filminfo').textContent = st.film; }   // a frame, not the black fade-in
+    if (justBuilt && st.ok) { $('filmbox').scrollIntoView({ behavior: 'smooth' }); reload(); }
     $('buildlog').textContent = st.log ? st.log.trim().split('\n').slice(-12).join('\n') : '';
   }
 }

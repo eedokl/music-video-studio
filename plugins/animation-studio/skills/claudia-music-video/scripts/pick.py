@@ -226,7 +226,7 @@ def pick_clips(P, sel, log, rows, curve):
             # every seed of the picked still (<shot>_<img>.mp4, <shot>_<img>_sd<seed>.mp4): a clean one first, then the
             # newest (a new seed is made because the old one failed); takes.py shows all of them
             cs = done(sorted((P.dir / "ai" / "moving").glob(f"{name}_{tag}.mp4"))
-                      + sorted((P.dir / "ai" / "moving").glob(f"{name}_{tag}_sd*.mp4"))) if tag else []
+                      + sorted((P.dir / "ai" / "moving").glob(f"{name}_{tag}_*.mp4"))) if tag else []
             best = None
             for c in cs:
                 q = mouth.motion_check(c)
@@ -240,7 +240,13 @@ def pick_clips(P, sel, log, rows, curve):
                 rank = (not warn, c.stat().st_mtime)
                 if best is None or rank > best[0]:
                     best = (rank, c, q, warn)
-            if best:
+            if best and img and P.path(img).exists() and {"HIDDEN CUT", "FROZEN"} & set(best[3]):
+                # user test 0.5.3: the automatic pick became a clip with a hidden cut - the still with the depth move
+                # is the better automatic pick then (the clips stay on the takes page)
+                _, c, q, warn = best
+                out[name] = {"still": True, "warn": warn}
+                log.append(f"clip {name}: still - every moving clip has {', '.join(warn)} (best {c.name})")
+            elif best:
                 _, c, q, warn = best
                 out[name] = {"file": relp(P, c), "lag": 0, "qa": q, "warn": warn}
                 log.append(f"clip {name}: {c.name}  motion {q['motion']} cuts {q['cuts']} frozen {q['frozen']}"
@@ -251,11 +257,15 @@ def pick_clips(P, sel, log, rows, curve):
             [f for d in ("s2v", "infinitetalk", "humo", "minimax_h3")
              for f in sorted((P.dir / "ai" / d).glob(f"{name}_{tag}.mp4")) + sorted((P.dir / "ai" / d).glob(f"{name}_{tag}_sd*.mp4"))]
         cands = done(cands)
-        if not cands:
+        hand = (man.get(name) or {}).get("file")
+        extra = [P.path(hand)] if hand and P.path(hand).exists() and P.path(hand).resolve() not in \
+            {c.resolve() for c in cands} and clips.meta_path(P.path(hand)).exists() else []
+        if not cands and not extra:
             continue
         curves = curves or mouth.vocal_curves(P.dir, curve)
         rated = []
-        for c in cands:
+        for c in cands + extra:                       # extra: the hand pick on another start image - rated for the
+            #                                           takes page (lag, score), never the automatic pick
             if not clips.meta_path(c).exists():       # unfinished render (killed before its json): not a candidate
                 log.append(f"  {c.parent.name + '/' + c.name:36s} skipped - no {clips.meta_path(c).name} (re-render it)")
                 continue
@@ -267,7 +277,8 @@ def pick_clips(P, sel, log, rows, curve):
             why = [w for w, bad in (("mouth closed", mouth_shut), (f"{q['cuts']} hidden cut(s)?", q["cuts"]),
                                     ("frozen picture", q["frozen"])) if bad]
             closed = bool(why)                            # rejected: hidden scene cut / picture stops / mouth shut
-            rated.append((score, c, lag, rl, closed, r))
+            if c not in extra:
+                rated.append((score, c, lag, rl, closed, r))
             rows.append((c, f"r0 {r['r0']}  best {r['r_best']}@{r['lag']}  range {r['range']}  face {r['face']}  "
                             f"score {score}{'  REJECTED: ' + ', '.join(why) if why else ''}"))
             log.append(f"  {c.parent.name + '/' + c.name:36s} r0 {r['r0']}  r@{lag} {rl}  range {r['range']}  face {r['face']}  score {score}"
