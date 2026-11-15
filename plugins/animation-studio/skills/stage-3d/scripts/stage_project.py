@@ -18,6 +18,12 @@ from pathlib import Path
 
 FPS = 24
 QUALITIES = ("draft", "preview", "film", "final")
+ENGINES = ("cycles", "eevee")
+FOLDERS = QUALITIES + tuple(q + "_eevee" for q in QUALITIES)      # out/<clip>/<folder>: EEVEE renders are kept apart
+
+
+def folder(q, engine="cycles"):
+    return q if engine == "cycles" else f"{q}_{engine}"
 
 
 class Film:

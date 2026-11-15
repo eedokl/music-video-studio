@@ -38,7 +38,7 @@ _studio.use("stage-3d")
 import config  # noqa: E402
 from encode import place  # noqa: E402
 from media import check_video  # noqa: E402
-from stage_project import FPS, QUALITIES, Film  # noqa: E402
+from stage_project import FOLDERS, FPS, Film  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 LOOKS = ("cinema", "ad", "standard", "none")
@@ -207,7 +207,7 @@ def cut(F, q, clips, out, look, allow_missing):
 def main():
     ap = argparse.ArgumentParser(description="Cut a 3D film from its rendered clips, with sound and look.")
     ap.add_argument("project")
-    ap.add_argument("--q", default="film", choices=QUALITIES)
+    ap.add_argument("--q", default="film", choices=FOLDERS, help="render folder: film, draft, ... or film_eevee, draft_eevee")
     ap.add_argument("--out")
     ap.add_argument("--clips", help="only these clips (comma separated, in project order)")
     ap.add_argument("--look", help="cinema | ad | standard | none (default: project.json \"look\", else cinema)")

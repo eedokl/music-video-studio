@@ -1036,8 +1036,63 @@ def gpu_setup():
     return "CPU"
 
 
-def render_setup(S, quality="film", res=(1920, 1080), transparent=False):
+EEVEE_SAMPLES = {"draft": 16, "preview": 32, "film": 64, "final": 128}
+
+
+def eevee_setup(S, quality="film"):
+    """EEVEE (rasteriser with screen-space ray tracing): much faster than Cycles, but light from glowing surfaces,
+    soft bounce light and subsurface are approximations - an experimental second engine, the look is tuned for Cycles"""
     sc = S.scene
+    for name in ("BLENDER_EEVEE", "BLENDER_EEVEE_NEXT"):
+        try:
+            sc.render.engine = name
+            break
+        except TypeError:
+            continue
+    S.device = "EEVEE"
+    ev = sc.eevee
+    for k, v in (("taa_render_samples", EEVEE_SAMPLES[quality]), ("use_raytracing", True), ("use_shadows", True),
+                 ("shadow_ray_count", 3), ("shadow_step_count", 12), ("use_gtao", True), ("use_bloom", False),
+                 ("use_volumetric_shadows", True), ("volumetric_samples", 64), ("motion_blur_steps", 3),
+                 ("use_fast_gi", True), ("fast_gi_method", "GLOBAL_ILLUMINATION"), ("ray_tracing_method", "SCREEN")):
+        try:
+            setattr(ev, k, v)
+        except (AttributeError, TypeError):
+            pass
+    try:
+        ev.ray_tracing_options.resolution_scale = "1"
+        ev.ray_tracing_options.use_denoise = True
+    except (AttributeError, TypeError):
+        pass
+    for o in sc.objects:                                  # soft shadows from every light
+        if o.type == "LIGHT":
+            try:
+                o.data.use_shadow = True
+                o.data.use_shadow_jitter = True
+                o.data.shadow_jitter_overblur = 10
+            except AttributeError:
+                pass
+
+
+def render_setup(S, quality="film", res=(1920, 1080), transparent=False, engine="cycles"):
+    sc = S.scene
+    if engine == "eevee":
+        eevee_setup(S, quality)
+        q = QUALITY[quality]
+        sc.render.resolution_x, sc.render.resolution_y = int(res[0]), int(res[1])
+        sc.render.resolution_percentage = int(100 * q[2])
+        sc.render.film_transparent = transparent
+        sc.render.use_motion_blur = q[3]
+        sc.render.motion_blur_shutter = 0.35
+        sc.render.image_settings.file_format = "PNG"
+        sc.render.image_settings.color_mode = "RGB"
+        sc.render.image_settings.compression = 15
+        sc.view_settings.view_transform = "AgX"
+        try:
+            sc.view_settings.look = "AgX - Medium High Contrast"
+        except Exception:
+            pass
+        return
     sc.render.engine = "CYCLES"
     cy = sc.cycles
     S.device = gpu_setup()

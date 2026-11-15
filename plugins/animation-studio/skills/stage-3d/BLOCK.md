@@ -88,4 +88,6 @@ The full API (channels and easing, `Node`, camera, every acting call, poses, moo
   constant before that key; `core.text` size is roughly the line height (cap height ≈ 0.4 × size).
 - Speech: lip sync needs English dialogue text for Rhubarb's recogniser to be at its best; other languages still
   give usable open/close shapes.
-- EEVEE is not supported (materials and lights are tuned for Cycles).
+- EEVEE is an experimental second engine (`stage_run.py ... --engine eevee`, frames in `out/<clip>/<q>_eevee/`): the
+  picture comes out close to Cycles, with speckle on the edges of white figures at draft samples - but with this
+  block's light Cycles settings it is not a speed-up (measured: [references/render-speed.md](references/render-speed.md)).

@@ -2,7 +2,7 @@
 """Build one clip of a 3D film project and render stills or a frame range.
 
   blender -b --factory-startup --python stage_film.py -- <project> <clip> [--q draft|preview|film|final]
-          [--stills 1,40,90] [--every 24] [--range 1 120] [--overwrite] [--save]
+          [--stills 1,40,90] [--every 24] [--range 1 120] [--overwrite] [--save] [--engine cycles|eevee]
 
   <project>  folder with project.json and scenes/<clip>.py (the module defines FRAMES, optionally SEED, and build(S))
   --stills / --every   single frames -> out/<clip>/stills_<q>/f_####.png
@@ -54,7 +54,9 @@ def main():
     S.bake()
     print(f"BUILT {clip} in {time.time() - t0:.1f}s", flush=True)
     q = opt["q"]
-    C.render_setup(S, q, res=tuple(P.get("size") or (1920, 1080)))
+    engine = opt.get("engine", "cycles")
+    tag = "" if engine == "cycles" else "_" + engine                # EEVEE renders go to their own folders
+    C.render_setup(S, q, res=tuple(P.get("size") or (1920, 1080)), engine=engine)
     out = project / "out" / clip
     out.mkdir(parents=True, exist_ok=True)
     (out / "build.json").write_text(json.dumps({
@@ -70,10 +72,10 @@ def main():
         bad = [f for f in stills if not 1 <= f <= mod.FRAMES]
         if bad:
             raise SystemExit(f"{clip} has frames 1..{mod.FRAMES}; not in it: {bad}")
-        C.render(S, out / ("stills_" + q), stills=stills)
+        C.render(S, out / ("stills_" + q + tag), stills=stills)
     elif "range" in opt:
         f0, f1 = opt["range"]
-        C.render(S, out / q, frames=(max(1, f0), min(mod.FRAMES, f1)), overwrite=bool(opt.get("overwrite")))
+        C.render(S, out / (q + tag), frames=(max(1, f0), min(mod.FRAMES, f1)), overwrite=bool(opt.get("overwrite")))
     print(f"DONE {clip} {time.time() - t0:.1f}s ({S.device})", flush=True)
 
 

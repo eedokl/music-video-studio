@@ -13,6 +13,8 @@
   stage_run.py film <project> [--q draft|film] [--clips c01,c02] [--overwrite]  every missing frame of every clip
   stage_run.py status <project> [--q film]            frames rendered / missing per clip
 
+--engine eevee (clip / film / status) renders with EEVEE instead of Cycles - experimental, several times faster,
+frames in out/<clip>/<q>_eevee/ (stage-3d BLOCK.md says what differs).
 Qualities: draft (half size, 24 samples - the whole-film preview and all contact sheets), preview, film (full size,
 40 samples + denoiser, motion blur), final (128 samples, hero stills). `film` skips frames that exist, so it can be
 stopped and started again; after changing a scene render its frames again with `clip ... --range a b --overwrite`.
@@ -29,7 +31,7 @@ from pathlib import Path
 import _studio  # noqa: E402
 _studio.use()
 import config  # noqa: E402
-from stage_project import QUALITIES, Film  # noqa: E402
+from stage_project import ENGINES, QUALITIES, Film, folder  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 
@@ -89,7 +91,7 @@ def cmd_clip(a):
     name, n, _ = F.clip(a.clip)
     if not (F.dir / "scenes" / f"{name}.py").exists():
         raise SystemExit(f"scenes/{name}.py missing in {F.dir}")
-    args = ["--q", a.q]
+    args = ["--q", a.q, "--engine", a.engine]
     stills = None
     if a.stills:
         stills = [int(x) for x in a.stills.split(",")]
@@ -103,7 +105,7 @@ def cmd_clip(a):
         args.append("--save")
     blender(F.dir, name, *args)
     if stills and a.sheet:
-        sheet(F, name, a.q, stills)
+        sheet(F, name, folder(a.q, a.engine), stills)
     return 0
 
 
@@ -111,21 +113,22 @@ def cmd_film(a):
     F = Film(a.project)
     F.check()
     only = a.clips.split(",") if a.clips else None
-    todo = [(c, n, n if a.overwrite else len(F.missing(c, a.q))) for c, n, _ in F.clips if not only or c in only]
+    fq = folder(a.q, a.engine)
+    todo = [(c, n, n if a.overwrite else len(F.missing(c, fq))) for c, n, _ in F.clips if not only or c in only]
     total = sum(m for _, _, m in todo)
     print(f"{F.dir.name}: {total} of {sum(n for _, n, _ in todo)} frames to render in quality '{a.q}'", flush=True)
     t0, done = time.time(), 0
     for c, n, m in todo:
         if not m:
             continue
-        blender(F.dir, c, "--q", a.q, "--range", 1, n, *(["--overwrite"] if a.overwrite else []))
+        blender(F.dir, c, "--q", a.q, "--engine", a.engine, "--range", 1, n, *(["--overwrite"] if a.overwrite else []))
         done += m
         left = (time.time() - t0) / done * (total - done)
         print(f"FILM {c} done - {done}/{total} frames, about {left / 60:.0f} min left", flush=True)
-    miss = {c: len(F.missing(c, a.q)) for c, _, _ in todo if F.missing(c, a.q)}
+    miss = {c: len(F.missing(c, fq)) for c, _, _ in todo if F.missing(c, fq)}
     if miss:
         raise SystemExit(f"frames still missing: {miss}")
-    print(f"FILM complete: {sum(n for _, n, _ in todo)} frames in out/<clip>/{a.q}/ ({(time.time() - t0) / 60:.1f} min)")
+    print(f"FILM complete: {sum(n for _, n, _ in todo)} frames in out/<clip>/{fq}/ ({(time.time() - t0) / 60:.1f} min)")
     return 0
 
 
@@ -133,7 +136,7 @@ def cmd_status(a):
     F = Film(a.project)
     tot = miss = 0
     for c, n, _ in F.clips:
-        m = len(F.missing(c, a.q))
+        m = len(F.missing(c, folder(a.q, a.engine)))
         tot, miss = tot + n, miss + m
         print(f"{c:24s} {n - m:5d} / {n:5d}" + ("" if not m else f"   missing {m}"))
     print(f"{'total':24s} {tot - miss:5d} / {tot:5d}   ({a.q})")
@@ -162,6 +165,9 @@ def main():
     s = sub.add_parser("status")
     s.add_argument("project")
     s.add_argument("--q", default="film", choices=QUALITIES)
+    for x in (c, f, s):
+        x.add_argument("--engine", default="cycles", choices=ENGINES,
+                       help="eevee = experimental fast rasteriser; its frames go to out/<clip>/<q>_eevee/")
     a = ap.parse_args()
     return {"check": cmd_check, "clip": cmd_clip, "film": cmd_film, "status": cmd_status}[a.cmd](a)
 
