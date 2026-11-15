@@ -29,7 +29,9 @@ Needs Blender 4.2+ (config key `blender`), ffmpeg, Rhubarb; a graphics card make
   stay recognisable (then every figure gets its own class – step 4). They can also be made of something else:
   sewn **rag dolls** (cloth, seams, button eyes), **hand puppets** for a puppet show (fleece, flap mouths,
   played from behind a playboard) or gothic **stop-motion puppets** (thin limbs, huge eyes, clay skin, stripes;
-  wants a dark, cold-lit film) - project.json `"figures": "ragdoll"` / `"puppet"` / `"stopmotion"`, see stage-3d BLOCK.md
+  wants a dark, cold-lit film), **plasticine** figures, **papercraft** figures (folded, with fold lines and glue
+  tabs) or wooden **marionettes** on strings - project.json `"figures": "ragdoll"` / `"puppet"` / `"stopmotion"` /
+  `"clay"` / `"paper"` / `"marionette"`, see stage-3d BLOCK.md
   "Figures"; an existing film can be re-rendered in another make without changing a scene.
 - **Sound?** Spoken lines by the voice block, recorded wavs, an existing finished sound track, music.
 - **Look?** Default: ivory walls, dark walnut, one coral accent, low golden light, the darker "cinema" finish.

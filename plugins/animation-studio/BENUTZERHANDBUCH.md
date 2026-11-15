@@ -381,11 +381,13 @@ Python-Szene geschrieben: nichts wird von Hand modelliert, alles lässt sich än
   übernommen werden) oder „überrasch mich“. Wie lang? 30–90 s sind eine gute Größe, Minuten bedeuten einen großen
   Render.
 - **Wer spielt?** Die mitgelieferten Figuren Bär, Katze, Hase (Farben, Brille, Größe frei) oder eine eigene
-  Besetzung, die wiedererkennbar bleiben muss. Die Figuren gibt es in vier Macharten: Filzspielzeug (Standard),
+  Besetzung, die wiedererkennbar bleiben muss. Die Figuren gibt es in sieben Macharten: Filzspielzeug (Standard),
   genähte **Stoffpuppen** (Leinen, Nähte, Knopfaugen), **Handpuppen** für eine Puppenshow (Fleece, Klappmaul,
   Führungsstäbe; sie spielen hinter einer Spielleiste) oder düstere **Stop-Motion-Puppen** (dünne Glieder, riesige
-  Augen, Knet-Haut, Streifen; braucht einen dunklen, kalt beleuchteten Film) – sagen Sie z. B. „als Stoffpuppen“,
-  „als Puppenshow“ oder „als Stop-Motion-Puppen“.
+  Augen, Knet-Haut, Streifen; braucht einen dunklen, kalt beleuchteten Film), dazu bunte **Knetfiguren**,
+  gefaltete **Papierfiguren** (mit Falzlinien und Klebelaschen) und hölzerne **Marionetten** an Fäden – sagen Sie
+  z. B. „als Stoffpuppen“, „als Puppenshow“, „als Stop-Motion-Puppen“, „aus Knete“, „aus Papier“ oder
+  „als Marionetten“.
   Ein fertiger Film lässt sich ohne Änderung der Szenen in einer anderen Machart neu rendern.
 - **Ton?** Gesprochene Zeilen (Stimmen-Baustein), eigene Aufnahmen, eine fertige Tonspur, Musik.
 - **Look?** Standard: elfenbeinfarbene Wände, dunkles Nussholz, ein korallenroter Akzent, tiefes goldenes Licht und

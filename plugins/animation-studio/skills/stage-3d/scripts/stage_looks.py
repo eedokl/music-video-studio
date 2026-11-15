@@ -1,5 +1,5 @@
 # Runs inside Blender's Python (bpy) - imported by stage_actor.cast(), never run with uv.
-"""Three other makes of the same figures, applied after they are built (project.json "figures", or cast(style=...)):
+"""Six other makes of the same figures, applied after they are built (project.json "figures", or cast(style=...)):
 
   "ragdoll"   sewn rag dolls: woven linen, knit garments, plush tails, seams with hand stitches, coat-button eyes,
               a lumpy stuffing
@@ -8,6 +8,11 @@
   "stopmotion" gothic stop-motion puppets, the hand-made armature kind: a big head on a narrow body, wire-thin limbs,
               huge round porcelain eyes with pin pupils in dark sockets, pale sculpted clay skin with thumb marks,
               black-and-bone striped costumes, a sewn mouth and a stitched skull, no brows
+  "clay"      plasticine figures: one colour per figure, thumb marks and finger prints, clay-ball eyes, clay brows
+  "paper"     papercraft: every part folded from few flat faces, printed dashed fold lines, glue tabs, flat paper
+              eyes and brows
+  "marionette" carved and lacquered wood: ball joints, a jaw slot, painted cheeks, strings from head and hands to a
+              control cross above each figure (the hand strings hang a little loose)
 
 The rig is not touched: joints, channels and the whole acting API keep working. The flap mouth of a puppet hangs on
 the figure's mouth channel, so say(), babble() and moods open it. What cannot work: a button or ping-pong eye does
@@ -40,7 +45,7 @@ import stage_core as C
 from stage_core import srgb
 
 TAU = math.tau
-STYLES = ("toy", "ragdoll", "puppet", "stopmotion")
+STYLES = ("toy", "ragdoll", "puppet", "stopmotion", "clay", "paper", "marionette")
 FLEECE = ("#EBA52C", "#DA5F26", "#A3BC66", "#8566B8", "#3F9BB0", "#E07A9A")     # given out in cast order
 PUPPET = {}                 # {figure name: options} - a project can steer a figure it cannot edit
 
@@ -938,9 +943,382 @@ def stopmotion(S, cast, thin=0.5, head=1.16, waist=0.86):
                  keep=lambda p: p.y < -0.01)
 
 
+# ====================================================================== plasticine, paper, wood
+_SOFT = (r"(head|torso|chest|belly|muzzle|snout|cheek.*|ear.*|neck|tail.*|t\d|tuft.*|disc.*|(arm|fore|leg|shin)[LR]_m"
+         r"|arm[LR]_h|foot[LR])")
+CLAY = ("#86B84C", "#F3B52F", "#EA652B", "#5F84DA", "#E0719A", "#3FA7A0")       # given out in cast order
+
+
+def _opts(c, key):
+    """the options of a figure for a make: class attribute <key> = {...}, or the same key in its cast entry"""
+    o = dict(getattr(c, key, None) or {}) if isinstance(getattr(c, key, None), dict) else {}
+    o.update((getattr(c, "look_d", None) or {}).get(key) or {})
+    return o
+
+
+def _eye_size(c):
+    """(radius of the modelled eye, the glasses object or None) - (None, None) for a figure without eyes"""
+    e = c.J.get("eyeL")
+    if e is None or e.obj.type != "MESH" or not e.obj.data.vertices:
+        return None, None
+    gl = next((q for q in c.head.obj.children if re.fullmatch(r"gl-?\d", _suffix(q, c.name))), None)
+    return _bbox(e.obj, 0)[1], gl
+
+
+def _fur_colour(name):
+    fur = [m for q in objs(name) if q.type == "MESH" for m in q.data.materials
+           if m is not None and m.name.startswith("fur") and not m.name.startswith("fur_tail")]
+    return _color_of(fur[0]) if fur else srgb("#F3EFE6")
+
+
+def _refur(c, skin, tail):
+    """give one figure its own body and tail material (figures may share "fur")"""
+    table = {}
+    for q in objs(c.name):
+        if q.type == "MESH":
+            for m in q.data.materials:
+                if m is not None and m.name.startswith("fur"):
+                    table[m.name] = tail if m.name.startswith("fur_tail") else skin
+    recolour(c, table)
+
+
+def _vest_surface(m, height=None, strength=0.0, **bsdf):
+    """a vest material keeps its colours (shirt V-neck); its surface gets another bump and finish"""
+    nt = m.node_tree
+    bp = next((n for n in nt.nodes if n.type == "BUMP"), None)
+    tc = next((n for n in nt.nodes if n.type == "TEX_COORD"), None)
+    if bp is not None:
+        if height == "lumps" and tc is not None:
+            for ln in list(bp.inputs["Height"].links):
+                nt.links.remove(ln)
+            nt.links.new(_noise(nt, tc.outputs["Object"], 17.0, 2.0), bp.inputs["Height"])
+            bp.inputs["Distance"].default_value = 0.006
+        bp.inputs["Strength"].default_value = strength
+    b = nt.nodes.get("Principled BSDF")
+    if b is not None:
+        C._set(b, **bsdf)
+
+
+def plasticine(m, color, prints=0.16, lumps=0.6):
+    """modelling clay: soft lumps from the thumbs, fine ridges of finger prints here and there, a waxy sheen"""
+    nt, b = _base(m)
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    big = _noise(nt, tc.outputs["Object"], 17.0, 2.0)
+    w = nt.nodes.new("ShaderNodeTexWave")
+    w.wave_type, w.wave_profile = "RINGS", "SIN"
+    w.inputs["Scale"].default_value = 55.0
+    w.inputs["Distortion"].default_value = 9.0
+    w.inputs["Detail"].default_value = 2.0
+    w.inputs["Detail Scale"].default_value = 1.2
+    nt.links.new(tc.outputs["Object"], w.inputs["Vector"])
+    patch = _math(nt, "GREATER_THAN", _noise(nt, tc.outputs["Object"], 9.0, 1.0), 0.52)
+    ridges = _math(nt, "MULTIPLY", w.outputs["Fac"], patch)
+    nt.links.new(_mix(nt, _math(nt, "MULTIPLY", _math(nt, "SUBTRACT", 1.0, big), 0.35), color, "#000000"),
+                 b.inputs["Base Color"])
+    C._set(b, **{"Roughness": 0.42, "Coat Weight": 0.12, "Coat Roughness": 0.3, "Subsurface Weight": 0.18,
+                 "Subsurface Scale": 0.02, "Specular IOR Level": 0.45})
+    _bump(nt, b, _math(nt, "ADD", big, _math(nt, "MULTIPLY", ridges, prints)), lumps, 0.006)
+    m.diffuse_color = _rgba(color)
+    return m
+
+
+def claymation(S, cast):
+    """turn built figures into plasticine figures. Options (class attribute / cast entry `clay`): color, color2"""
+    M = C._MATS
+    for k, m in list(M.items()):
+        if m.get("stage_look"):
+            continue
+        if k == "shirt":
+            plasticine(m, "#F4E8CC")
+        elif k.startswith("vest_"):
+            _vest_surface(m, "lumps", 0.6, **{"Roughness": 0.42, "Sheen Weight": 0.0, "Coat Weight": 0.12})
+        elif k.startswith(("knit", "accent")) and m.node_tree and m.node_tree.nodes.get("Principled BSDF"):
+            plasticine(m, _color_of(m))
+        elif k in ("shell", "shell_plate", "shell_rim"):
+            plasticine(m, {"shell": "#A9733C", "shell_plate": "#7C4F26", "shell_rim": "#8C5C2C"}[k])
+        else:
+            continue
+        m["stage_look"] = 1
+    for k, col in (("nose", "#17171A"), ("mouth_in", "#6A1522"), ("tongue", "#EC7C8E"), ("tooth", "#F6F1E4"),
+                   ("beak", "#F2A32C"), ("gold", "#E2B43C"), ("ink", "#17171A")):
+        if k in M:
+            soften(M[k], col, rough=0.45, sheen=0.0)
+    plasticine(C.mat("cl_eye", "#F5F2E8"), "#F5F2E8", prints=0.05, lumps=0.2)
+    soften(C.mat("cl_pupil", "#0E0E10"), rough=0.4, sheen=0.0)
+    plasticine(C.mat("cl_brow", "#3A2616"), "#3A2616", lumps=0.3)
+    for i, (name, c) in enumerate(cast.items()):
+        o = _opts(c, "clay")
+        base = _fur_colour(name)
+        col = _rgba(o["color"]) if o.get("color") else (srgb(CLAY[i % len(CLAY)]) if _near_white(base) else base)
+        _refur(c, plasticine(C.mat(f"clay_{name}", "#808080"), col),
+               plasticine(C.mat(f"clay2_{name}", "#808080"), o.get("color2") or _shade(col, 0.62)))
+        r0, gl = _eye_size(c)
+        if r0 is not None:
+            if gl is not None:
+                puppet_eyes(c, _bbox(gl, 0)[1] * 0.75, flat=0.3, lift=0.0, cross=0.08, pupil=0.36, down=0.0,
+                            push=gl.location.y + 0.004 - c.J["eyeL"].obj.location.y, white="cl_eye", black="cl_pupil")
+            else:
+                puppet_eyes(c, r0 * 1.55, flat=0.9, lift=r0 * 0.5, push=-0.1 * r0, cross=0.1, pupil=0.4, down=0.03,
+                            white="cl_eye", black="cl_pupil")
+            puppet_brows(c, r0 * 2.2, r0 * 0.36, (0.008 if gl is not None else r0 * 1.9), "cl_brow")
+        for q in objs(name):
+            if q.type == "MESH" and q.data.polygons and re.fullmatch(_SOFT, _suffix(q, name)):
+                lumpy(q, 0.003 if _suffix(q, name) == "head" else 0.006, 0.09)
+
+
+def paper_mat(m, color, fibre=0.2):
+    nt, b = _base(m)
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    f = _noise(nt, tc.outputs["Object"], 900.0, 3.0)
+    mott = _noise(nt, tc.outputs["Object"], 40.0, 2.0)
+    nt.links.new(_mix(nt, _math(nt, "MULTIPLY", mott, 0.12), color, "#8A8578"), b.inputs["Base Color"])
+    C._set(b, **{"Roughness": 0.93, "Specular IOR Level": 0.15, "Subsurface Weight": 0.06, "Subsurface Scale": 0.01})
+    _bump(nt, b, f, fibre, 0.001)
+    m.diffuse_color = _rgba(color)
+    return m
+
+
+def _craft_sheet(folded, dash=0.011, gap=0.008, tab=0.014, seed=5):
+    """what makes a paper model a cut-out sheet: printed dashed fold lines on the creases and glue tabs (flaps of
+    the neighbouring part, a shade darker) lying over some of the edges. Applies the fold (decimate) modifiers."""
+    paper_mat(C.mat("pp_tab", "#DDD6C4"), "#DDD6C4")
+    C.mat("pp_fold", "#8C8A84", rough=0.9)
+    rng = random.Random(seed)
+    dg = bpy.context.evaluated_depsgraph_get()
+    for o in folded:
+        me = bpy.data.meshes.new_from_object(o.evaluated_get(dg))
+        o.modifiers.clear()
+        o.data = me
+    for o in folded:
+        bm = bmesh.new()
+        bm.from_mesh(o.data)
+        bm.normal_update()
+        lines, tabs = bmesh.new(), bmesh.new()
+        for e in bm.edges:
+            if len(e.link_faces) != 2:
+                continue
+            a, b = e.verts[0].co, e.verts[1].co
+            d = b - a
+            L = d.length
+            if L < 0.012 or e.calc_face_angle(0.0) < math.radians(9):
+                continue
+            n = (e.link_faces[0].normal + e.link_faces[1].normal).normalized()
+            u = d / L
+            t = gap * 0.5
+            while t + dash * 0.6 < L:
+                _stick(lines, a + u * t + n * 0.0006, a + u * min(L, t + dash) + n * 0.0006, 0.0007, 4)
+                t += dash + gap
+            if rng.random() < 0.16 and L > 0.03:
+                f = rng.choice(e.link_faces)
+                inw = f.normal.cross(u)
+                if (f.calc_center_median() - a).dot(inw) < 0:
+                    inw = -inw
+                h, ins, up = min(tab, L * 0.45), u * L * 0.22, f.normal * 0.0009
+                tabs.faces.new([tabs.verts.new(q + up) for q in (a + u * L * 0.08, b - u * L * 0.08, b - ins + inw * h,
+                                                                 a + ins + inw * h)])
+        bm.free()
+        for g, mm, tag in ((lines, "pp_fold", "_folds"), (tabs, "pp_tab", "_tabs")):
+            m2 = bpy.data.meshes.new(o.name + tag)
+            g.to_mesh(m2)
+            g.free()
+            m2.materials.append(C.mat(mm))
+            q = bpy.data.objects.new(o.name + tag, m2)
+            bpy.context.scene.collection.objects.link(q)
+            q.parent = o
+            q.visible_shadow = False
+
+
+def papercraft(S, cast):
+    """turn built figures into folded paper models (the colours of the figures stay)"""
+    M = C._MATS
+    for k, m in list(M.items()):
+        if m.get("stage_look"):
+            continue
+        if k.startswith("fur_tail"):
+            paper_mat(m, _shade(_color_of(m), 0.93))
+        elif k.startswith("fur"):
+            paper_mat(m, _color_of(m))
+        elif k == "shirt":
+            acc = next((_color_of(M[a]) for a in M if a.startswith(("knit", "accent")) and not a.endswith("_d")
+                        and "_d_" not in a), srgb("#3E9A6E"))
+            paper_mat(m, _shade(acc, 1.8))
+        elif k.startswith("vest_"):
+            _vest_surface(m, None, 0.0, **{"Roughness": 0.93, "Sheen Weight": 0.0})
+        elif k.startswith(("knit", "accent")) and m.node_tree and m.node_tree.nodes.get("Principled BSDF"):
+            paper_mat(m, _color_of(m))
+        elif k in ("shell", "shell_plate", "shell_rim"):
+            paper_mat(m, _color_of(m))
+        else:
+            continue
+        m["stage_look"] = 1
+    for k, col in (("nose", "#1B1C20"), ("mouth_in", "#7A2030"), ("tongue", "#EE8E9C"), ("tooth", "#FFFFFF"),
+                   ("beak", "#F0A63A"), ("gold", "#E8C25A"), ("ink", "#1B1C20"), ("brow", "#1B1C20")):
+        if k in M:
+            soften(M[k], col, rough=0.93, sheen=0.0)
+    paper_mat(C.mat("pp_black", "#1B1C20"), "#1B1C20")
+    paper_mat(C.mat("pp_white", "#FFFFFF"), "#FFFFFF")
+    hard = _SOFT + r"|shell|hem|collar|scarf.*|plate\d+|nose|beak\d?|teeth|earin.*|bow.*|knot|tag"
+    folded = []
+    for name, c in cast.items():
+        r0, _ = _eye_size(c)
+        centre = next((q.location.copy() for q in objs(name) if q.type == "MESH" and _suffix(q, name) == "head"),
+                      V((0, 0, 0)))
+        for q in objs(name):
+            if q.type != "MESH" or not q.data.polygons:
+                continue
+            s = _suffix(q, name)
+            if re.fullmatch(r"eye[LR]", s):                   # a flat octagon of black paper with a white square
+                r = _bbox(q, 0)[1] * 1.25
+                loc, head = q.location.copy(), q.parent
+                out = ((loc - centre).normalized() + V((0, -1.2, 0))).normalized()
+                blank(q)
+                g = C.empty(f"{name}_ppeye{s[-1]}", loc + out * 0.006, head)
+                g.rotation_euler = V((0, 0, 1)).rotation_difference(out).to_euler()
+                C.cyl(f"{name}_ppdisc{s[-1]}", r, 0.002, (0, 0, 0), "pp_black", g, seg=8, bevel=0)
+                C.box(f"{name}_ppdot{s[-1]}", (r * 0.42, r * 0.42, 0.002), (-r * 0.3, -r * 0.3, 0.002), "pp_white", g,
+                      bevel=0)
+                continue
+            if not re.fullmatch(hard, s):
+                continue
+            for p in q.data.polygons:                         # folded: every face flat, few of them
+                p.use_smooth = False
+            want = 150 if s in ("head", "torso", "shell") else 60
+            if len(q.data.polygons) > want:
+                md = q.modifiers.new("fold", "DECIMATE")
+                md.ratio = max(0.02, want / (2 * len(q.data.polygons)))
+                md.use_collapse_triangulate = True
+                folded.append(q)
+        for s in "LR":                                        # brows: strips of black paper
+            b = c.J.get("brow" + s)
+            if b is None or r0 is None:
+                continue
+            for q in b.obj.children:
+                blank(q)
+            C.box(f"{name}_ppbrow{s}", (r0 * 2.3, 0.002, r0 * 0.5), (0, -0.01, 0), "pp_black", b, bevel=0)
+    _craft_sheet(folded)
+
+
+def wood_mat(m, c1, c2, scale=16.0):
+    """turned, lacquered wood with a fine grain (c1 light, c2 dark)"""
+    nt, b = _base(m)
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    mp = nt.nodes.new("ShaderNodeMapping")
+    mp.inputs["Scale"].default_value = (scale, scale * 0.08, scale)
+    nz = nt.nodes.new("ShaderNodeTexNoise")
+    nz.inputs["Scale"].default_value, nz.inputs["Detail"].default_value = 3.0, 6.0
+    nz.inputs["Distortion"].default_value = 1.2
+    nt.links.new(tc.outputs["Object"], mp.inputs["Vector"])
+    nt.links.new(mp.outputs["Vector"], nz.inputs["Vector"])
+    nt.links.new(_mix(nt, nz.outputs["Fac"], c2, c1), b.inputs["Base Color"])
+    C._set(b, **{"Roughness": 0.32, "Coat Weight": 0.5, "Coat Roughness": 0.12})
+    _bump(nt, b, nz.outputs["Fac"], 0.15, 0.002)
+    m.diffuse_color = _rgba(c1)
+    return m
+
+
+def lacquer(m, color):
+    nt, b = _base(m)
+    C._set(b, **{"Base Color": _rgba(color), "Roughness": 0.28, "Coat Weight": 0.6, "Coat Roughness": 0.1})
+    m.diffuse_color = _rgba(color)
+    return m
+
+
+def _string(name, slack, parent, loc):
+    """a string of unit length along +Y (STRETCH_TO scales that axis only); slack = how far it bows out, in metres"""
+    bm = bmesh.new()
+    n = 14
+    pts = [V((0.7 * slack * math.sin(math.pi * i / n) * (1.0 - 0.35 * i / n), i / n,
+              0.7 * slack * math.sin(math.pi * i / n) * (1.0 - 0.35 * i / n))) for i in range(n + 1)]
+    for a, b in zip(pts, pts[1:]):
+        _stick(bm, a, b, 0.0016, 5)
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    me.materials.append(C.mat("mr_string"))
+    o = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(o)
+    o.parent = parent.obj if isinstance(parent, C.Node) else parent
+    o.location = loc
+    o.visible_shadow = False
+    return o
+
+
+def marionette(S, cast):
+    """turn built figures into string puppets of carved, lacquered wood. Options (`marionette`): strings (False =
+    none), slack (metres the hand strings bow out, default 0.11)"""
+    M = C._MATS
+    for k, m in list(M.items()):
+        if m.get("stage_look"):
+            continue
+        if k.startswith("fur_tail"):
+            col = _color_of(m)
+            wood_mat(m, *(("#9A6A3A", "#6B4420") if _near_white(col) else (_shade(col, 0.6), _shade(col, 0.38))))
+        elif k.startswith("fur"):
+            col = _color_of(m)
+            wood_mat(m, *(("#E2C493", "#B78D56") if _near_white(col) else (_shade(col, 0.95), _shade(col, 0.62))))
+        elif k == "shirt":
+            wood_mat(m, "#F0E4C8", "#D9C8A0")
+        elif k.startswith("vest_"):
+            _vest_surface(m, None, 0.0, **{"Roughness": 0.28, "Sheen Weight": 0.0, "Coat Weight": 0.6,
+                                           "Coat Roughness": 0.1})
+        elif k.startswith(("knit", "accent")) and m.node_tree and m.node_tree.nodes.get("Principled BSDF"):
+            lacquer(m, _color_of(m))
+        elif k in ("shell", "shell_plate", "shell_rim"):
+            lacquer(m, _color_of(m))
+        else:
+            continue
+        m["stage_look"] = 1
+    C.mat("mr_joint", "#B78D56", rough=0.3, coat=0.5)
+    C.mat("mr_string", "#EDE6D2", rough=0.9)
+    C.mat("mr_cheek", "#E8705E", rough=0.35, coat=0.4)
+    C.mat("mr_line", "#3A2616", rough=0.6)
+    wood_mat(C.mat("mr_cross", "#8A5E38"), "#8A5E38", "#5E3C1E", scale=10.0)
+    for name, c in cast.items():
+        o = _opts(c, "marionette")
+        parts = {_suffix(q, name): q for q in objs(name) if q.type == "MESH" and q.data.polygons}
+        for s, q in parts.items():                             # turned limbs with ball joints
+            if re.fullmatch(r"(arm|fore|leg|shin)[LR]_m", s):
+                r = _bbox(q, 0)[1]
+                q.scale = (0.8, 0.8, 0.94)
+                C.ell(f"{name}_ball_{s}", r * 1.12, (0, 0, 0), "mr_joint", q.parent, seg=20)
+        hm = parts.get("head")
+        mouth = next((q for q in c.head.obj.children if _suffix(q, name) == "mouth"), None)
+        if hm is not None:                                     # painted cheeks, the slots of a hinged jaw
+            rx, ry, rz = (_bbox(hm, i)[1] for i in range(3))
+            hc = hm.location
+            for sx in (1, -1):
+                d = V((sx * 0.62, -0.72, -0.22)).normalized()
+                g = C.empty(f"{name}_cheekp{sx}", (hc.x + d.x * rx, hc.y + d.y * ry, hc.z + d.z * rz), c.head)
+                g.rotation_euler = V((0, 0, 1)).rotation_difference(V((d.x / rx, d.y / ry, d.z / rz)).normalized()).to_euler()
+                C.cyl(f"{name}_cheekd{sx}", rx * 0.2, 0.004, (0, 0, 0), "mr_cheek", g, seg=24, bevel=0.001)
+            if mouth is not None and mouth.type == "MESH" and mouth.data.vertices:
+                jm = parts.get("muzzle") or parts.get("snout") or hm
+                w = _bbox(mouth, 0)[1] * 0.95
+                y0 = jm.location.y - _bbox(jm, 1)[1] * (0.82 if jm is not hm else 0.93)
+                zl = mouth.location.z - jm.location.z
+                for sx in (1, -1):
+                    seam(jm, (sx * w - jm.location.x, 0, 0), (1, 0.03, 0.02), pitch=99.0, r=0.0055, mat="mr_line",
+                         groove="mr_line", keep=lambda p, zl=zl: p.z < zl + 0.004 and p.y < 0.0)
+                C.capsule(f"{name}_jawslot", (-w, y0 - 0.004, mouth.location.z), (w, y0 - 0.004, mouth.location.z), 0.004,
+                          0.004, "mr_line", c.head, seg=8)
+        if o.get("strings", True):                              # the strings and the control cross
+            cross = C.empty(f"{name}_cross", (0, 0, getattr(c, "head_z", 0.7) + 0.95), c.root)
+            C.box(f"{name}_cross_a", (0.5, 0.035, 0.022), (0, 0, 0), "mr_cross", cross, bevel=0.004)
+            C.box(f"{name}_cross_b", (0.035, 0.34, 0.022), (0, -0.02, 0.022), "mr_cross", cross, bevel=0.004)
+            top = (_bbox(hm, 2)[1] + hm.location.z) if hm is not None else 0.3
+            for jn, off in (("head", (0, 0, 0)), ("handL", (0.23, 0, 0)), ("handR", (-0.23, 0, 0))):
+                if jn not in c.J:
+                    continue
+                tgt = C.empty(f"{name}_strt_{jn}", off, cross)
+                st = _string(f"{name}_string_{jn}", 0.0 if jn == "head" else o.get("slack", 0.11), c.J[jn],
+                             (0, 0, top if jn == "head" else 0.0))
+                k = st.constraints.new("STRETCH_TO")
+                k.target, k.rest_length, k.volume = tgt, 1.0, "NO_VOLUME"
+
+
 # ====================================================================== entry
 def dress(S, cast, style):
-    """apply a make to built figures (called by stage_actor.cast): "toy" | "ragdoll" | "puppet" | "stopmotion" """
+    """apply a make to built figures (called by stage_actor.cast): one of STYLES"""
     if style in (None, "", "toy"):
         return None
     if style == "ragdoll":
@@ -949,4 +1327,10 @@ def dress(S, cast, style):
         return puppet(S, cast)
     if style == "stopmotion":
         return stopmotion(S, cast)
+    if style == "clay":
+        return claymation(S, cast)
+    if style == "paper":
+        return papercraft(S, cast)
+    if style == "marionette":
+        return marionette(S, cast)
     raise ValueError(f'figures "{style}" unknown - one of {", ".join(STYLES)}')

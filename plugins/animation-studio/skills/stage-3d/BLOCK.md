@@ -26,7 +26,7 @@ A film is a project folder: `project.json` (the clips in order, sizes, palette, 
 | `stage_film.py` | Blender | builds one clip and renders it (started by stage_run.py); writes `out/<clip>/build.json` (cuts, spoken lines with their frames) |
 | `stage_core.py` | Blender | `Stage`, `Node`, channels and easing, primitives, materials, text, cameras, lights, palettes, render settings |
 | `stage_actor.py` | Blender | the rig `Char` + acting API, poses, moods, lip sync, the bundled figure `Toy`, `cast()` |
-| `stage_looks.py` | Blender | three other makes of the same figures: `ragdoll` (cloth, seams, button eyes), `puppet` (fleece, flap mouth, arm rods), `stopmotion` (gothic armature puppets: clay skin, huge eyes, stripes) |
+| `stage_looks.py` | Blender | six other makes of the same figures: `ragdoll` (cloth, seams, button eyes), `puppet` (fleece, flap mouth, arm rods), `stopmotion` (gothic armature puppets: clay skin, huge eyes, stripes), `clay` (plasticine), `paper` (papercraft), `marionette` (wooden string puppets) |
 | `stage_props.py` / `stage_sets.py` / `stage_shots.py` | Blender | props; the office set with light moods; `closeup`, `medium`, `two_shot`, `ots` |
 | `stage_project.py` | any | `Film`: project.json, clips, frame paths, missing frames |
 
@@ -84,7 +84,7 @@ The full API (channels and easing, `Node`, camera, every acting call, poses, moo
   class: `K.cast(S, {"olga": Olga})`. Keep a figure recognisable: silhouette (ears, tail), one garment, one habit.
 - Mouths: project.json `"lips": "soft"` (default) or `"strong"` (wider opening while speaking).
 - **The make of the figures** - project.json `"figures"`: `"toy"` (default: the smooth felt toys as modelled),
-  `"ragdoll"`, `"puppet"` or `"stopmotion"`. It re-dresses every figure `cast()` builds - bundled or own - and leaves the rig alone,
+  `"ragdoll"`, `"puppet"`, `"stopmotion"`, `"clay"`, `"paper"` or `"marionette"`. It re-dresses every figure `cast()` builds - bundled or own - and leaves the rig alone,
   so a finished film can be rendered in another make without touching a scene. One clip only: `K.cast(S, {...},
   style="puppet")`; a cast not built by `cast()`: `K.dress(S, figures)` once all figures exist.
   - `"ragdoll"`: woven linen in the fur colour, knit garments, plush tails, sewn seams with hand stitches (head,
@@ -100,7 +100,18 @@ The full API (channels and easing, `Node`, camera, every acting call, poses, moo
     time. It only reads in low-key light: use the `"night"` or `"dusk"` office mood (or a cold key from the side and
     one small warm light), dark walls, and keep glowing screens dim - in a bright "ad" picture it looks like a white
     toy in a striped jumper.
-  - Limits: button, ping-pong and porcelain eyes do not blink or widen (moods still move the brows); a figure with a beak or
+  - `"clay"`: plasticine - one colour per figure (white figures get green, yellow, orange, blue ... in cast order;
+    own: `{"look": "bear", "clay": {"color": "#EA652B"}}`), thumb marks and finger-print ridges, clay-ball eyes and
+    clay brows, garments in clay of their own colour. The closest to the toys, works in any light. No render cost.
+  - `"paper"`: papercraft - every part is folded from few flat faces, with printed dashed fold lines on the creases
+    and glue tabs over some edges, flat paper eyes and brows; the figures keep their colours (white stays paper
+    white - give it a mid or dark background). It needs a clear light direction, or the facets disappear.
+  - `"marionette"`: carved, lacquered wood with a grain, ball joints at shoulders, elbows, hips and knees, a jaw
+    slot, painted red cheeks, and strings from the head and both hands to a control cross above each figure (the hand
+    strings hang a little loose). The eyes stay as modelled and still blink. The cross follows the figure's place,
+    not its spins: after a somersault the strings would be wound round it - avoid spins, or `{"strings": False}`.
+    Leave headroom: the cross hangs about a metre above the head.
+  - Limits: button, ping-pong, clay, paper and porcelain eyes do not blink or widen (moods still move the brows); a figure with a beak or
     without a modelled mouth keeps its own mouth. Details, the option keys (`cut`, `hinge`, `parts`, `eye`, `lid` ...)
     and how an own `Char` class sets them: the docstring of `stage_looks.py` and
     [references/guide.md](references/guide.md) "Other makes".

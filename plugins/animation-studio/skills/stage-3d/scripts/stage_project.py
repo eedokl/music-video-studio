@@ -11,8 +11,9 @@ project.json:
   "look": "cinema" | "ad" | "standard" | "none"   finish of the film (film-finish clip_film.py)
   "palette": "ivory" | "petrol" | "forest" | {"base": ..., "accent": "#..."}   the colours of sets and props
   "lips": "soft" | "strong"            mouth opening while speaking
-  "figures": "toy" | "ragdoll" | "puppet" | "stopmotion"   the make of the figures (stage_looks.py): as modelled,
-                                       sewn rag dolls, hand puppets with flap mouths, or gothic stop-motion puppets
+  "figures": "toy" | "ragdoll" | "puppet" | "stopmotion" | "clay" | "paper" | "marionette"   the make of the
+                                       figures (stage_looks.py): as modelled, sewn rag dolls, hand puppets with flap
+                                       mouths, gothic stop-motion puppets, plasticine, papercraft, string puppets
 """
 import json
 import os

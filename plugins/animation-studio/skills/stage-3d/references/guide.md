@@ -91,9 +91,9 @@ All figures breathe, sway and blink on their own; `c.follow(f)` lets ears / tail
 Give every figure a body language and keep it through the film (slow and deliberate vs. never still; what the
 ears, the tail, the brows do when it doubts or is sure) – that is what makes a cast recognisable.
 
-### Other makes: rag dolls, hand puppets, stop-motion puppets (stage_looks)
+### Other makes: rag dolls, hand puppets, stop-motion puppets, clay, paper, marionettes (stage_looks)
 
-project.json `"figures": "ragdoll"`, `"puppet"` or `"stopmotion"` (or `K.cast(S, {...}, style=...)` for one clip) re-dresses the
+project.json `"figures": "ragdoll"`, `"puppet"`, `"stopmotion"`, `"clay"`, `"paper"` or `"marionette"` (or `K.cast(S, {...}, style=...)` for one clip) re-dresses the
 built figures; scenes, poses and lip sync stay as they are.
 
 - **Rag dolls** read through texture and seams, so they need light that rakes across the cloth (a clear key from
@@ -110,6 +110,13 @@ built figures; scenes, poses and lip sync stay as they are.
   flowing arcs (key poses with `ease="hold"` or short `"out"` moves, a held pose every few frames, reads as animated
   "on twos"). Light them low-key and cold with one warm practical; compose with a lot of dark around the figure.
   An own class can set `stopmotion = {"thin": 0.5, "head": 1.16, "waist": 0.86, "eye": 0.06, "pupil": 0.15}`.
+- **Clay** figures are the toys in plasticine: everything of the toy acting works. Animate them "on twos" (hold
+  every pose for two frames: key with short steps) if the film should feel like stop motion.
+- **Paper** figures live from their facets: a hard key from the side, little fill. Fast moves read well (the
+  silhouette is angular), tiny mouth shapes do not - let them gesture.
+- **Marionettes** hang: let them bob and sway a little (`bounce` with a small height, slow head tilts), land softly
+  after hops, never spin. Frame them with the strings going out of the top of the picture, or show the crosses on
+  purpose in a wide shot.
 - An own figure steers its puppet make with a class attribute, e.g. `puppet = {"fleece": "#EBA52C", "parts":
   "muzzle", "hinge": -0.03}` for a long snout (cut only the muzzle - cutting head and muzzle gives a stacked mouth),
   `{"lid": 0.4}` for heavy eyelids; `stage_looks.PUPPET["name"] = {...}` does the same from a scene.
