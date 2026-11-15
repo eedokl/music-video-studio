@@ -11,7 +11,7 @@ Everything a brick-film skill needs inside Blender, driven by a **plan JSON** (d
 (e.g. `bricks-music-video/scripts/plan.py`) writes the plan; this skill turns it into frames.
 
 ## Setup (once per machine)
-- Blender 4.2+ (tested 5.2 LTS): config key `blender` (`check_tools.py --setup` finds it).
+- Blender 4.2+ (tested 5.2 LTS and 5.3): config key `blender` (`check_tools.py --setup` finds it).
 - LDraw parts library: config key **`ldraw_dir`** – see [references/ldraw-setup.md](references/ldraw-setup.md).
 - Check: `python "<plugin>/skills/bricks-3d/scripts/blender_run.py" --check`
 
