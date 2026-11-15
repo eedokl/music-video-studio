@@ -147,7 +147,7 @@ Die vollständige Liste mit Versionen steht in `TOOLS.md`. Kurzfassung:
   Qwen-Image-Edit für Claudia-Startbilder, LTX-2.3 und andere für Video, Qwen3-TTS für Stimmen, Depth Anything für
   Tiefenkarten) laufen auf Ihrem Rechner. Die meisten Bild- und Videomodelle laufen über ComfyUI.
 - **Ein KI-Modell zur Zeit.** Alle Skills teilen sich eine GPU-Sperre. Auf dem Referenzrechner (16 GB
-  Grafikspeicher) passen zwei große Modelle nicht gleichzeitig hinein. Startet ein zweiter KI-Job, wartet er, bis
+  Grafikspeicher, 48 GB Arbeitsspeicher) passen zwei große Modelle nicht gleichzeitig hinein. Startet ein zweiter KI-Job, wartet er, bis
   der erste fertig ist. Claude löscht nie die Sperre eines anderen Jobs.
 - **Modelle sind groß** (5–25 GB je Modell) und nicht im Plugin enthalten. Claude kann den Modell-Cache auf ein
   Laufwerk mit genug Platz legen (Schlüssel `hf_home` / `torch_home`). Heruntergeladen wird nur mit Ihrer
@@ -156,7 +156,7 @@ Die vollständige Liste mit Versionen steht in `TOOLS.md`. Kurzfassung:
   es genau, was fehlt, statt nach Stunden abzubrechen. Heißen Ihre Modelldateien anders als auf dem Referenzrechner,
   legt Claude eine kleine Override-Datei an (Schlüssel `comfy_models`), statt Plugin-Dateien zu ändern.
 - **Python-Pakete** lädt uv beim ersten Lauf eines Skripts einmal in seinen Cache. Danach geht es offline.
-- **Zeitangaben** in diesem Handbuch stammen vom Referenzrechner (Windows 11, RTX 5060 Ti mit 16 GB). Auf
+- **Zeitangaben** in diesem Handbuch stammen vom Referenzrechner (Windows 11, RTX 5060 Ti mit 16 GB Grafikspeicher, 48 GB Arbeitsspeicher). Auf
   anderer Hardware kann es deutlich schneller oder langsamer gehen.
 
 ### 2.5 Was nur unter Windows geht

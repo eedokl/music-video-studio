@@ -39,6 +39,6 @@ work goes on. The full list of tools and models is in the plugin's `TOOLS.md`.
 
 ## Rules shared by all skills
 
-- One AI model on the GPU at a time (on the reference machine 16 GB VRAM and 16 GB RAM do not hold two big models; see TOOLS.md "Tuned for the reference machine").
+- One AI model on the GPU at a time (on the reference machine 16 GB VRAM and 48 GB RAM do not hold two big models; see TOOLS.md "Tuned for the reference machine").
 - Only one session builds a project's final film files; verify every output with `check_video`.
 - Look at your own renders (contact sheets) before showing them to the user.

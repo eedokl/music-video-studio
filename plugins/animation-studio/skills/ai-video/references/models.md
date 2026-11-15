@@ -3,7 +3,7 @@
 | job | model | time | notes |
 |---|---|---|---|
 | still / B-roll | FLUX.1 schnell fp8 | ~9 s per 1280x720 image, load ~2.5 min | invents lettering now and then (screens, boards) - check sheets, use variant 2 |
-| lettering in the image | Qwen-Image 2512 fp8 | ~3x FLUX | correct text; reloads ~28 GB per image on 16 GB RAM machines |
+| lettering in the image | Qwen-Image 2512 fp8 | ~3x FLUX | correct text; reloads ~28 GB per image on machines with 16 GB RAM |
 | character start image | Qwen-Image-Edit 2511 fp8 Lightning (4 steps) | ~20-30 s, load ~9 min cold | two refs (face + identity close-up) hold the canon best; one ref + short identity for wide shots |
 | sung shot (default) | LTX-2.3 22B distilled fp8, ia2v, one stage 1280x704 | ~150 s per 97 frames warm, load ~7 min | sharpest; mouth a bit tame; fast syllables good (r 0.92 in a test), plosives weak |
 | held note / climax | Wan2.2-S2V 14B fp8, 20 steps, 832x480 @16 fps | ~11-18 min per 4 s | most expressive mouth; drifts to profile and misses words on runs > 4 s |

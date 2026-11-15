@@ -3,8 +3,8 @@
 Everything the plugin's skills call, what it is used for, and what we recommend. Programs are found through
 `studio-core/scripts/check_tools.py` (environment variable `ANIMATION_STUDIO_<KEY>` – plain `FFMPEG`, `SYNFIG`,
 `HF_HOME` ... only for the unambiguous keys listed in `config.py` → `~/.animation-studio/config.json` → PATH);
-nothing is installed without asking the user. Reference machine: Windows 11, Intel i5-14600K, 16 GB RAM, NVIDIA RTX 5060 Ti
-16 GB – timings below are from that machine.
+nothing is installed without asking the user. Reference machine: Windows 11, Intel i5-14600K, 48 GB RAM, NVIDIA RTX 5060 Ti
+with 16 GB VRAM – timings below are from that machine.
 
 Legend: **required** – the plugin does not work without it · **recommended** – used by default when present ·
 **optional** – only for specific skills or techniques · **not recommended** – tested and rejected.
@@ -40,7 +40,7 @@ Legend: **required** – the plugin does not work without it · **recommended** 
 | Suno stems (Vocals, Backing Vocals) | – | best source for lip sync and call-and-response | – | recommended when available |
 | FLUX.1 schnell fp8 (Apache 2.0) | 4 steps | painted backgrounds, comic panels, props, start images | ~7 s per image after loading | recommended (default image model) |
 | Qwen-Image-Edit 2511 fp8 Lightning (4 steps) | ComfyUI | consistent character start images (Claudia canon) from 1–2 references (`ai-video/qwen_edit.py`) | ~30 s per image, load ~9 min cold; draws two headset mics in about half the variants → `canon.py` mic check, `mic_repair.py` repair | recommended for claudia |
-| Qwen-Image 2512 fp8 (+ Qwen2.5-VL 7B text encoder) | ComfyUI | lettering that must be correct inside an image (`comfy_image.py --model qwen`) | ~3× FLUX; reloads ~28 GB per image on 16 GB RAM | optional |
+| Qwen-Image 2512 fp8 (+ Qwen2.5-VL 7B text encoder) | ComfyUI | lettering that must be correct inside an image (`comfy_image.py --model qwen`) | ~3× FLUX; reloads ~28 GB per image on machines with 16 GB RAM | optional |
 | SDXL Base 1.0 | ComfyUI | style LoRAs, negative prompts, img2img repaint (`comfy_image.py --model sdxl [--lora ...] [--repaint]`) | ~28 steps | optional (the watercolour repaint look itself was rejected, see below) |
 | LTX-2.3 22B distilled fp8 + Gemma-3 12B text encoder | ComfyUI | lip-sync video from start image + vocals (audio frozen via latent mask); image-to-video for B-roll | lip score r 0.92 on fast syllables, best image quality, 1280×704 | recommended (default video model) |
 | LTX-Video 2B 0.9.8 distilled (+ T5-XXL fp8) | ComfyUI | fast image-to-video previews without sound (`comfy_video.py ltx`) | 8 steps, 1216×704 | optional |
@@ -73,8 +73,8 @@ venv). The lyric-video engine pulls three.js, Vite and TypeScript through npm pe
 
 ## Shared resources
 
-- **GPU lock** (`studio-core/gpu_lock.py`): one AI model at a time; 16 GB VRAM + 16 GB RAM cannot hold two big
-  models. Point `gpu_lock_dir` at the same folder as any other GPU pipeline on the machine.
+- **GPU lock** (`studio-core/gpu_lock.py`): one AI model at a time; 16 GB VRAM cannot hold two big models, and
+  LTX alone peaks near 45 GB of the 48 GB RAM. Point `gpu_lock_dir` at the same folder as any other GPU pipeline on the machine.
 - **Model caches**: set `hf_home` / `torch_home` to a drive with space (models are 5–25 GB each).
 - **Licences**: label AI-generated content; company names only as neutral text, no logos; Claudia is an open
   character ("Claudia by anabology").
@@ -82,7 +82,7 @@ venv). The lyric-video engine pulls three.js, Vite and TypeScript through npm pe
 ## Tuned for the reference machine (check on yours)
 
 These defaults come from the machine the plugin was built and measured on (Windows 11, one NVIDIA GPU with 16 GB
-VRAM, 16 GB RAM, ComfyUI portable). They are not limits of the method - adjust them for your hardware:
+VRAM, 48 GB RAM, ComfyUI portable). They are not limits of the method - adjust them for your hardware:
 - `ai-video/scripts/night_run.py` load and time estimates per job kind, and `LTX_MAX_FRAMES` in `ltx.py`
 - `ai-video/scripts/humo.py` refuses the 17B model without `--allow-17b` (does not fit 16 GB)
 - checkpoint, LoRA, VAE, text-encoder and audio-encoder file names and the node classes of every ComfyUI workflow:
@@ -95,7 +95,7 @@ VRAM, 16 GB RAM, ComfyUI portable). They are not limits of the method - adjust t
   `overlays.py`, `fps48.py`, `popup.py`, `credits.py` (composed at 1280x720, scaled), `edit_handoff.py`, the
   animated-music-video and talking-character Synfig scenes, bricks-music-video renders and claudia-music-video
   `render_shots.py`; lyric-music-video renders its own 1080p30)
-- the "16 GB VRAM / 16 GB RAM: one model at a time" rule in studio-core (the GPU lock is useful on any machine)
+- the "16 GB VRAM / 48 GB RAM: one model at a time" rule in studio-core (the GPU lock is useful on any machine)
 
 ## Windows-only parts (everything else runs on Linux / macOS too)
 
