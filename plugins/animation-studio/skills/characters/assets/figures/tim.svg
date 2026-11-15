@@ -31,9 +31,13 @@
       <ellipse cx="200" cy="202" rx="92" ry="98" fill="#f2c9a0" stroke="#2b1d14" stroke-width="6"/>
       <path d="M 110 175 C 102 112 150 84 200 88 C 256 84 302 116 292 178 C 280 150 258 140 242 152 C 232 128 206 124 196 142 C 180 124 150 130 140 158 C 128 152 116 162 110 175 Z"
             fill="#4a3426" stroke="#2b1d14" stroke-width="5" stroke-linejoin="round"/>
+      <g id="wangen">
       <circle cx="150" cy="238" r="14" fill="#f08b8b" opacity="0.5"/>
       <circle cx="250" cy="238" r="14" fill="#f08b8b" opacity="0.5"/>
+      </g>
+      <g id="nase">
       <path d="M 196 214 C 190 228 192 234 204 234" fill="none" stroke="#2b1d14" stroke-width="4" stroke-linecap="round"/>
+      </g>
       <g id="auge_l">
         <ellipse cx="165" cy="200" rx="20" ry="24" fill="#ffffff" stroke="#2b1d14" stroke-width="4"/>
         <g id="pupille_l"><circle cx="168" cy="203" r="10" fill="#2b1d14"/><circle cx="164" cy="199" r="3" fill="#ffffff"/></g>

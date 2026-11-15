@@ -147,7 +147,8 @@ def main():
         for t0, t1, what, speed in sp:
             extra.append(f"{k} {what} {t0:.1f}-{t1:.1f}")
     feats = [x for x in (f"actions [{', '.join(extra)}]" if extra else "", f"lights {sorted(c.lights)}" if c.lights else "",
-                         "inset" if A.get("inset") else "", info) if x]
+                         "inset" if A.get("inset") else "",
+                         f"acting {c.acting_used}" if c.acting_used else "", info) if x]
     print(f"-> {sif.relative_to(P.dir)}: {N} frames, set {A.get('set', 'stage') if kind != 'panels' else 'panels'}, beats sung per figure {sung}, "
           f"dance beats {sum(1 for b in beats if c.in_dance(b['t']))}, gestures {len(c.gest)}, screen events {len(c.screen_ev)}, dance styles {c.styles_used} (seed {creative.seed(P)})"
           + ("\n   " + "; ".join(feats) if feats else ""))

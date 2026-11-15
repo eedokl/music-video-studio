@@ -69,7 +69,9 @@ Draw in Inkscape (any shapes – circles, ellipses, paths, transformed groups; `
 2. Pivot of a part: a small circle with id **`pivot_<part>`** inside the group – removed from the drawing and
    returned as coordinates.
 3. Keep the ids of the bundled figures so scene builders find the parts: `arm_l`, `arm_r`, `kopf` (head),
-   `auge_l`/`auge_r` (eyes), `pupille_l`/`pupille_r` (pupils, a group inside the eye), `brauen` (brows), `koerper`
+   `auge_l`/`auge_r` (eyes), `pupille_l`/`pupille_r` (pupils, a group inside the eye), `brauen` (brows: exactly two
+   paths, left then right, so expressions can tip each one), optional `nase` (nose) and `wangen` (cheeks) inside
+   `kopf` - with them the whole face turns toward a partner (animated-music-video "acting"), `koerper`
    (body), `beine` (legs); `pivot_mund` marks the mouth (leave the mouth out if it will lip-sync).
 4. Human-sized figures: 400×600 px canvas, feet at **(200, 590)**, ~560 px tall – then they match Tim and Lia at
    scale 1/72. Animals/props: any canvas; note the feet point and the scale in `figures.FIGURES` or pass them to

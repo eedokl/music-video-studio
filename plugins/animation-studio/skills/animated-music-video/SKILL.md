@@ -18,7 +18,8 @@ its first chorus with 84–89 % frame agreement of who sings and ~0.1 s median w
 Scripts (run with `uv run <script> ...`):
 - `${CLAUDE_PLUGIN_ROOT}/skills/studio-core/scripts/check_tools.py` – once per machine (`--setup`)
 - `${CLAUDE_PLUGIN_ROOT}/skills/song-analysis/scripts/new_project.py`, `analyze.py`, `voices.py`
-- `${CLAUDE_PLUGIN_ROOT}/skills/animated-music-video/scripts/scene.py` (+ `captions.py` for comic caption boxes)
+- `${CLAUDE_PLUGIN_ROOT}/skills/animated-music-video/scripts/scene.py` (+ `captions.py` for comic caption boxes,
+  `acting_draft.py` for faces from the lyrics)
 - `${CLAUDE_PLUGIN_ROOT}/skills/film-finish/scripts/overlays.py`, `sounds.py`, `build.py`
 - `${CLAUDE_PLUGIN_ROOT}/skills/studio-core/scripts/media.py sheet <video> <png>` – contact sheet
 
@@ -81,6 +82,7 @@ twist, blink timing, ...): same seed → same film, new seed → a new take. Nev
  "transitions": [{"at": 11.6, "kind": "zoom_through", "center": [0.22, 0.3]}, {"at": 38.3, "kind": "glow"}],
  "title": {"text": "Prompts!", "from": 0.5, "to": 3.5},
  "ideas": [{"by": "ai", "idea": "screen overheats at 'GPU glühen'", "where": "chorus1", "status": "done"}],
+ "acting": true,
  "look": "standard"
 }
 ```
@@ -107,6 +109,30 @@ twist, blink timing, ...): same seed → same film, new seed → a new take. Nev
   a level, a battery); its state carries over from section to section.
   Props: own images (draw them, paint with FLUX via the `ai-video` block, or Krita) placed on the set, shown on a
   word, bouncing on the beat.
+- **acting** (`"acting": true`, off by default; a section may set `"acting": false`): the figures look at each
+  other and react instead of only keeping the beat - listeners turn eyes first, then the head, to whoever sings
+  (each with its own reaction delay from the seed, so a change of singer runs through the group), keep looking a
+  moment after the last note, nod at the end of some lines; a singer looks ahead and glances at a partner at some
+  line ends; a listener's brows jump at a gag word; the face on the screen looks down at the singer. Gestures and
+  actions win, dancing halves it. Options: `{"strength": 1.0, "glances": true, "nods": true, "brows": true}`.
+  `scene.py` prints the counts per figure (`acting {...}`). Turn it on for verses and dialogue-like songs; it
+  matters most where figures sing one after the other (`scene_acting.py`).
+- **expressions** (`"expressions": [{"figure": "tim", "expression": "shock", "word": "limit" | "line": "Wer
+  gewinnt" | "from": 12.7, "duration": 1.5 | "to": 13.9}]`): a face for a moment - `grin`, `skeptical`, `shock`,
+  `angry`, `sad`. Each brow lifts and tips on its own, the eyes widen or narrow, the cheeks rise, the head tilts,
+  and while the figure is silent it gets the expression's own mouth (o, grin, smirk, frown; a singing mouth always
+  wins). Set them where a figure LISTENS and the lyric gives a reason (the other one brags -> skeptical, a price
+  is named -> shock) - a reaction per line reads far better than motion on every beat. With `"acting"` the face
+  also turns: eyes, glasses, brows, nose, cheeks and mouth slide together inside the head outline toward the one
+  it looks at (parts `nase` / `wangen` of the rig, see the `characters` block).
+  **Automatic first pass:** `acting_draft.py draft --project <folder>` writes `analysis/acting.json` - per sung
+  line who sings it, how loud the voice is against the song's own average and a mood (neutral, happy, cheeky,
+  proud, sad, angry, alarm, question). The script only guesses the mood from signal words: **read every line
+  yourself and correct `"mood"`** (set `"by": "ai"`, or `"user"` when the user said so - such rows survive every
+  later draft; irony and context are yours to read, not the script's). `acting_draft.py apply` then writes the
+  expressions: a listener reacts to the line (proud -> skeptical, alarm / angry -> shock for everybody, happy ->
+  grin, sad -> sad), the singer shows its own face when nobody listens or the line is sung with force; at most
+  one expression per figure at a time with a pause between; hand-set expressions stay and win.
 - Transitions (computed frame by frame on the finished cut – no handles, sections stay on their song frames):
   `zoom_through` (the last frame zooms into a window/door/screen while the new scene settles), `glow` (warm light
   burst – a room becomes a stage), `screen_zoom` (camera into a big screen, close-up settles), `iris` (closes onto a
@@ -219,7 +245,7 @@ opens in Synfig Studio for hand animation.
 
 `scene.py` is one script for all sets; extend it with new behaviours (a new gesture, a new set feature) instead of
 writing scenes from scratch, and keep them seed-driven. Its layer builders sit next to it as `scene_*.py` modules
-taking one `SceneContext` (`scene_context.py`: section times, beats/words/lines, who sings when, places, lights);
+(`scene_acting.py` = the acting layer) taking one `SceneContext` (`scene_context.py`: section times, beats/words/lines, who sings when, places, lights);
 the comment block in `scene.py` says which module holds what. Bigger techniques from the reference film (2.5D comic flight
 for a verse, multiplane intro, credits with outtakes, second audio language, 48 fps) are described in
 `references/techniques.md`; read `references/lessons.md` before a full song.

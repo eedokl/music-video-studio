@@ -165,7 +165,8 @@ video-review (per-frame provenance of the cut), lyric-music-video, bricks-music-
 GPU lock), the night-run kill-and-resume (`.part` outputs), an interrupted caption pass, the up-front project check
 (a bad project.json - "sounds" as a string, overlapping sections, a talking figure voiced "male" - is rejected with
 exit code 2 in under a second, before anything is rendered) and `"size": [640, 360]` (an animated-music-video film,
-its small/mail versions and frame count at that size).
+its small/mail versions and frame count at that size), and the acting layer of the cartoon scenes (`"acting"`:
+listeners turn to the singer, off = unchanged scene).
 - `python tests/e2e/run.py --list` names the tests, `run.py animated-music-video claudia` runs a selection (name or
   prefix), `--skip-slow` skips the ones marked slow, `-v` streams the build logs, `--profile` prints the slowest
   commands per test (`log.txt` has every output line with its elapsed seconds), `--keep` keeps the temp folders.

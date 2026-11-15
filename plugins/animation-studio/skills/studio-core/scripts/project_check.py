@@ -52,7 +52,8 @@ SOUND_RULE_FIELDS = {"sfx": {"type": (STR,)}, "word": {"type": (STR,)}, "at": {"
                      "pan": {"type": (NUM,)}, "offset": {"type": (NUM,)}, "dur": {"type": (NUM,)}}
 SECTION_FIELDS = {"name": {"type": (STR,)}, "from": {"type": (NUM,)}, "to": {"type": (NUM,)},
                   "figures": {"type": (LIST,), "items": STR}, "set": {"type": (STR,)}, "lyrics": {"type": (BOOL,)},
-                  "dance": {"type": (STR,), "values": ("chorus", "always", "never")}, "kind": {"type": (STR,)}}
+                  "dance": {"type": (STR,), "values": ("chorus", "always", "never")}, "kind": {"type": (STR,)},
+                  "acting": {"type": (BOOL, DICT)}}
 
 SHARED = {                                            # every project.json read by song_project.Project
     "name": {"type": (STR,)},
@@ -89,6 +90,8 @@ SONG = {**SHARED,                                     # music-video projects (so
         "actions": {"type": (LIST,), "items": DICT}, "props": {"type": (LIST,), "items": DICT},
         "screen_badges": {"type": (LIST,), "items": DICT}, "screen_meter": {"type": (DICT, NULL)},
         "silhouettes": {"type": (LIST,), "items": DICT},
+        "expressions": {"type": (LIST,), "items": DICT, "need": ("figure", "expression")},
+        "acting": {"type": (BOOL, DICT), "doc": 'true / false or {"strength": 1.0, "glances": true, "nods": true, "brows": true}'},
         "lyrics_style": {"type": (STR, DICT)}, "lyrics_lines": {"type": (LIST,), "items": DICT},
         "lyrics_skip": {"type": (LIST,)}, "gag_size": {"type": (NUM,)},
         "music_by": {"type": (STR, LIST, NULL)}, "song_title": {"type": (STR, NULL)},
