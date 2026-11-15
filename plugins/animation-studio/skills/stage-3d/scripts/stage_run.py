@@ -17,11 +17,14 @@
 frames in out/<clip>/<q>_eevee/ (stage-3d BLOCK.md says what differs).
 Qualities: draft (half size, 24 samples - the whole-film preview and all contact sheets), preview, film (full size,
 40 samples + denoiser, motion blur), final (128 samples, hero stills). `film` skips frames that exist, so it can be
-stopped and started again; after changing a scene render its frames again with `clip ... --range a b --overwrite`.
+stopped and started again. A clip whose scene module (or a helper module in scenes/), project settings (size,
+palette, lips, seed, cast, frames) or spoken lines changed since its frames were made is rendered again by `film`
+(the key is out/<clip>/<q>/source.json); `clip ... --range a b --overwrite` renders a part again by hand.
 Output: <project>/out/<clip>/<q>/f_####.png, stills in out/<clip>/stills_<q>/, the sheet in out/<clip>/sheet.png.
 Blender comes from the config key `blender`; the shared GPU lock is held while it runs (job "stage3d_blender").
 """
 import argparse
+import json
 import os
 import subprocess
 import sys
@@ -31,6 +34,7 @@ from pathlib import Path
 import _studio  # noqa: E402
 _studio.use()
 import config  # noqa: E402
+import derived  # noqa: E402
 from stage_project import ENGINES, QUALITIES, Film, folder  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
@@ -45,11 +49,16 @@ def blender(project, clip, *args):
     env = dict(os.environ, PYTHONUNBUFFERED="1", STAGE3D_PROJECT=str(project))
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace", env=env)
     tail, show = [], ("BUILT", "RENDERED", "DONE", "Traceback", "Error", "  File ", "SystemExit")
-    for line in p.stdout:
-        line = line.rstrip()
-        tail = (tail + [line])[-25:]
-        if line.startswith(show) or "Error" in line:
-            print(line, flush=True)
+    try:
+        for line in p.stdout:
+            line = line.rstrip()
+            tail = (tail + [line])[-25:]
+            if line.startswith(show) or "Error" in line:
+                print(line, flush=True)
+    except BaseException:                          # Ctrl+C / kill: Blender must not render on after the GPU lock
+        p.kill()
+        p.wait(10)
+        raise
     if p.wait() != 0:
         print("\n".join(tail), file=sys.stderr)
         raise SystemExit(f"Blender failed on clip {clip} (exit {p.returncode})")
@@ -109,26 +118,63 @@ def cmd_clip(a):
     return 0
 
 
+def source_key(F, clip, q, engine):
+    """What the frames of a clip are made from: its scene module + the helper modules in scenes/ (not the other
+    clips), the project settings the stage reads, the spoken lines it says (last build.json)."""
+    scenes = F.dir / "scenes"
+    names = {c for c, _, _ in F.clips}
+    mods = [scenes / f"{clip}.py"] + sorted(p for p in scenes.glob("*.py") if p.stem not in names and p.stem != "__init__")
+    b, lj, lines = F.out(clip) / "build.json", F.dir / "speech" / "lines.json", {}
+    said = [s["id"] for s in json.loads(b.read_text(encoding="utf-8")).get("said", [])] if b.exists() else []
+    if said and lj.exists():
+        L = {x["id"]: x for x in json.loads(lj.read_text(encoding="utf-8")).get("lines", [])}
+        lines = {i: L.get(i) for i in said}
+    spec = {k: F.get(k) for k in ("size", "palette", "lips", "seed", "cast")}
+    spec.update(clip=clip, frames=F.clip(clip)[1], q=q, engine=engine, lines=lines)
+    return derived.key(mods, spec)
+
+
 def cmd_film(a):
     F = Film(a.project)
     F.check()
     only = a.clips.split(",") if a.clips else None
+    names = [c for c, _, _ in F.clips]
+    if only and (bad := [c for c in only if c not in names]):
+        raise SystemExit(f"--clips: no such clip {', '.join(bad)} (clips: {', '.join(names)})")
     fq = folder(a.q, a.engine)
-    todo = [(c, n, n if a.overwrite else len(F.missing(c, fq))) for c, n, _ in F.clips if not only or c in only]
-    total = sum(m for _, _, m in todo)
-    print(f"{F.dir.name}: {total} of {sum(n for _, n, _ in todo)} frames to render in quality '{a.q}'", flush=True)
+    todo = []
+    for c, n, _ in F.clips:
+        if only and c not in only:
+            continue
+        k, kf, miss = source_key(F, c, a.q, a.engine), F.out(c, fq) / "source.json", F.missing(c, fq)
+        over = a.overwrite
+        if len(miss) < n:                              # frames exist: made from the same scene / settings / lines?
+            old = json.loads(kf.read_text(encoding="utf-8")).get("key") if kf.exists() else None
+            if old is None:
+                print(f"{c}: frames without source.json (older version) - taken as they are", flush=True)
+            elif old != k:
+                print(f"{c}: the scene, the project settings or its lines changed since these '{a.q}' frames - "
+                      "rendering the clip again", flush=True)
+                over = True
+        F.out(c, fq).mkdir(parents=True, exist_ok=True)
+        derived.write_text(kf, json.dumps({"key": k}))  # before rendering: a stopped run resumes with this key
+        todo.append((c, n, n if over else len(miss), over))
+    total = sum(m for _, _, m, _ in todo)
+    print(f"{F.dir.name}: {total} of {sum(n for _, n, _, _ in todo)} frames to render in quality '{a.q}'", flush=True)
     t0, done = time.time(), 0
-    for c, n, m in todo:
+    for c, n, m, over in todo:
         if not m:
             continue
-        blender(F.dir, c, "--q", a.q, "--engine", a.engine, "--range", 1, n, *(["--overwrite"] if a.overwrite else []))
+        blender(F.dir, c, "--q", a.q, "--engine", a.engine, "--range", 1, n, *(["--overwrite"] if over else []))
+        # again after the build: build.json now names the lines this clip says (the first run had none)
+        derived.write_text(F.out(c, fq) / "source.json", json.dumps({"key": source_key(F, c, a.q, a.engine)}))
         done += m
         left = (time.time() - t0) / done * (total - done)
         print(f"FILM {c} done - {done}/{total} frames, about {left / 60:.0f} min left", flush=True)
-    miss = {c: len(F.missing(c, fq)) for c, _, _ in todo if F.missing(c, fq)}
+    miss = {c: len(F.missing(c, fq)) for c, _, _, _ in todo if F.missing(c, fq)}
     if miss:
         raise SystemExit(f"frames still missing: {miss}")
-    print(f"FILM complete: {sum(n for _, n, _ in todo)} frames in out/<clip>/{fq}/ ({(time.time() - t0) / 60:.1f} min)")
+    print(f"FILM complete: {sum(n for _, n, _, _ in todo)} frames in out/<clip>/{fq}/ ({(time.time() - t0) / 60:.1f} min)")
     return 0
 
 

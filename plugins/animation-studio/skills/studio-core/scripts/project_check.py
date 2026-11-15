@@ -138,10 +138,13 @@ FILM3D = {                                            # animated-3d-film project
                          "xfade": {"type": (INT,), "min": 0}, "about": {"type": (STR,)}},
               "doc": 'the edit in order: [{"name": "c01_intro", "frames": 240, "xfade": 0}, ...]'},
     "audio": {"type": (STR, NULL), "doc": "the finished sound track of the film, e.g. \"sound/film.wav\""},
-    "lines": {"type": (LIST,), "items": DICT, "need": ("id", "text"),
+    "lines": {"type": (LIST,), "items": DICT, "need": ("id", "who", "text"),
               "fields": {"id": {"type": (STR,)}, "who": {"type": (STR,)}, "text": {"type": (STR,)},
-                         "audio": {"type": (STR,)}, "words": {"type": (LIST,), "items": DICT, "need": ("word", "t")}},
+                         "audio": {"type": (STR,)}, "words": {"type": (LIST,), "items": DICT, "need": ("word", "t")},
+                         "at": {"type": (STR,), "doc": "voice-over: <clip>:<frame>"},
+                         "spoken": {"type": (BOOL,)}, "redo": {"type": (BOOL,)}},
               "doc": 'spoken lines [{"id": "l01", "who": "mo", "text": "Hello!", "audio": "speech/l01.wav"}]'},
+    "sound": {"type": (DICT,), "doc": 'the music of the sound mix {"music": "...", "music_level": -18} (film3d.py sound)'},
     "voices": {"type": (DICT,), "each": {"type": (DICT,)}, "doc": '{"<who>": {"engine": ..., "design": ...}}'},
     "language": {"type": (STR,)}, "pronounce": {"type": (DICT,)},
     "look": {"type": (STR, NULL), "values": ("cinema", "ad", "standard", "none"),
@@ -423,6 +426,10 @@ def _deck_mouths(R, p, base):
 
 def _look(R, p, base):
     lk = p.get("look")
+    if lk in ("ad", "cinema") and R.family != "film3d":
+        R.err("look", f'"{lk}" is a look of the 3D film cut (film-finish clip_film.py) - here "standard", "none" '
+                      "or a look folder")
+        return
     if not isinstance(lk, str) or lk in ("none", "standard", "ad", "cinema"):     # ad / cinema: clip_film.py
         return
     cands = [SKILLS / "film-finish" / "assets" / "look" / lk, Path(lk)] + ([base / lk] if base else [])
@@ -445,6 +452,17 @@ def _film3d(R, p, base):
     ids = [ln.get("id") for ln in p.get("lines") or [] if isinstance(ln, dict)]
     for i in sorted({i for i in ids if ids.count(i) > 1}):
         R.err("lines", f'the line id "{i}" is used twice')
+    s = p.get("size")
+    if isinstance(s, (list, tuple)) and len(s) == 2 and all(_is(v, INT) for v in s) and (s[0] % 4 or s[1] % 4):
+        R.err("size", f"[{s[0]}, {s[1]}]: a 3D film needs multiples of 4 (the draft renders half of it, H.264 needs "
+                      "even sizes)")
+    names = {c["name"] for c in clips}
+    for ln in p.get("lines") or []:
+        at = ln.get("at") if isinstance(ln, dict) else None
+        if _is(at, STR):
+            c, sep, fr = at.partition(":")
+            if not sep or not fr.isdigit() or c not in names:
+                R.err("lines", f'line {ln.get("id")}: "at" {at!r} - expected <clip>:<frame> with a clip of "clips"')
     au = p.get("audio")
     if base and _is(au, STR) and not (base / au).exists():
         R.warn("audio", f"{au} does not exist (the film is built without sound)")

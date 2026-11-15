@@ -52,13 +52,19 @@ Needs Blender 4.2+ (config key `blender`), ffmpeg, Rhubarb; a graphics card make
 - Lines: `film3d.py line <folder> l01 mo "Hello Kit!"` for each; voices in project.json `"voices"` (voice block:
   describe a character voice, never clone a real person). `film3d.py speak <folder>` speaks the missing lines,
   checks them with Whisper, stores the word times and prepares the lip sync. Recorded wavs: put them at
-  `speech/<id>.wav`, then `speak` only prepares them.
+  `speech/<id>.wav`, then `speak` only prepares them. A changed text (`line` again) is spoken again by the next
+  `speak`; a recording only gets a warning (record it again). `speak --again` re-speaks the spoken lines and keeps
+  recordings unless they are named with `--only`.
+- A narrator (voice-over, no figure says it, so no `say()`): `film3d.py line <folder> l07 narrator "..." --at
+  c03_night:40` places it on that clip frame. A line that is neither said in a scene nor has `--at` is not in the
+  sound - `sound` warns.
 - `uv run "${CLAUDE_PLUGIN_ROOT}/skills/stage-3d/scripts/stage_speech.py" show <folder>` prints every line's length
   and word frames – the scenes are blocked on these numbers (`figure.say("l01", frame)`, `K.word_frame(...)`).
 - An existing finished sound track (a remake): set project.json `"audio"`, keep every clip exactly as long as its
   stretch of the sound, and take the frames of its events from the old project.
 - A new film: after the scenes exist, `film3d.py sound <folder> [--music music.wav]` mixes every line on the frame
-  its scene says it → `sound/film.wav`. Music without a song: film-finish `score.py`; sound effects: its `sounds.py`
+  its scene says it → `sound/film.wav`. `preview` / `render` mix it again by themselves (same music) when a line, a
+  `say()` frame or a clip length changed; a track you set by hand in `"audio"` is never mixed over. Music without a song: film-finish `score.py`; sound effects: its `sounds.py`
   ideas apply, or mix own effects into the music bed.
 
 ## 4. Build the scenes
@@ -85,8 +91,11 @@ still of an advertisement. Fix and render again until it does; finish each clip 
 `film3d.py preview <folder>` renders every clip in draft quality (resumable), mixes the lines if no sound track is
 set, and cuts `preview/film_draft.mp4` with sound and look. Watch for what stills cannot show: timing, acting in
 motion, lip sync, cuts, the sound against the picture. Send it to the user and ask: changes first, or render in
-detail? Changed clips: `stage_run.py clip <folder> <clip> --range a b --q draft --overwrite`, then cut again
-(`uv run "${CLAUDE_PLUGIN_ROOT}/skills/film-finish/scripts/clip_film.py" <folder> --q draft`).
+detail? Changed clips are found by themselves: a clip whose scene module, project settings (size, palette, lips,
+seed, cast) or spoken lines changed is rendered again by the next `preview` / `render` (key in
+`out/<clip>/<q>/source.json`), the others are kept. The scene's `FRAMES` must equal the clip's `"frames"` in
+project.json (the build stops otherwise). By hand: `stage_run.py clip <folder> <clip> --range a b --q draft
+--overwrite`, then cut again (`uv run "${CLAUDE_PLUGIN_ROOT}/skills/film-finish/scripts/clip_film.py" <folder> --q draft`).
 
 ## 7. Film render and finish
 

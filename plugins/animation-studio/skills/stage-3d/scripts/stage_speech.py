@@ -64,11 +64,15 @@ def mouth_cues(wav, text, cache):
 
 
 def prepare(F):
-    out = []
+    out, skipped = [], []
     for ln in F.get("lines") or []:
         wav = F.dir / ln.get("audio", f"speech/{ln['id']}.wav")
-        if not wav.exists():
-            raise SystemExit(f"line {ln['id']}: {wav} missing - speak or record it first")
+        if not wav.exists():                        # the others are prepared (speak --only l01 must not stop here)
+            skipped.append(f"{ln['id']} ({wav.name} missing - speak or record it)")
+            continue
+        if ln.get("redo"):
+            skipped.append(f"{ln['id']} (text changed - film3d.py speak speaks it again)")
+            continue
         dur = seconds(wav)
         cues = mouth_cues(wav, ln.get("text", ""), F.dir / "speech" / "mouth" / f"{ln['id']}.json")
         words = ln.get("words")
@@ -84,6 +88,8 @@ def prepare(F):
     f.write_text(json.dumps({"lines": out}, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"{f}: {len(out)} lines" + (f" ({sum(1 for o in out if o.get('approx'))} with estimated word times)"
                                         if any(o.get("approx") for o in out) else ""))
+    for s in skipped:
+        print(f"WARNING not prepared: {s} - a scene that says it stops", file=sys.stderr)
     return out
 
 

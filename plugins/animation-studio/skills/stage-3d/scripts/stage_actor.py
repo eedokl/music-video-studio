@@ -33,18 +33,29 @@ def lines():
 
 
 def line_frames(zid):
-    return int(round(lines()[zid]["duration"] * FPS))
+    return int(round(line(zid)["duration"] * FPS))
+
+
+def line(zid):
+    L = lines()
+    if zid not in L:
+        raise SystemExit(f'line "{zid}" is not in speech/lines.json - add it (film3d.py line), then speak or record '
+                         f"it and prepare it (film3d.py speak)")
+    return L[zid]
 
 
 def word_frame(zid, word, start=0, nth=0):
     """frame (relative to clip, given line start frame) at which a word begins"""
-    hits = [w for w in lines()[zid].get("words", []) if word.lower() in w["word"].lower()]
-    return start + int(round(hits[min(nth, len(hits) - 1)]["t"] * FPS)) if hits else start
+    hits = [w for w in line(zid).get("words", []) if word.lower() in w["word"].lower()]
+    if not hits:
+        print(f'WARNING word_frame: "{word}" is not a word of line {zid} - the line start {start} is used', flush=True)
+        return start
+    return start + int(round(hits[min(nth, len(hits) - 1)]["t"] * FPS))
 
 
 def cues(zid):
     """Rhubarb mouth cues of a line: [{"start", "end", "value"}]"""
-    return lines()[zid]["cues"]
+    return line(zid)["cues"]
 
 
 def materials():
@@ -463,7 +474,7 @@ class Char:
             last = f0 + round(c["end"] * FPS)
         mc.key(last + 2, rest)
         SAID.append((self.S.name, int(f0) - 3, int(last) + 3, zid, int(f0)))
-        words = [f0 + w["t"] * FPS for w in lines()[zid].get("words", [])]
+        words = [f0 + w["t"] * FPS for w in line(zid).get("words", [])]
         strong = words[::2]
         self.head.rch(0).add(lambda f: nod * sum(3.2 * math.exp(-((f - w - 2) / 2.6) ** 2) for w in strong
                                                  if abs(f - w) < 12))

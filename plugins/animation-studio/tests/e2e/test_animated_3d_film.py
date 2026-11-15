@@ -72,7 +72,44 @@ def run_film(ctx):
     ctx.uv(CUT, d, "--q", "draft", "--clips", "c02_answer", "--look", "ad")
     part = d / "preview" / "film_draft_c02_answer.mp4"
     expect_film(ctx, part, 8, tol_audio=0.06)
-    ctx.note(f"2 clips, 20 draft frames ({B['device']}), line on frame {line_at} heard at {t:.3f} s, looks cinema + ad")
+    # the say() frame moves + a narrator voice-over: only c01 is rendered again (its scene changed, source.json), the
+    # sound is mixed again by itself (it used to stay and slide against the picture)
+    c02_png = d / "out" / "c02_answer" / "draft" / "f_0001.png"
+    c01_png = d / "out" / "c01_opening" / "draft" / "f_0001.png"
+    m01, m02 = c01_png.stat().st_mtime, c02_png.stat().st_mtime
+    line_at = 7
+    (d / "scenes" / "c01_opening.py").write_text(SCENE.format(frames=12, mood="golden", cut=9,
+                                                             say=f'mo.say("l01", {line_at})'), encoding="utf-8")
+    ctx.ff("-f", "lavfi", "-i", "aevalsrc=0.5*sin(2*PI*440*t)*gt(t\\,0.1):s=44100:d=0.3", "-ac", "1",
+           str(d / "speech" / "narr.wav"))
+    ctx.uv(FILM3D, "line", d, "l02", "narrator", "Meanwhile", "--audio", "speech/narr.wav", "--at", "c02_answer:3")
+    ctx.uv(FILM3D, "line", d, "l02", "narrator", "Meanwhile", "--at", "c02_answer:3")    # no --audio: the path stays
+    expect(read_json(d / "project.json")["lines"][1]["audio"] == "speech/narr.wav", "line without --audio reset the path")
+    out = ctx.uv(FILM3D, "line", d, "l01", "mo", "Hello again")
+    expect("recording of the old text" in out.stdout, f"no warning for a changed recorded line:\n{out.stdout}")
+    ctx.uv(FILM3D, "line", d, "l01", "mo", "Hello there")
+    ctx.uv(SPEECH, "prepare", d)
+    out = ctx.uv(FILM3D, "preview", d, timeout=1200)
+    expect("rendering the clip again" in out.stdout and "mixing again" in out.stdout,
+           f"preview after a scene change did not render c01 again / mix again:\n{out.stdout[-1500:]}")
+    expect(c01_png.stat().st_mtime > m01 and c02_png.stat().st_mtime == m02,
+           "c01 should be rendered again (scene changed), c02 kept (unchanged)")
+    smp = audio_samples(film)
+    t = first_loud(smp, 48000, 8000)
+    want = (line_at - 1) / 24 + 0.1
+    expect(t is not None and abs(t - want) <= 1.5 / 24, f"after moving say(): the line starts at {t} s, expected {want:.3f}")
+    t2 = first_loud(smp, 48000, 8000, start=0.58)
+    want2 = (12 + 3 - 1) / 24 + 0.1
+    expect(t2 is not None and abs(t2 - want2) <= 1.5 / 24, f"narrator line at {t2} s, expected {want2:.3f} s")
+    # scene FRAMES and project.json frames must agree (smaller: endless "missing", larger: silently cut)
+    P = read_json(d / "project.json")
+    P["clips"][0]["frames"] = 13
+    write_json(d / "project.json", P)
+    out = ctx.run(["uv", "run", "--offline", RUN, "clip", d, "c01_opening", "--stills", "1"], check=False, timeout=600)
+    expect(out.returncode != 0 and "make them the same" in out.stdout, f"FRAMES mismatch not reported:\n{out.stdout[-800:]}")
+    P["clips"][0]["frames"] = 12
+    write_json(d / "project.json", P)
+    ctx.note(f"2 clips, 20 draft frames ({B['device']}), line moved to frame {line_at} heard at {t:.3f} s, narrator at {t2:.3f} s, only the changed clip re-rendered, looks cinema + ad")
 
 
 TESTS = [Test("animated-3d-film", run_film, about="film3d.py new/clip/line -> stage_speech -> Blender draft render "

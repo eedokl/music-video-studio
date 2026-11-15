@@ -1149,8 +1149,10 @@ def render(S, out_dir, frames=None, stills=None, overwrite=False):
         if png.exists() and not stills and not overwrite:
             continue
         sc.frame_set(f)
-        sc.render.filepath = str(png)
+        tmp = out_dir / f"f_{f:04d}.part.png"         # a run killed while writing leaves no half frame as "done"
+        sc.render.filepath = str(tmp)
         bpy.ops.render.render(write_still=True)
+        os.replace(tmp, png)
         n += 1
         print(f"RENDERED {S.name} {f} ({(time.time() - t0) / n:.2f}s/frame)", flush=True)
 

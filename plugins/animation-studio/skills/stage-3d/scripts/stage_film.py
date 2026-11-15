@@ -49,6 +49,10 @@ def main():
     C.set_palette(P.get("palette"))
     t0 = time.time()
     mod = importlib.import_module("scenes." + clip)
+    want = next((int(c["frames"]) for c in P.get("clips", []) if c.get("name") == clip), None)
+    if want is not None and want != mod.FRAMES:      # the cut and the sound go by project.json
+        raise SystemExit(f"scenes/{clip}.py has FRAMES = {mod.FRAMES} but project.json says {want} frames for "
+                         f"{clip} - make them the same")
     S = C.Stage(clip, mod.FRAMES, seed=getattr(mod, "SEED", P.get("seed", 1)))
     mod.build(S)
     S.bake()

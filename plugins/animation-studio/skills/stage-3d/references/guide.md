@@ -78,8 +78,10 @@ K.line_frames("l05")                   # length of a line in frames
 K.typing_generic(c, f0, f1)            # alternating forearms on a keyboard
 ```
 Spoken lines are the `lines` of project.json, prepared with `stage_speech.py prepare` (`show` prints every word
-frame). Only lines spoken by a figure in the picture get `say()`; a narrator is voice-over. The frame given to
-`say()` is where the line sits in the film's sound.
+frame). Only lines spoken by a figure in the picture get `say()`; a narrator is voice-over and gets `"at":
+"<clip>:<frame>"` in project.json (`film3d.py line ... --at c02_plan:30`). The frame given to `say()` is where the
+line sits in the film's sound. A line missing from speech/lines.json stops the build with its id; `K.word_frame`
+warns when the word is not in the line.
 Poses: `rest crossed chin think point point_l point_side point_side_l point_up cheer fist fist_down shrug present
 present_l open type hold hold_up mug sip hips wave slump lean_back read sit stand high5 duck face glasses`.
 Moods: `neutral happy smile excited worried sad skeptic stern surprised dreamy focus thinking sleepy hopeful proud`.
