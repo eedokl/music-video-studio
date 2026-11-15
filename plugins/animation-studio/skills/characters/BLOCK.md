@@ -101,4 +101,4 @@ Every figure that follows the rig convention works with these toon-2d tools with
   come from the fills, outlines from the strokes, the mouth is drawn at `pivot_mund` ("o" or "smile").
 Helps both: closed, filled shapes per part (not only strokes), the drawing order front-to-back as it should stack.
 
-Another agent adds `references/claudia.md` (the photoreal singer Claudia) – see there for her canon.
+`references/claudia.md`: the photoreal singer Claudia – see there for her canon.

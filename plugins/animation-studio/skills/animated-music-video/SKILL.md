@@ -9,7 +9,7 @@ A song becomes a cartoon in which the characters sing it: the sound decides **wh
 whom**, every mouth comes from the vocals, every move sits on a beat. Everything lives on **one timeline – the song's
 seconds** – so scenes, mouths, gags, lyrics and sounds always fit together and any part can be redone on its own.
 
-Building blocks used (sibling skills of this plugin): `song-analysis` (listen), `toon-2d` (Synfig rig, sets),
+Building blocks used (shared code + docs of this plugin, not skills): `song-analysis` (listen), `toon-2d` (Synfig rig, sets),
 `characters` (Tim, Lia, Computer, own figures), `film-finish` (overlays, sounds, cut, look), `studio-core`
 (tools, GPU lock, creative seed). Reference film: "Prompts!" (4:08, Tim, Lia and the Computer) – this skill rebuilds
 its first chorus with 84–89 % frame agreement of who sings and ~0.1 s median word timing (see

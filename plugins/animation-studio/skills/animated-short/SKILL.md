@@ -9,7 +9,7 @@ A short is 3–10 seconds of acting that reads without words: one character want
 react. It is built as an editable Synfig scene from Python (keyframes, not baked frames), reviewed on contact sheets,
 then finished with sound effects and the standard look.
 
-Building blocks (sibling skills): `toon-2d` (Synfig scenes, rigs, render, multiplane, comic flight, Blender Grease
+Building blocks (not skills, shared code + docs of this plugin): `toon-2d` (Synfig scenes, rigs, render, multiplane, comic flight, Blender Grease
 Pencil – read its BLOCK.md and `references/animation-craft.md`), `characters` (Tim, Lia, Computer, Pip, Fips, own SVG
 figures), `film-finish` (`apply_look.py`), `studio-core` (config, creative seed), `ai-video` (optional painted sets,
 depth maps; takes the GPU lock).
