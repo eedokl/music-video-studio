@@ -70,8 +70,8 @@ Read `references/scene-catalog.md` (all past scenes, techniques, identities, lik
    - Lines still marked `<- estimated` were not heard: often shouted chants (fine if the neighbours are good), but
      also repeats or ad-libs missing from `lyrics.txt`. Then **rewrite lyrics.txt as performed** (one sung line per
      row, repeat repeated lines, keep the headers; an excerpt: delete the lines after its end - the table marks them
-     `<- AFTER THE SONG END`) and run `analyze_song.py PROJECT --redo` (the extra Whisper passes also start when words
-     crowd together; `--best-words always` forces them). A line marked `<- 1st word ... before the 2nd` usually has
+     `<- AT/AFTER THE SONG END`) and run `analyze_song.py PROJECT --redo` (the extra Whisper passes also start when words
+     crowd together; `--best-words always` forces them). A line marked `<- first N word(s) far before the rest` usually has
      a call that is not in lyrics.txt ("Hey!"): add it as its own row and re-run. A word time that is still wrong:
      edit `analysis/timing.json` by hand ("words" = start of each display word in s, "ends" its end; keep a copy) -
      `render.py` uses it as it is, `analyze_song.py --redo` overwrites it. What Whisper actually

@@ -106,6 +106,8 @@ def ideas(P, where=None):
 if __name__ == "__main__":
     import sys
     a = sys.argv[1:]
+    if len(a) >= 2 and a[0] in ("seed", "idea") and not _File(a[1]).file.exists():
+        sys.exit(f"{_File(a[1]).file} missing - give a project folder or its project.json (nothing was created)")
     if len(a) >= 2 and a[0] == "seed":
         print(seed(a[1]))
     elif len(a) >= 4 and a[0] == "idea":

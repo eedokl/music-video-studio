@@ -224,7 +224,8 @@ def mouth_keys(C, G, T, figs, keys):
             import mouth
             mouth.ensure(G[n]["dir"])
             keys[n]["mouth"] = mouth.mouth_keys(G[n]["dir"], [(C.dir / T.cfg[lid]["audio"], T.line_at(lid),
-                                                               T.cfg[lid].get("text")) for lid in talk],
+                                                               T.cfg[lid].get("text"),
+                                                               T.cfg[lid].get("lang") or C.p.get("lang")) for lid in talk],
                                                 fps=C.fps, cache=C.dir / "narration")
 
 

@@ -320,7 +320,8 @@ class Scene:
                 import mouth
                 mouth.ensure(g["dir"])
                 mk = mouth.mouth_keys(g["dir"], [(self.dir / self.T.cfg[t]["audio"], self.T.line_at(t),
-                                                  self.T.cfg[t].get("text")) for t in talk], fps=self.fps,
+                                                  self.T.cfg[t].get("text"), self.T.cfg[t].get("lang") or self.p.get("lang"))
+                                                 for t in talk], fps=self.fps,
                                       cache=self.dir / "narration")
                 k["mouth"] = sorted(k.get("mouth", []) + mk, key=lambda x: x[0])
             if "mouth" in k and not (g["dir"] / "head_base.png").exists():

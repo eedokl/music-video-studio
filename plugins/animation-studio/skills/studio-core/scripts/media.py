@@ -162,8 +162,12 @@ if __name__ == "__main__":
             if Path(out).exists():
                 t = tt
                 break
-        else:
-            raise SystemExit(f"no frame at {t:.2f} s in {sys.argv[2]}")
+        else:                                       # the sound outlasts the picture by more: the real last frame
+            subprocess.run([ffmpeg(), "-y", "-v", "error", "-sseof", "-3", "-i", sys.argv[2], "-update", "1",
+                            "-an", out], check=True)
+            if not Path(out).exists():
+                raise SystemExit(f"no frame at {t:.2f} s in {sys.argv[2]}")
+            print(f"(the picture ends before {t:.2f} s - taking its last frame)")
         print(f"{out}: frame {int(round(t * fps))} ({t:.2f} s), {'x'.join(map(str, video_size(out)))}")
     elif len(sys.argv) == 4 and sys.argv[1] == "compare":
         print(compare(sys.argv[2], sys.argv[3]))

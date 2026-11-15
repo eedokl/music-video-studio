@@ -269,8 +269,11 @@ def figure(c, k, nr, x=None, scale=None, floor=None, actions=True, front_out=Non
     ya = anim("real", [(f, FL + v * Kf) for f, v in keys(by)])
     amt = None
     first = next((t for t, s in cues if s != "X"), None)
-    song_first = next((t for t, s in c.ASG.get(k, []) if s != "X"), None)   # the first time in the WHOLE song: the
-    sang_before = song_first is not None and song_first < S                 # entrance is once per film, not per scene
+    def on_screen(t):                                 # sang in a section that shows the figure (off screen it
+        sec = next((x for x in c.P.sections() if float(x["from"]) <= t < float(x["to"])), None)   # made no entrance)
+        return sec is not None and k in (sec.get("figures") or list(c.P.get("figures") or {}))
+    song_first = next((t for t, s in c.ASG.get(k, []) if s != "X" and on_screen(t)), None)   # the first time in the
+    sang_before = song_first is not None and song_first < S         # WHOLE song: the entrance is once per film
     if cfg.get("entrance") == "flicker" and first is not None and not sang_before and F(first + S) > 14:
         f0 = F(first + S) - 14
         amt = anim("real", [(0, 0.0, "constant")] + [(f0 + j, v, "constant") for j, v in

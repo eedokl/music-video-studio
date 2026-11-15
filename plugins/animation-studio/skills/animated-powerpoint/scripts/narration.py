@@ -44,6 +44,9 @@ def words(audio, cache_dir, lang=None):
         return json.loads(side.read_text(encoding="utf-8"))
     cache_dir.mkdir(parents=True, exist_ok=True)
     c = cache_dir / (audio.stem + f".{lang or 'auto'}.json")
+    old = cache_dir / (audio.stem + ".json")          # before 0.4.12: always transcribed as English
+    if not c.exists() and old.exists() and str(lang or "").startswith("en"):
+        old.replace(c)                                # same take: no second Whisper run (other languages: run again)
     if c.exists() and c.stat().st_mtime >= audio.stat().st_mtime:
         return json.loads(c.read_text(encoding="utf-8"))
     if _in_gpu_python(audio, cache_dir, lang) and c.exists():
@@ -63,13 +66,11 @@ def _in_gpu_python(audio, cache_dir, lang):
     gp = config.get("gpu_python")
     if not gp or not Path(gp).exists() or os.environ.get("WHISPER_CPU"):
         return False
-    try:
-        if Path(sys.executable).resolve() == Path(gp).resolve():
-            return False
-    except OSError:
-        return False
+    if os.environ.get("NARRATION_IN_GPU_PYTHON"):   # we are the child (comparing resolved executables fails on
+        return False                                # Linux/macOS: a uv venv python resolves to the same base python)
     r = subprocess.run([gp, str(Path(__file__).resolve()), str(audio), "--cache", str(cache_dir),
-                        *(["--lang", lang] if lang else [])], capture_output=True, text=True, errors="replace")
+                        *(["--lang", lang] if lang else [])], capture_output=True, text=True, errors="replace",
+                       env=dict(os.environ, NARRATION_IN_GPU_PYTHON="1"))
     if r.returncode:
         print(f"  narration: the GPU python failed ({(r.stderr or r.stdout).strip()[-200:]}) - transcribing here")
         return False

@@ -252,7 +252,7 @@ def make(fig_dir, clean=False):
     return meta
 
 
-def rhubarb_cues(wav, text=None, cache=None):
+def rhubarb_cues(wav, text=None, cache=None, lang=None):
     import _studio
     _studio.use()
     import config
@@ -260,11 +260,19 @@ def rhubarb_cues(wav, text=None, cache=None):
     # -r phonetic: language-independent. Rhubarb's default recognizer is English-only and gives a German (or any
     # non-English) line an almost closed mouth (user test). Its dialog text (-d) only helps that English recognizer,
     # so `text` is not passed on. ".phonetic" in the cache name: results of the old English run are not reused.
-    out = Path(cache or wav.parent) / (wav.stem + ".mouth.phonetic.json")
+    # An English line WITH its text (lang "en..." set in the narration / clip): the English recognizer + the text,
+    # which reads English better than the phonetic one.
+    english = bool(text) and str(lang or "").lower().startswith("en")
+    out = Path(cache or wav.parent) / (wav.stem + (".mouth.en.json" if english else ".mouth.phonetic.json"))
+    txt = out.with_suffix(".txt")
+    if english and (not txt.exists() or txt.read_text(encoding="utf-8") != text):
+        out.unlink(missing_ok=True)                   # the text changed: recognise again
     if not out.exists() or out.stat().st_mtime < wav.stat().st_mtime:
         out.parent.mkdir(parents=True, exist_ok=True)
-        cmd = [config.need("rhubarb"), "-r", "phonetic", "-f", "json", "--extendedShapes", "GHX", "-q",
-               "-o", str(out), str(wav)]
+        if english:
+            txt.write_text(text, encoding="utf-8")
+        cmd = [config.need("rhubarb"), *([] if english else ["-r", "phonetic"]), *(["-d", str(txt)] if english else []),
+               "-f", "json", "--extendedShapes", "GHX", "-q", "-o", str(out), str(wav)]
         subprocess.run(cmd, check=True, capture_output=True)
     return json.loads(out.read_text(encoding="utf-8"))["mouthCues"]
 
@@ -281,13 +289,13 @@ def ensure(fig_dir):
 
 
 def mouth_keys(fig_dir, lines, fps=24, lead=1, cache=None):
-    """lines: [(wav, start_frame, text or None)] -> [(frame, stage)] (the mouth one frame early reads in sync).
+    """lines: [(wav, start_frame, text or None[, lang])] -> [(frame, stage)] (the mouth one frame early reads in sync).
     Rest = the original drawing; X inside a line = slightly open for open grins; long pauses go back to rest."""
     meta = json.loads((Path(fig_dir) / "mouth.json").read_text(encoding="utf-8"))
     table, rest = SHAPE_TO_STAGE[meta["kind"]], meta["rest"]
     keys = [(0, rest)]
-    for wav, start, text in sorted(lines, key=lambda z: z[1]):
-        cs = rhubarb_cues(wav, text, cache)
+    for wav, start, text, *lang in sorted(lines, key=lambda z: z[1]):
+        cs = rhubarb_cues(wav, text, cache, lang[0] if lang else None)
         for i, c in enumerate(cs):
             f0 = start + round(c["start"] * fps) - lead
             f1 = start + round(c["end"] * fps) - lead

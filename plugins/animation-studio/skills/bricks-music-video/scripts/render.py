@@ -78,7 +78,11 @@ def stills_frames(spec, plan, name="?"):
     out = []
     for x in str(spec).split(","):
         x = x.strip()
-        f = round((float(x[:-1]) - plan["from"]) * fps) if x.endswith("s") else int(x)
+        try:
+            f = round((float(x[:-1]) - plan["from"]) * fps) if x.endswith("s") else int(x)
+        except ValueError:
+            raise SystemExit(f"--stills {x}: a frame number (from the section start) or song seconds with an s, "
+                             f"e.g. {x.rstrip('s')}s") from None
         if not 0 <= f < n:
             raise SystemExit(f"--stills {x}: section '{name}' has frames 0-{n - 1} "
                              f"({plan['from']:.2f}-{plan['to']:.2f} s of the song); frames count from the section "
