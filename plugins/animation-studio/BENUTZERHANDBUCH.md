@@ -393,6 +393,11 @@ Python-Szene geschrieben: nichts wird von Hand modelliert, alles lässt sich än
   Füßen auf dem Boden (mit Schritten beim Gehen und Drehen) und greifen nicht durch Tische – sagen Sie z. B.
   „mit Tim und Claudia als echten Figuren“. Die Figuren liegen als `<Name>/figur.blend` im Projektordner
   `actors/` oder in dem Ordner, den die Einstellung `actors3d` nennt.
+  Raumwechsel können als **Theater-Umbau vor Publikum** geschehen statt als Schnitt (Wände fliegen hoch, Möbel
+  rollen weg, eine Showbühne rollt aus, Bühnenarbeiter laufen durchs Bild, ein Verfolger-Spot bleibt auf der
+  Figur), dazu ein Vorhang und als Finale eine **Lichtshow** mit Moving Heads im Bühnennebel – sagen Sie z. B.
+  „der Raumwechsel als Theater-Umbau“. Für Gags im Stil von „Die nackte Kanone“ (todernst gespielt, sehr dicht,
+  Running Gags) kennt der Skill eine eigene Anleitung.
   Ein fertiger Film lässt sich ohne Änderung der Szenen in einer anderen Machart neu rendern.
 - **Ton?** Gesprochene Zeilen (Stimmen-Baustein), eigene Aufnahmen, eine fertige Tonspur, Musik.
 - **Look?** Standard: elfenbeinfarbene Wände, dunkles Nussholz, ein korallenroter Akzent, tiefes goldenes Licht und

@@ -157,6 +157,37 @@ machine-config folder `actors3d` (env `STAGE3D_ACTORS`, several folders separate
   `hold_prop(obj, side)` puts a prop on the rig's hand bone; `attach()` (on the Char hand joint) works as well.
 - The actor contract (what a `figur.blend` needs): the docstring of `stage_rig.py`.
 
+## Theatre: set changes in view, curtain, light show (stage_theatre)
+
+A room change does not have to be a cut: the audience sees the set change like in a theatre. Every piece of
+scenery belongs to a **world** and has a way of leaving; `Change` animates the swap.
+
+```python
+import stage_theatre as T
+R = sets.office(S, mood="dusk")
+B = T.show_stage(S)                       # backdrop, bulb arch, lacquer floor with footlights, spots
+ch = T.stage_change(S, B)                 # the show stage as world "stage"
+T.set_change(S, R, "room", ch)            # the whole office as world "room" (table things go with the table)
+ch.state(1, "room")
+w = ch.change(24, "stage", frames=40, follow=mo, crew=2)   # -> {"dark", "away", "there", "lit"} frames
+mo.pose(w["lit"], "cheer")
+T.light_show(S, 110, beats, ["#FF2E7E", "#2EC5FF", "#FFD12E"])   # finale: moving heads in haze on the beat
+```
+
+- `ch.piece(node, world, how)`: how = `"fly"` (up into the fly loft, comes back with an overshoot), `"roll"`
+  (sideways to the nearer side), `"sink"`, `"unroll"` (scales to nothing towards its origin - put the origin at the
+  edge it rolls to; floors, carpets, runners) or an own offset `(dx, dy, dz)`. `ch.lights(world, {name: light})`,
+  `ch.glow(world, material)` (bulbs, signs; they light one after the other when the world arrives).
+- `ch.change(f0, to, frames, follow=<figure or point>, crew=n)`: old light to a glow, a follow spot on the
+  figure, the old pieces leave in a staggered order, the new ones arrive, n stagehands in black cross in the dark,
+  the new light comes up. Reverse it with another `change(..., "room")`. `ch.state(f, world)` = a hard cut.
+- `Curtain(S, width, height, y)` with `.open(f, frames)` / `.close(f, frames)` / `.state(f, open_)`;
+  `follow_spot(S, figure, f0, f1)`; `dim(S, lights, f, factor)`; `stagehand(S, name).walk(f0, f1, a, b, carry=True)`.
+- `light_show(...)`: the rig flies in `fly_in` frames before `f_on`; the haze is real volume light and costs render
+  time (about 2x per frame while it is on) - keep it to the finale. It needs a dark stage: dim the other lights.
+- Played straight, the change itself is a gag (a wall falls away in the middle of a serious line); see
+  `animated-3d-film/references/gags.md` for the deadpan spoof style.
+
 ## Props and sets (stage_props, stage_sets)
 
 `P.palette()` creates the shared materials (the office calls it). Props: `room, window, desk, shelf, plant, lamp,

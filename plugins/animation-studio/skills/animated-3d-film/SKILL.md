@@ -53,6 +53,10 @@ Needs Blender 4.2+ (config key `blender`), ffmpeg, Rhubarb; a graphics card make
    running detail, the last picture. Give every figure a body language (how it stands, what it does when it doubts).
 3. Plan a **light arc**: the time of day per clip (`mood`: golden → dusk → night → dawn, or what the story needs).
    Plan **few, long shots** with real close-ups and cutaways instead of many short ones.
+   Room changes can happen **as a theatre set change in view** instead of a cut (walls fly out, furniture rolls
+   off, a show stage rolls in, stagehands cross, a follow spot) and a finale can get a **concert light show** -
+   stage-3d `stage_theatre.py`. For a spoof / deadpan gag film read [references/gags.md](references/gags.md)
+   and plan the gags per clip (foreground / background / sound-or-sign, running gags with plant and payoff).
 4. Write the clip list: name, length in frames (24 fps), what happens, the lines spoken. Show it to the user in
    one short block when they are around. `film3d.py clip <folder> c02_plan --frames 240 --about "..." [--xfade 8]`
    adds each clip (and its scene file).

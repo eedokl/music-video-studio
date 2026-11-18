@@ -6,8 +6,8 @@ import subprocess
 import time
 from pathlib import Path
 
-from common import (Test, audio_samples, expect, expect_film, first_loud, full, need, read_json, script, tool,
-                    write_json)
+from common import (Test, audio_samples, expect, expect_film, first_loud, frame_colours, full, need, read_json,
+                    script, tool, write_json)
 
 FILM3D = script("animated-3d-film", "film3d.py")
 RUN = script("stage-3d", "stage_run.py")
@@ -232,7 +232,58 @@ def run_actors(ctx):
              f"shoes at most {deep} cm below the floor, no hand in the table; unknown actor refused")
 
 
-TESTS = [Test("animated-3d-film-actors", run_actors, about='"figures": "rigify": a generated Rigify actor plays a toy '
+THEATRE_SCENE = '''import stage_actor as K
+import stage_sets as sets
+import stage_theatre as T
+
+FRAMES = 64
+
+
+def build(S):
+    R = sets.office(S, mood="golden")
+    cast = K.cast(S, {"mo": "bear", "kit": "cat"})
+    cast["mo"].at(1, -0.5, -0.9, 0, ease="hold")
+    cast["kit"].at(1, 0.5, -0.9, 0, ease="hold")
+    B = T.show_stage(S)
+    ch = T.set_change(S, R, "room", T.stage_change(S, B))
+    ch.state(1, "room")
+    w = ch.change(4, "stage", frames=30, follow=cast["mo"], crew=1)
+    T.Curtain(S, width=3.0, height=2.0, y=-2.4).state(1, True).close(w["lit"], 8).open(w["lit"] + 10, 8)
+    T.light_show(S, 46, list(range(46, 64, 6)), ["#FF2E7E", "#2EC5FF"], fly_in=10)
+    S.shot(1, (0.0, -6.2, 1.5), (0.0, 0.2, 1.0), lens=28, fstop=8)
+'''
+
+
+def run_theatre(ctx):
+    """theatre machinery: an office changes into a show stage in view (light down, follow spot, a stagehand, pieces
+    fly and roll away, the stage rolls in), a curtain closes and opens, a light show in haze"""
+    need("blender", "ffmpeg")
+    d = ctx.dir / "theatre"
+    ctx.uv(FILM3D, "new", d, "--title", "E2E theatre", "--seed", "7", "--cast", "mo:bear,kit:cat", "--size", "640x360")
+    P = read_json(d / "project.json")
+    P["clips"][0]["frames"] = 64
+    P["look"] = "none"
+    write_json(d / "project.json", P)
+    (d / "scenes" / "c01_opening.py").write_text(THEATRE_SCENE, encoding="utf-8")
+    ctx.uv(RUN, "clip", d, "c01_opening", "--stills", "1,14,46,58", timeout=900)
+    st = d / "out" / "c01_opening" / "stills_draft"
+    lum = {}
+    for f in (1, 14, 46, 58):
+        png = st / f"f_{f:04d}.png"
+        expect(png.exists(), f"still {f} missing")
+        c = frame_colours(png)[0]
+        lum[f] = sum(c) / 3
+    expect(lum[14] < 0.6 * lum[1], f"the light did not go down for the change: {lum[1]:.0f} -> {lum[14]:.0f}")
+    expect(abs(lum[46] - lum[1]) > 4 or (st / "f_0046.png").read_bytes() != (st / "f_0001.png").read_bytes(),
+           "the stage looks like the office")
+    expect((st / "f_0058.png").read_bytes() != (st / "f_0046.png").read_bytes(), "the light show changed nothing")
+    ctx.note(f"brightness room {lum[1]:.0f} -> change {lum[14]:.0f} -> stage {lum[46]:.0f} -> light show "
+             f"{lum[58]:.0f}")
+
+
+TESTS = [Test("animated-3d-film-theatre", run_theatre, about="stage_theatre: set change in view (office -> show "
+                                                              "stage), curtain, light show in haze"),
+         Test("animated-3d-film-actors", run_actors, about='"figures": "rigify": a generated Rigify actor plays a toy '
                                                            "scene; feet planted, arm off the table, contact.json"),
          Test("animated-3d-film-makes", run_makes, about="project.json figures: every make (ragdoll ... marionette, toy) renders and they "
                                                          "differ, an unknown make is refused"),
