@@ -119,17 +119,43 @@ def grade_cinema(img, rng, s=1.0):
     return np.clip(img, 0, 1)
 
 
+def grade_video(src, out, look, seed=7):
+    """the "cinema" / "ad" look of the film on another video (e.g. the end credits); the sound is copied"""
+    ff = config.need("ffmpeg")
+    probe = subprocess.run([ff, "-hide_banner", "-i", str(src)], capture_output=True, text=True, errors="replace").stderr
+    import re
+    w, h = (int(x) for x in re.search(r"Video:.*?, (\d{2,5})x(\d{2,5})", probe).groups())
+    dec = subprocess.Popen([ff, "-v", "error", "-i", str(src), "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
+                           stdout=subprocess.PIPE)
+    enc = subprocess.Popen([ff, "-y", "-v", "error", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{w}x{h}",
+                            "-r", str(FPS), "-i", "-", "-i", str(src), "-map", "0:v", "-map", "1:a?", "-c:v", "libx264",
+                            "-preset", "medium", "-crf", "16", "-pix_fmt", "yuv420p", "-c:a", "copy", "-movflags",
+                            "+faststart", str(out)], stdin=subprocess.PIPE)
+    rng, n = np.random.default_rng(seed), w * h * 3
+    while True:
+        buf = dec.stdout.read(n)
+        if len(buf) < n:
+            break
+        img = np.frombuffer(buf, np.uint8).reshape(h, w, 3).astype(np.float32) / 255
+        enc.stdin.write((grade(img, rng, cinema=look == "cinema") * 255 + 0.5).astype(np.uint8).tobytes())
+    enc.stdin.close()
+    dec.wait()
+    if enc.wait() != 0:
+        raise SystemExit(f"grading {src} failed")
+    return out
+
+
 def sound_args(F, clips, total):
     """ffmpeg input + output arguments for the sound of these clips ([] , [] = silent film)"""
     au = F.get("audio")
     if not au or not (F.dir / au).exists():
         return [], []
-    names = [c[0] for c in F.clips]
+    names = [c[0] for c in F.film_clips]
     idx = [names.index(c[0]) for c in clips]
     if idx != list(range(idx[0], idx[0] + len(idx))):
         print("   the chosen clips do not follow each other - this part is cut without sound")
         return [], []
-    start = sum(c[1] for c in F.clips[:idx[0]]) / FPS
+    start = sum(c[1] for c in F.film_clips[:idx[0]]) / FPS
     return (["-ss", f"{start:.4f}", "-i", str(F.dir / au)],
             ["-map", "0:v:0", "-map", "1:a:0", "-af", "apad", "-c:a", "aac", "-b:a", "256k", "-t", f"{total / FPS:.4f}"])
 
@@ -219,7 +245,7 @@ def main():
     only = a.clips.split(",") if a.clips else None
     for c in only or []:
         F.clip(c)
-    clips = [c for c in F.clips if not only or c[0] in only]
+    clips = [c for c in F.film_clips if not only or c[0] in only]
     if not clips:
         raise SystemExit("project.json has no clips")
     look = a.look or F.get("look") or "cinema"

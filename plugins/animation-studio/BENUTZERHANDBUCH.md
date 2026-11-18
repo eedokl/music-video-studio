@@ -398,6 +398,9 @@ Python-Szene geschrieben: nichts wird von Hand modelliert, alles lässt sich än
   Figur), dazu ein Vorhang und als Finale eine **Lichtshow** mit Moving Heads im Bühnennebel – sagen Sie z. B.
   „der Raumwechsel als Theater-Umbau“. Für Gags im Stil von „Die nackte Kanone“ (todernst gespielt, sehr dicht,
   Running Gags) kennt der Skill eine eigene Anleitung.
+  Ein **Abspann wie im Kinofilm** gehört dazu, wenn Sie möchten: Rolltitel in Blöcken, dazwischen Extra-Szenen,
+  daneben **Outtakes vom Dreh** (Filmklappe, eine Einstellung geht schief, die Figuren lachen und schauen in die
+  Kamera) und eine Szene nach dem Abspann – sagen Sie z. B. „mit Abspann und Outtakes“.
   Ein fertiger Film lässt sich ohne Änderung der Szenen in einer anderen Machart neu rendern.
 - **Ton?** Gesprochene Zeilen (Stimmen-Baustein), eigene Aufnahmen, eine fertige Tonspur, Musik.
 - **Look?** Standard: elfenbeinfarbene Wände, dunkles Nussholz, ein korallenroter Akzent, tiefes goldenes Licht und

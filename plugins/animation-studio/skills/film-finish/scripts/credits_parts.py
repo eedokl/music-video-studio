@@ -383,7 +383,7 @@ class Gag:
         fps_c = float(it.get("fps", self.fps))
         k = int((t - it.get("at", 0)) * fps_c + 1e-6)
         sc = float(it.get("scale", 1.0))
-        frames = self.A.clip(it["frames"])
+        frames = self.A.clip(it["frames"], (W, H) if it.get("fit") else None, None, float(it.get("from", 0)))
         if k >= len(frames):
             if not it.get("hold_last"):
                 return

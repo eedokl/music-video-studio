@@ -56,6 +56,10 @@ def nframes(sec, fps):
 
 
 # ============================================================ sources: figures, sets, clips, sounds
+QUALITIES = ("final", "film", "preview", "draft")       # 3D clip frame folders, best first
+CLIP_QUALITY = [None]                                   # credits.py --clip-quality: wanted first
+
+
 class Assets:
     def __init__(self, P):
         self.P = P
@@ -153,9 +157,15 @@ class Assets:
 
     def _load_clip(self, rel, size, n, start):
         p = self.P.path(rel)
+        if p.name in QUALITIES:                    # 3D clip frames out/<clip>/<q>: the wanted quality, else the best
+            for q in [CLIP_QUALITY[0], *QUALITIES]:
+                if q and (p.parent / q).is_dir() and any((p.parent / q).glob("f_*.png")):
+                    p = p.parent / q
+                    break
         files = []
         if p.is_dir():
             files = sorted(f for f in p.iterdir() if f.suffix.lower() in (".png", ".jpg", ".webp"))
+            files = files[int(round(start * 24)):]                     # a frame folder starts at "from" seconds too
         elif "%" in str(p) or "*" in str(p):
             files = sorted(Path(f) for f in glob.glob(re.sub(r"%0?\d*d", "*", str(p))))
         if files:

@@ -26,7 +26,9 @@ project.json "credits" (all optional except "text"):
             one window per ~"every" s of text (one after another); auto = seeded picks spread over the film (dark
             frames skipped); "seconds" = excerpt length (looped), default = the window's time on screen;
             outtakes = rejected takes the project kept: a video, a frame folder or a still
-            ({"path": "outtakes/take2.mp4", "label": "Take 2"}); "auto" looks into <project>/outtakes/.
+            ({"path": "outtakes/take2.mp4", "label": "Take 2", "from": 0.0, "sounds": [{"at": 0.55, "sfx": ...}]});
+            "auto" looks into <project>/outtakes/. 3D films: "out/<clip>/film" = the rendered frames of a clip (the
+            quality falls back to preview / draft); "label": "" = no label (a film excerpt from raw frames).
   "music": {"stems": ["stems/*.wav"] | "file": "x.wav", "from": 46.0, "text": 0.22, "gag": 0.6, "post": 0.0}
             default: instrumental project stems, else Demucs no_vocals (cache/sep), else song minus the vocal stems
             (if they cancel), else Demucs is run (song-analysis separate_vocals.py, GPU lock; "demucs": false = no),
@@ -84,6 +86,9 @@ from encode import place  # noqa: E402
 from song_project import Project  # noqa: E402
 from credits_media import W, H, Assets, nframes, sound_track, video_frames  # noqa: E402
 from credits_parts import LAYOUTS, Gag, Roll, window_loader  # noqa: E402
+
+
+APPEND_TO = {}
 
 
 # ============================================================ planning: layout, parts, timeline, scene windows
@@ -174,7 +179,10 @@ def plan_windows(P, C, A, n_parts, part_n, rng, layout):
         part = []
         for j in range(per if specs else 0):
             s = specs[(k * per + j) % len(specs)]
-            part.append((window_loader(s, film, A, size, n), None if "film" in s else s["outtake"].get("label", "Outtake")))
+            snd = [] if "film" in s else [(float(x.get("at", 0)) - float(s["outtake"].get("from", 0)), x["sfx"],
+                                           float(x.get("level", 1.0))) for x in s["outtake"].get("sounds", [])]
+            part.append((window_loader(s, film, A, size, n),
+                         None if "film" in s else s["outtake"].get("label", "Outtake"), snd))
             print(f"  window {k + 1}.{j + 1}: " + (f"film {s['film']:.2f} s" if "film" in s
                                                     else f"outtake {s['outtake']['path']}"))
         wins.append(part)
@@ -203,6 +211,14 @@ def render_picture(plan, roll, wins, A, fps, pic, max_f=None):
         frames, g = part_frames(kind, x, roll, wins, A, fps)
         if g is not None:
             events += [(a + e[0],) + tuple(e[1:]) for e in g.sounds()]
+        if kind == "text" and wins[x]:                 # sounds of the outtakes in the scene windows
+            slot = roll.part_n / len(wins[x])
+            for j, w in enumerate(wins[x]):
+                w0, w1 = int(round(j * slot)), int(round((j + 1) * slot))
+                for at, sfx, lvl in (w[2] if len(w) > 2 else []):
+                    f = w0 + nframes(at, fps) if at >= 0 else -1
+                    if w0 <= f < w1:
+                        events.append((a + f, sfx, lvl, 6000, False))
         for img in frames:
             if max_f is not None and fno >= max_f:
                 break
@@ -228,9 +244,13 @@ def mux(P, pic, wav, total, fps, raw):
 
 def finish(P, C, A, raw, total, fps, layout, segments):
     """The film look on raw -> credits.mp4, timeline.json, decode check, contact sheet."""
-    import build as film_build                   # the same look step as the film
     tmp = A.dir / "credits_tmp.mp4"
-    film_build.look(P, raw, tmp)
+    if P.get("look", "cinema" if P.get("kind") == "film3d" else "standard") in ("cinema", "ad"):
+        from clip_film import grade_video        # 3D films: the per-frame look of clip_film.py
+        grade_video(raw, tmp, P.get("look", "cinema"))
+    else:
+        import build as film_build               # the same look step as the film
+        film_build.look(P, raw, tmp)
     out = place(tmp, P.dir / C.get("out", "credits.mp4"))
     (A.dir / "timeline.json").write_text(json.dumps({"fps": fps, "frames": total, "layout": layout,
                                                      "segments": segments}, indent=1), encoding="utf-8")
@@ -266,13 +286,18 @@ def build(P, quick_to=None, append=False):
 
 def append_to_film(P, credits):
     C = P.get("credits")
-    film = P.path(C.get("append_to", "film.mp4"))
+    film = P.path(APPEND_TO.get("film") or C.get("append_to", "film.mp4"))
     if not film.exists():
         raise SystemExit(f"{film.name} missing - build the film first")
     tmp = P.cache / "credits" / "film_with_credits_tmp.mp4"
-    fc = (f"[0:v]fps={P.fps},format=yuv420p,setsar=1[v0];[1:v]fps={P.fps},format=yuv420p,setsar=1[v1];"
-          "[0:a]aresample=48000,aformat=channel_layouts=stereo[a0];[1:a]aresample=48000,aformat=channel_layouts=stereo[a1];"
-          "[v0][a0][v1][a1]concat=n=2:v=1:a=1[v][a]")
+    from media import has_audio
+    silent = [k for k, f in enumerate((film, credits)) if not has_audio(f)]     # a silent film: add silence
+    au = "".join(f"[{k}:a]aresample=48000,aformat=channel_layouts=stereo[a{k}];" if k not in silent else
+                 f"anullsrc=r=48000:cl=stereo,atrim=duration={duration(f):.3f}[a{k}];"
+                 for k, f in enumerate((film, credits)))
+    fc = (f"[0:v]fps={P.fps},format=yuv420p,setsar=1[f0];[1:v]fps={P.fps},format=yuv420p,setsar=1[c1];"
+          "[c1][f0]scale2ref=flags=lanczos[v1][v0];"                  # the credits in the size of the film (previews)
+          f"{au}[v0][a0][v1][a1]concat=n=2:v=1:a=1[v][a]")
     subprocess.run([ffmpeg(), "-y", "-v", "error", "-i", str(film), "-i", str(credits), "-filter_complex", fc,
                     "-map", "[v]", "-map", "[a]", *h264(), "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
                     str(tmp)], check=True)
@@ -461,7 +486,14 @@ def main():
     ap.add_argument("--force", action="store_true", help="--draft overwrites existing credits text/gags")
     ap.add_argument("--append", action="store_true", help="also write film_with_credits.mp4 (film.mp4 untouched)")
     ap.add_argument("--to", type=float, help="only the first seconds (quick test)")
+    ap.add_argument("--film", help="the film to append to (default: credits.append_to or film.mp4)")
+    ap.add_argument("--clip-quality", help="3D films: take the clip frames out/<clip>/<q> in this quality first")
     a = ap.parse_args()
+    if a.film:
+        APPEND_TO["film"] = a.film
+    if a.clip_quality:
+        import credits_media
+        credits_media.CLIP_QUALITY[0] = a.clip_quality
     sys.stdout.reconfigure(line_buffering=True)
     P = Project(a.project)
     P.check("film-finish")                 # project.json validated before any long step

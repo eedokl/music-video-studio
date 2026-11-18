@@ -4,7 +4,8 @@ clip_film.py and the animated-3d-film skill. Standard library only.
 project.json:
   "title": "...", "kind": "film3d", "fps": 24 (fixed), "size": [1920, 1080], "seed": 4711, "ideas": [...],
   "clips": [{"name": "c01_intro", "frames": 240, "xfade": 0}, ...]   the edit, in order; scenes/<name>.py builds a
-            clip; "xfade" = frames of the dissolve INTO the clip (0 = cut)
+            clip; "xfade" = frames of the dissolve INTO the clip (0 = cut); "part": "credits" + "credits": "outtake" |
+            "extra" = a clip of the end credits (rendered with the film, not cut into it; film-finish credits.py)
   "audio": "sound/film.wav" | null     the finished sound track (voices, music, effects) laid under the whole film
   "lines": [{"id": "l01", "who": "mo", "text": "Hello!", "audio": "speech/l01.wav"}]   spoken lines (lip sync)
   "voices": {...}, "language": "en"    for the voice block
@@ -58,8 +59,20 @@ class Film:
 
     @property
     def clips(self):
-        """[(name, frames, xfade)] in film order"""
+        """[(name, frames, xfade)] in film order - all clips, also those of the end credits"""
         return [(c["name"], int(c["frames"]), int(c.get("xfade", 0))) for c in self.p.get("clips", [])]
+
+    @property
+    def film_clips(self):
+        """the clips of the film itself (without "part": "credits": outtakes and extra scenes of the credits)"""
+        return [(c["name"], int(c["frames"]), int(c.get("xfade", 0))) for c in self.p.get("clips", [])
+                if c.get("part") != "credits"]
+
+    @property
+    def credit_clips(self):
+        """[(name, frames, kind)] of the end credits: kind "outtake" or "extra" (project.json clips[].credits)"""
+        return [(c["name"], int(c["frames"]), c.get("credits", "extra")) for c in self.p.get("clips", [])
+                if c.get("part") == "credits"]
 
     def clip(self, name):
         for c in self.clips:

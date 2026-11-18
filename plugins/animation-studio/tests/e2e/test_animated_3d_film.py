@@ -281,7 +281,47 @@ def run_theatre(ctx):
              f"{lum[58]:.0f}")
 
 
-TESTS = [Test("animated-3d-film-theatre", run_theatre, about="stage_theatre: set change in view (office -> show "
+def run_credits(ctx):
+    """end credits of a 3D film: an outtake clip from the template (clapperboard, breaking up) and an extra scene are
+    rendered with the film but not cut into it; film3d.py credits --draft + preview -> credits with windows, gag and
+    the clap sound; film_draft_with_credits = film + credits"""
+    need("blender", "ffmpeg")
+    d = ctx.dir / "credits"
+    ctx.uv(FILM3D, "new", d, "--title", "E2E credits", "--seed", "3", "--cast", "mo:bear,kit:cat", "--size", "640x360")
+    P = read_json(d / "project.json")
+    P["clips"][0]["frames"] = 12
+    P["look"] = "none"
+    write_json(d / "project.json", P)
+    (d / "scenes" / "c01_opening.py").write_text(SCENE.format(frames=12, mood="golden", cut=8, say="mo.babble(1, 12)"),
+                                                 encoding="utf-8")
+    ctx.uv(FILM3D, "clip", d, "outtake_01", "--frames", "40", "--credits", "outtake", "--about", "it goes wrong")
+    ctx.uv(FILM3D, "clip", d, "extra_bow", "--frames", "12", "--credits", "extra", "--about", "a bow")
+    o = (d / "scenes" / "outtake_01.py").read_text(encoding="utf-8")
+    expect("O.take(" in o and "crack_up" in o, "the outtake template has no clapperboard / crack_up")
+    ctx.uv(FILM3D, "credits", d, "--draft")
+    P = read_json(d / "project.json")
+    C = P["credits"]
+    C["speed"] = 240.0                                        # a short roll for the test
+    write_json(d / "project.json", P)
+    expect(len(C["gags"]) == 1 and C["gags"][0]["items"][0]["frames"] == "out/extra_bow/film",
+           f"draft gags: {C['gags']}")
+    outt = [w for w in C["windows"]["outtakes"] if w["label"] == "Outtake"]
+    expect(len(outt) == 1 and outt[0]["sounds"], f"draft windows: {C['windows']}")
+    out = ctx.uv(FILM3D, "preview", d, timeout=1500)
+    film, cr, both = (d / "preview" / x for x in ("film_draft.mp4", "credits_draft.mp4", "film_draft_with_credits.mp4"))
+    for f in (film, cr, both):
+        expect(f.exists(), f"{f.name} missing: " + out.stdout[-600:])
+    nf, nc, nb = (len(frame_colours(f)) for f in (film, cr, both))
+    expect(nf == 12, f"the film has {nf} frames - the credit clips were cut into it")
+    expect(abs(nb - (nf + nc)) <= 2, f"film {nf} + credits {nc} != {nb}")
+    expect((d / "out" / "outtake_01" / "draft" / "f_0040.png").exists(), "the outtake was not rendered")
+    ctx.note(f"film {nf} frames (credit clips not cut in), credits {nc} frames with 1 extra scene + outtake window, "
+             f"film with credits {nb}")
+
+
+TESTS = [Test("animated-3d-film-credits", run_credits, about="credit clips (outtake template, extra scene) rendered "
+                                                              "apart from the film; draft + preview -> credits"),
+         Test("animated-3d-film-theatre", run_theatre, about="stage_theatre: set change in view (office -> show "
                                                               "stage), curtain, light show in haze"),
          Test("animated-3d-film-actors", run_actors, about='"figures": "rigify": a generated Rigify actor plays a toy '
                                                            "scene; feet planted, arm off the table, contact.json"),

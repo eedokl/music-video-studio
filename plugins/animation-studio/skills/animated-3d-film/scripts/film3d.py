@@ -10,8 +10,10 @@ whole-film preview and the film render.
 Usage (uv run film3d.py ...):
   film3d.py new <folder> --title "The Big Plan" [--cast mo:bear,kit:cat,bea:bunny] [--seed 4711] [--size 1920x1080]
       -> <folder>/project.json and scenes/c01_opening.py (a working template scene)
-  film3d.py clip <folder> <name> --frames 240 [--about "what happens"] [--xfade 8]
-      -> adds the clip to project.json (end of the film) and writes scenes/<name>.py from the template
+  film3d.py clip <folder> <name> --frames 240 [--about "what happens"] [--xfade 8] [--credits outtake|extra]
+      -> adds the clip to project.json (end of the film) and writes scenes/<name>.py from the template;
+         --credits: a clip of the end credits (an outtake with clapperboard, or an extra scene) - rendered with
+         the film, not cut into it
   film3d.py idea <folder> "Kit hides the plan under the mug" [--by user|ai] [--where c02_plan]
   film3d.py line <folder> <id> <who> "text" [--audio speech/<id>.wav] [--at c02_plan:30]
       add / change a spoken line; --at places a voice-over (narrator, no say() in a scene) on a clip frame.
@@ -29,6 +31,12 @@ Usage (uv run film3d.py ...):
       Frames are resumable; a clip whose scene, project settings (size, palette, lips, seed, cast) or spoken lines
       changed since its frames is rendered again (out/<clip>/<q>/source.json).
   film3d.py status <folder>                        rendered frames per clip, in both qualities
+  film3d.py credits <folder> --draft [--force]     first end credits into project.json "credits": the text from
+      the cast / actors and the tools, the extra scenes as gags between the text blocks, the outtakes and seeded
+      excerpts of the film clips in windows beside the text, the film's sound as the music bed
+  film3d.py credits <folder> [--q draft|film] [--to s]   renders the credit clips, then the credits (film-finish
+      credits.py) -> credits.mp4 + film_with_credits.mp4 (draft: preview/credits_draft.mp4 ...). preview / render
+      do this by themselves once "credits" is set.
 """
 import argparse
 import json
@@ -49,6 +57,7 @@ HERE = Path(__file__).resolve().parent
 STAGE = _studio.skill_dir("stage-3d") / "scripts"
 FINISH = _studio.skill_dir("film-finish") / "scripts"
 TEMPLATE = HERE.parent / "assets" / "template" / "scene.py"
+OUTTAKE = HERE.parent / "assets" / "template" / "outtake.py"
 SOUND = "sound/film.wav"                                  # the mix film3d.py makes (a hand-set "audio" is kept)
 LOOKS = ("bear", "cat", "bunny")                          # the bundled toys (stage-3d stage_actor.LOOKS, Blender only)
 
@@ -93,13 +102,13 @@ def run(script, *args):
         sys.exit(f"step failed: {script.name}")
 
 
-def scene_file(F, name, frames, about, cast):
+def scene_file(F, name, frames, about, cast, template=None):
     f = F.dir / "scenes" / f"{name}.py"
     if f.exists():
         return f
     f.parent.mkdir(parents=True, exist_ok=True)
     (f.parent / "__init__.py").touch()
-    f.write_text(TEMPLATE.read_text(encoding="utf-8").replace("__CLIP__", name).replace("__ABOUT__", about or "...")
+    f.write_text((template or TEMPLATE).read_text(encoding="utf-8").replace("__CLIP__", name).replace("__ABOUT__", about or "...")
                  .replace("__FRAMES__", str(frames)).replace("__CAST__", json.dumps(cast)), encoding="utf-8")
     return f
 
@@ -141,9 +150,11 @@ def cmd_clip(a):
         c["about"] = a.about
     if a.xfade:
         c["xfade"] = a.xfade
+    if a.credits:
+        c["part"], c["credits"] = "credits", a.credits
     F.p.setdefault("clips", []).append(c)
     F.save()
-    print(scene_file(F, a.name, a.frames, a.about, cast_of(F)))
+    print(scene_file(F, a.name, a.frames, a.about, cast_of(F), OUTTAKE if a.credits == "outtake" else None))
 
 
 def cmd_idea(a):
@@ -223,7 +234,7 @@ def sound_plan(F):
     (out/<clip>/build.json "said") or on its "at" frame (voice-over)."""
     lines = {ln["id"]: ln for ln in F.get("lines") or []}
     places, start, unbuilt, starts = [], 0, [], {}
-    for name, n, _ in F.clips:
+    for name, n, _ in F.film_clips:
         starts[name] = start
         b = F.out(name) / "build.json"
         if not b.exists():
@@ -336,6 +347,106 @@ def build(a, q):
     run(STAGE / "stage_run.py", "film", F.dir, "--q", q, *clips)
     refresh_sound(a.folder)
     run(FINISH / "clip_film.py", F.dir, "--q", q, *clips)
+    if F.get("credits") and not a.clips:
+        credits_build(F, q)
+
+
+def credits_paths(F, q):
+    """(film to append to, credits out, film with credits) for a quality"""
+    if q == "film":
+        return "film.mp4", "credits.mp4", "film_with_credits.mp4"
+    return f"preview/film_{q}.mp4", f"preview/credits_{q}.mp4", f"preview/film_{q}_with_credits.mp4"
+
+
+def credits_build(F, q, to=None):
+    film, out, both = credits_paths(F, q)
+    cc = [c for c, _, _ in F.credit_clips]
+    if cc:
+        run(STAGE / "stage_run.py", "film", F.dir, "--q", q, "--clips", ",".join(cc))
+    C = F.p["credits"]
+    keep = C.get("out")
+    C["out"] = out
+    F.save()
+    try:
+        run(FINISH / "credits.py", "--project", F.dir, "--film", film, "--clip-quality", q,
+            *(["--to", to] if to else ["--append"]))
+    finally:
+        F.p = Film(F.dir).p
+        if keep:
+            F.p["credits"]["out"] = keep
+        else:
+            F.p["credits"].pop("out", None)
+        F.save()
+    made = F.dir / "film_with_credits.mp4"
+    if not to and q != "film" and made.exists():
+        os.replace(made, F.dir / both)
+    print(f"credits -> {out}" + ("" if to else f", {both}"))
+
+
+def scene_sfx(F, clip):
+    """the module literal SFX = [(frame, sound, level)] of scenes/<clip>.py -> credits sounds [{"at", "sfx", "level"}]"""
+    import ast
+    f = F.dir / "scenes" / f"{clip}.py"
+    try:
+        for node in ast.parse(f.read_text(encoding="utf-8")).body:
+            if isinstance(node, ast.Assign) and any(getattr(t, "id", "") == "SFX" for t in node.targets):
+                return [{"at": round((fr - 1) / FPS, 3), "sfx": sid, "level": lvl}
+                        for fr, sid, lvl in ast.literal_eval(node.value)]
+    except (OSError, SyntaxError, ValueError, TypeError):
+        pass
+    return []
+
+
+def credits_draft(F, force=False):
+    """first end credits of a 3D film into project.json "credits" (see the module docstring)"""
+    C = F.get("credits") or {}
+    if C.get("text") and not force:
+        sys.exit('project.json has "credits" already - --force writes a new draft')
+    rng = creative.rng(F, "credits:draft")
+    cast = F.get("cast") or {}
+    actors = F.get("actors") or {}
+    real = F.get("figures") == "rigify"
+    text = [["head", str(F.get("title", "THE END")).upper()], ["sub", "a 3D film"], ["gap"], ["head2", "Cast"]]
+    for n, look in cast.items():
+        who = actors.get(n, n) if real else (look if isinstance(look, str) else look.get("look", "toy"))
+        text.append(["role", n.capitalize(), str(who).capitalize()])
+    text += [["gap"], ["head2", "Made with"], ["role", "Stage, light, acting"], ["name", "Blender (Cycles)"],
+             ["role", "Lip sync"], ["name", "Rhubarb Lip Sync"]]
+    if real:
+        text += [["role", "Actors"], ["name", "Rigify figures"]]
+    text += [["role", "Directed and animated by"], ["name", "Claude"], ["gap"], ["sub", "THE END"]]
+    extras = [(c, n) for c, n, k in F.credit_clips if k != "outtake"]
+    outs = [(c, n) for c, n, k in F.credit_clips if k == "outtake"]
+    post = extras.pop() if len(extras) > 2 else None
+    gags = [{"name": c, "duration": round(n / FPS, 2), "set": {"color": "#000000"}, "sounds": scene_sfx(F, c),
+             "items": [{"type": "clip", "frames": f"out/{c}/film", "fit": True}]} for c, n in extras]
+    wins = []
+    for name, n, _ in F.film_clips:                            # seeded excerpts of the film (raw frames: one look)
+        wins.append({"path": f"out/{name}/film", "from": round(rng.uniform(0, max(0.0, n / FPS - 4.0)), 2),
+                     "label": ""})
+    for c, _ in outs:
+        wins.append({"path": f"out/{c}/film", "label": "Outtake", "sounds": scene_sfx(F, c)})
+    C.update(text=text, gags=gags, windows={"film": "none", "outtakes": wins, "every": 8},
+             music={"file": F.get("audio") or "sound/credits_music.wav", "from": 0.0}, gag_order="as_listed")
+    if post:
+        c, n = post
+        C["post"] = {"name": c, "duration": round(n / FPS, 2), "set": {"color": "#000000"}, "sounds": scene_sfx(F, c),
+                     "items": [{"type": "clip", "frames": f"out/{c}/film", "fit": True}]}
+    F.p["credits"] = C
+    F.save()
+    print(f'credits draft: {len(text)} text lines, {len(gags)} extra scenes as gags, {len(outs)} outtakes + '
+          f'{len(F.film_clips)} film excerpts in windows{", post-credits " + post[0] if post else ""} - edit '
+          'project.json "credits" (text: the real names and tools), then film3d.py credits <folder>')
+
+
+def cmd_credits(a):
+    F = Film(a.folder)
+    if a.draft:
+        return credits_draft(F, a.force)
+    F.check()
+    if not F.get("credits"):
+        sys.exit('project.json has no "credits" - film3d.py credits <folder> --draft first')
+    credits_build(F, a.q, a.to)
 
 
 def cmd_status(a):
@@ -363,6 +474,8 @@ def main():
     c.add_argument("--frames", type=int, required=True)
     c.add_argument("--about")
     c.add_argument("--xfade", type=int, default=0)
+    c.add_argument("--credits", choices=("outtake", "extra"),
+                   help="a clip of the end credits: an outtake (clapperboard template) or an extra scene")
     i = sub.add_parser("idea")
     i.add_argument("folder")
     i.add_argument("text")
@@ -391,13 +504,19 @@ def main():
         b.add_argument("--clips")
     st = sub.add_parser("status")
     st.add_argument("folder")
+    cr = sub.add_parser("credits")
+    cr.add_argument("folder")
+    cr.add_argument("--draft", action="store_true")
+    cr.add_argument("--force", action="store_true")
+    cr.add_argument("--q", default="draft", choices=("draft", "film"))
+    cr.add_argument("--to", type=float)
     a = ap.parse_args()
     if a.cmd == "preview":
         return build(a, "draft")
     if a.cmd == "render":
         return build(a, "film")
     return {"new": cmd_new, "clip": cmd_clip, "idea": cmd_idea, "line": cmd_line, "speak": cmd_speak,
-            "sound": cmd_sound, "status": cmd_status}[a.cmd](a)
+            "sound": cmd_sound, "status": cmd_status, "credits": cmd_credits}[a.cmd](a)
 
 
 if __name__ == "__main__":

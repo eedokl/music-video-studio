@@ -111,6 +111,26 @@ seed, cast) or spoken lines changed is rendered again by the next `preview` / `r
 project.json (the build stops otherwise). By hand: `stage_run.py clip <folder> <clip> --range a b --q draft
 --overwrite`, then cut again (`uv run "${CLAUDE_PLUGIN_ROOT}/skills/film-finish/scripts/clip_film.py" <folder> --q draft`).
 
+## 6b. End credits with outtakes (when the film gets credits)
+
+Credits like an animated feature: the rolling text in blocks, **extra scenes** full screen between the blocks
+(a last gag, an epilogue), **outtakes "from the shoot"** in windows beside the text (a clapperboard, a shot of the
+film goes wrong, the actors break up laughing, look into the lens, a stagehand walks in) and an optional
+**post-credits scene** after black.
+1. Add the clips of the credits: `film3d.py clip <folder> outtake_01 --frames 120 --credits outtake` (scene from
+   the outtake template: `stage_outtake.take()` = camera + clapperboard, `crack_up()`, `to_camera()`; keep the
+   actions big - the take plays in a window) and `film3d.py clip <folder> extra_epilogue --frames 168 --credits
+   extra`. With three or more extra scenes the last one becomes the post-credits scene. Each scene module can
+   list its sounds: `SFX = [(frame, "earshot id or file", level)]`. These clips are rendered with the film but
+   not cut into it.
+2. `film3d.py credits <folder> --draft` writes project.json `"credits"`: the text (cast, actors, tools), the extra
+   scenes as gags, the outtakes plus seeded excerpts of the film clips as windows, the sounds, the music bed
+   (`"music": {"file": ...}`, default the film's sound - give it a real instrumental when there is one). Rewrite
+   the text with the real names and credits (film-finish BLOCK.md "credits.py" has every key).
+3. `preview` / `render` build the credits by themselves from then on (`preview/credits_draft.mp4` +
+   `preview/film_draft_with_credits.mp4`, or `credits.mp4` + `film_with_credits.mp4`); alone:
+   `film3d.py credits <folder> [--q draft|film] [--to 20]`. Check `credits_sheet.png`.
+
 ## 7. Film render and finish
 
 `film3d.py render <folder>` – film quality for every clip (resumable: stop and start again any time), then the cut:
