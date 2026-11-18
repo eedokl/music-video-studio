@@ -123,6 +123,40 @@ built figures; scenes, poses and lip sync stay as they are.
 - Check both makes on close-up stills first (`stage_run.py clip ... --stills`): mouth cut height, eyes behind
   glasses and seams are the places that need a look.
 
+### Realistic actors: Rigify figures in a real world (stage_rig)
+
+project.json `"figures": "rigify"` plays every part with a **Rigify-rigged figure** (a `figur.blend` per actor -
+e.g. from the 3D figure kit) instead of a toy; `"actors": {"mo": "tim", "kit": "claudia"}` casts them (default: the
+actor of the same name, else the project's own actors - or all - in alphabetical order). One actor in any film: `K.cast(S, {"tim":
+{"actor": "tim", "height": 1.05}})`. Actors are looked for in `<project>/actors/<name>/figur.blend`, then in the
+machine-config folder `actors3d` (env `STAGE3D_ACTORS`, several folders separated by `;` / `:`).
+
+- **Same acting API.** A `RigActor` is a `Char`: its invisible joint skeleton is laid out on the rig's proportions
+  and the rig bones copy it, so `pose`, `hands`, `reach`, `look`, `walk`, `hop`, `turn`, `nod`, `take`, `say`,
+  `babble`, `mood` work unchanged, and a finished toy film can be re-rendered with actors. `size`/`height` scale
+  an actor; `body_z0`, `head_z`, `eye_z` come from the rig (camera aims with `face_pos` stay right).
+- **Face**: sliders on the head bone (`stage_rig.FACE`: lids, mouth open/wide/narrow/shut, smile, mouth corners,
+  eyes wide/narrow, brows up, inner brows up/down) take blinks, moods, `brows_set`, `take` and the Rhubarb shapes of
+  `say()` (mixes from `<actor>/mundformen.json`, else `stage_rig.SHAPES`). The values in the file are the rest face;
+  moods add to them (0..2).
+- **Contact, after the bake** (`stage_rig.contact`, automatic): the legs are IK and the **feet stand on the floor**
+  under them (rug, step, stage - a ray down from the ankle): a foot stays put until the body has moved away, then
+  makes a step; while walking the steps follow a gait cycle fitted to the speed (stride 1.5 x leg length, 6..16
+  frames per cycle); lifted feet (hops, sitting) go with the leg; soles stay flat when the body leans. **Arms do
+  not reach through furniture**: hand, finger and sleeve vertices are tested against desks, tables, keyboards,
+  monitors ... (names in `stage_rig.OBSTACLE`, or `stage_rig.obstacle(obj)` / `obstacle(obj, on=False)`); an arm
+  that is in one is turned about the shoulder, up or down - whichever frees it with the smaller angle - and faded
+  in and out. `STAGE3D_CONTACT=0` switches both off (feet then only follow the legs).
+- **Measure it**: `stage_run.py clip <project> <clip> --stills ... --contact` writes `out/<clip>/contact.json`
+  (shoes below the floor, hand points in furniture, per frame) and prints a summary line - check it before a long
+  render, and look at feet and hands on close stills.
+- **Scale**: the bundled sets are built for ~0.85 m toys (table top 0.5 m). Actors of about 1 m (the kit's
+  figures) fit them; tall adults need their own sets - or `height=` - and walking speeds that fit their legs
+  (a 1 m figure walks about 1 m/s; faster reads as running with long strides).
+- `walk()` of an actor adds no leg swing (the feet step by themselves) - only bob, hip sway and arm swing.
+  `hold_prop(obj, side)` puts a prop on the rig's hand bone; `attach()` (on the Char hand joint) works as well.
+- The actor contract (what a `figur.blend` needs): the docstring of `stage_rig.py`.
+
 ## Props and sets (stage_props, stage_sets)
 
 `P.palette()` creates the shared materials (the office calls it). Props: `room, window, desk, shelf, plant, lamp,

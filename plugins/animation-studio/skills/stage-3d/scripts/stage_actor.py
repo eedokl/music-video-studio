@@ -19,7 +19,8 @@ OPEN = {"A": 0.04, "B": 0.3, "C": 0.55, "D": 1.0, "E": 0.7, "F": 0.28, "G": 0.22
 _LINES = None
 LIPS = {"strong": False}    # strong: wider mouth opening while speaking (speech_gain per figure); project.json "lips"
 SAID = []                   # (clip, first frame, last frame, line id, start frame) of every spoken line
-FIGURES = {"style": None}   # the make of the figures: None / "toy" or another of stage_looks.STYLES; project.json "figures"
+FIGURES = {"style": None}   # the make of the figures: None / "toy" or another of stage_looks.STYLES, or "rigify"
+                            # (realistic actors, stage_rig.py); project.json "figures"
 
 
 def lines():
@@ -342,7 +343,7 @@ class Char:
             self.hands(f, d.pop("handR", None), d.pop("handL", None), ease)
         for jn, val in d.items():
             if jn == "drop":
-                self.hip.lch(2).key(f, val * self.body_z0 * 0.8, ease)
+                self.hip.lch(2).key(f, val * getattr(self, "drop_len", self.body_z0) * 0.8, ease)
             elif jn in self.J:
                 self.J[jn].rot(f, *val, ease=ease)
         return self
@@ -747,15 +748,20 @@ class Toy(Char):
 
 
 def cast(S, figures, style=None):
-    """build figures: {"name": "bear" | {"look": "cat", "size": 0.9, "glasses": True} | a Char subclass}.
-    Returns {name: figure}; every figure starts in its rest pose. style: the make of the figures - "toy" (as
-    modelled), "ragdoll", "puppet", "stopmotion", "clay", "paper" or "marionette" (stage_looks); default:
-    project.json "figures"."""
+    """build figures: {"name": "bear" | {"look": "cat", "size": 0.9, "glasses": True} | {"actor": "tim"} | a Char
+    subclass}. Returns {name: figure}; every figure starts in its rest pose. style: the make of the figures - "toy"
+    (as modelled), "ragdoll", "puppet", "stopmotion", "clay", "paper" or "marionette" (stage_looks), or "rigify"
+    (every figure that is not an own Char class becomes a realistic actor, stage_rig.py); default: project.json
+    "figures". {"actor": ...} is an actor in any make."""
     materials()
+    style = style or FIGURES["style"]
     out = {}
-    for nm, spec in figures.items():
+    for i, (nm, spec) in enumerate(figures.items()):
         if isinstance(spec, type):
             c = spec(S, nm)
+        elif style == "rigify" or (isinstance(spec, dict) and "actor" in spec):
+            import stage_rig
+            c = stage_rig.actor(S, nm, spec, i)
         else:
             d = {"look": spec} if isinstance(spec, str) else dict(spec)
             look = d.pop("look", "bear")
@@ -771,7 +777,7 @@ def dress(S, figures, style=None):
     """give built figures another make (see stage_looks): for a cast that is not built by cast() - call it once,
     after all figures exist. Returns what the make returns (puppet: {name: jaw Node})."""
     style = style or FIGURES["style"]
-    if style in (None, "", "toy"):
+    if style in (None, "", "toy", "rigify"):
         return None
     import stage_looks
     return stage_looks.dress(S, figures, style)

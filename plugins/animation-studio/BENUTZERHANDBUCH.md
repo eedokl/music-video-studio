@@ -388,6 +388,11 @@ Python-Szene geschrieben: nichts wird von Hand modelliert, alles lässt sich än
   gefaltete **Papierfiguren** (mit Falzlinien und Klebelaschen) und hölzerne **Marionetten** an Fäden – sagen Sie
   z. B. „als Stoffpuppen“, „als Puppenshow“, „als Stop-Motion-Puppen“, „aus Knete“, „aus Papier“ oder
   „als Marionetten“.
+  Oder **echte Darsteller in einer echten Welt**: Rigify-Figuren (z. B. Tim und Claudia aus dem
+  3D-Figuren-Baukasten) spielen dieselben Szenen, sprechen mit Gesichtsreglern und Mundformen, stehen mit den
+  Füßen auf dem Boden (mit Schritten beim Gehen und Drehen) und greifen nicht durch Tische – sagen Sie z. B.
+  „mit Tim und Claudia als echten Figuren“. Die Figuren liegen als `<Name>/figur.blend` im Projektordner
+  `actors/` oder in dem Ordner, den die Einstellung `actors3d` nennt.
   Ein fertiger Film lässt sich ohne Änderung der Szenen in einer anderen Machart neu rendern.
 - **Ton?** Gesprochene Zeilen (Stimmen-Baustein), eigene Aufnahmen, eine fertige Tonspur, Musik.
 - **Look?** Standard: elfenbeinfarbene Wände, dunkles Nussholz, ein korallenroter Akzent, tiefes goldenes Licht und

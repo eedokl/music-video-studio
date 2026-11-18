@@ -47,8 +47,10 @@ def blender(project, clip, *args):
     cmd = [config.need("blender"), "-b", "--factory-startup", "--python-exit-code", "1", "--python",
            str(HERE / "stage_film.py"), "--", str(project), clip, *[str(a) for a in args]]
     env = dict(os.environ, PYTHONUNBUFFERED="1", STAGE3D_PROJECT=str(project))
+    if config.get("actors3d") and not env.get("STAGE3D_ACTORS"):      # folders of the realistic actors (stage_rig)
+        env["STAGE3D_ACTORS"] = config.get("actors3d")
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace", env=env)
-    tail, show = [], ("BUILT", "RENDERED", "DONE", "Traceback", "Error", "  File ", "SystemExit")
+    tail, show = [], ("BUILT", "RENDERED", "DONE", "Traceback", "Error", "  File ", "SystemExit", "ACTOR", "CONTACT")
     try:
         for line in p.stdout:
             line = line.rstrip()
@@ -112,6 +114,8 @@ def cmd_clip(a):
         args += ["--range", *a.range] + (["--overwrite"] if a.overwrite else [])
     if a.save:
         args.append("--save")
+    if a.contact:
+        args.append("--contact")
     blender(F.dir, name, *args)
     if stills and a.sheet:
         sheet(F, name, folder(a.q, a.engine), stills)
@@ -132,6 +136,8 @@ def source_key(F, clip, q, engine):
         L = {x["id"]: x for x in json.loads(lj.read_text(encoding="utf-8")).get("lines", [])}
         lines = {i: L.get(i) for i in said}
     spec = {k: F.get(k) for k in ("size", "palette", "lips", "seed", "cast")}
+    if F.get("actors"):                                     # only when set: older frames keep their key
+        spec["actors"] = F.get("actors")
     if F.get("figures") not in (None, "", "toy"):          # only when set: older frames keep their key
         spec["figures"] = F.get("figures")
     spec.update(clip=clip, frames=F.clip(clip)[1], q=q, engine=engine)
@@ -219,6 +225,8 @@ def main():
     c.add_argument("--sheet", action="store_true")
     c.add_argument("--overwrite", action="store_true")
     c.add_argument("--save", action="store_true")
+    c.add_argument("--contact", action="store_true",
+                   help="realistic actors: measure shoes below the floor and hands in furniture -> out/<clip>/contact.json")
     f = sub.add_parser("film")
     f.add_argument("project")
     f.add_argument("--q", default="draft", choices=QUALITIES)

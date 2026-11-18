@@ -22,7 +22,7 @@ Settings (not programs):
   comfy_dir*  ComfyUI folder (optional: ai-video night_run.py --clean-comfy and the free-space check)
   animation_studio_root  the plugin folder (env ANIMATION_STUDIO_ROOT) - read by toon-2d scene shims; written by
               check_tools.py --setup and toon-2d new_scene.py
-  sfx_cache, comfy_start, comfy_models, font, rife_model, minimax_api_base, claudia_refs: see SETTINGS below.
+  sfx_cache, comfy_start, comfy_models, font, rife_model, minimax_api_base, claudia_refs, actors3d: see SETTINGS below.
 """
 import json
 import os
@@ -67,6 +67,7 @@ SETTINGS = {
     "minimax_api_base": "MiniMax API base URL",
     "claudia_refs": "reference images of Claudia (folder, or a.png;b.png)",
     "animation_studio_root": "the plugin folder, read by toon-2d scene shims (env ANIMATION_STUDIO_ROOT)",
+    "actors3d": "folder(s) of realistic 3D actors (<name>/figur.blend, Rigify) for stage-3d \"figures\": \"rigify\"",
 }
 
 # documented, unambiguous keys whose plain upper-case environment name is read as well (after the prefixed one)

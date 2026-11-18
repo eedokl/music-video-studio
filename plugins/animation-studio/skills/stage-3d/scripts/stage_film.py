@@ -9,6 +9,8 @@
   --range a b          frame range -> out/<clip>/<q>/f_####.png (existing files are skipped: resumable;
                        --overwrite renders them again)
   --save               write out/<clip>/<clip>.blend for inspection
+  --contact            realistic actors (stage_rig.py): measure every frame - shoes below the floor, hands in
+                       furniture -> out/<clip>/contact.json (+ a summary line)
 Always writes out/<clip>/build.json: frames, the camera cuts and the frame ranges of the spoken lines.
 """
 import importlib
@@ -29,7 +31,7 @@ def main():
     i = 2
     while i < len(a):
         k = a[i].lstrip("-")
-        if k in ("save", "overwrite"):
+        if k in ("save", "overwrite", "contact"):
             opt[k] = True
             i += 1
         elif k == "range":
@@ -47,6 +49,9 @@ def main():
     P = json.loads(pj.read_text(encoding="utf-8")) if pj.exists() else {}
     K.LIPS["strong"] = P.get("lips") == "strong"
     K.FIGURES["style"] = P.get("figures")
+    if P.get("actors"):
+        import stage_rig
+        stage_rig.ACTORS.update(P["actors"])
     C.set_palette(P.get("palette"))
     t0 = time.time()
     mod = importlib.import_module("scenes." + clip)
@@ -58,6 +63,10 @@ def main():
     mod.build(S)
     S.bake()
     print(f"BUILT {clip} in {time.time() - t0:.1f}s", flush=True)
+    if opt.get("contact"):                         # measure feet in the floor / hands in furniture of the actors
+        import stage_rig
+        (project / "out" / clip).mkdir(parents=True, exist_ok=True)
+        stage_rig.report(S, project / "out" / clip / "contact.json")
     q = opt["q"]
     engine = opt.get("engine", "cycles")
     tag = "" if engine == "cycles" else "_" + engine                # EEVEE renders go to their own folders

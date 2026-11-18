@@ -33,6 +33,10 @@ Needs Blender 4.2+ (config key `blender`), ffmpeg, Rhubarb; a graphics card make
   tabs) or wooden **marionettes** on strings - project.json `"figures": "ragdoll"` / `"puppet"` / `"stopmotion"` /
   `"clay"` / `"paper"` / `"marionette"`, see stage-3d BLOCK.md
   "Figures"; an existing film can be re-rendered in another make without changing a scene.
+  Or **realistic actors in a real world**: Rigify figures (e.g. Tim and Claudia from the 3D figure kit) that
+  act with the same calls, speak with face sliders, plant their feet and keep their hands out of desks -
+  `"figures": "rigify"`, `"actors": {"mo": "tim", "kit": "claudia"}` (`film3d.py new ... --figures rigify`);
+  they need `<project>/actors/<name>/figur.blend` or the config key `actors3d` (stage-3d guide "Realistic actors").
 - **Sound?** Spoken lines by the voice block, recorded wavs, an existing finished sound track, music.
 - **Look?** Default: ivory walls, dark walnut, one coral accent, low golden light, the darker "cinema" finish.
   Other palettes / a bright "ad" finish on request.

@@ -1,10 +1,13 @@
 """animated-3d-film: film3d.py new -> clip -> idea -> line (a synthetic wav) -> stage_speech prepare -> two tiny clips
 rendered in draft quality with Blender -> sound mix -> clip_film cut (dissolve, look, sound)."""
 import os
+import re
 import subprocess
 import time
+from pathlib import Path
 
-from common import (Test, audio_samples, expect, expect_film, first_loud, full, need, read_json, script, write_json)
+from common import (Test, audio_samples, expect, expect_film, first_loud, full, need, read_json, script, tool,
+                    write_json)
 
 FILM3D = script("animated-3d-film", "film3d.py")
 RUN = script("stage-3d", "stage_run.py")
@@ -173,7 +176,65 @@ def run_makes(ctx):
              "make refused")
 
 
-TESTS = [Test("animated-3d-film-makes", run_makes, about="project.json figures: every make (ragdoll ... marionette, toy) renders and they "
+ACTOR_SCENE = '''import stage_actor as K
+import stage_sets as sets
+
+FRAMES = 40
+
+
+def build(S):
+    sets.office(S, mood="day")
+    cast = K.cast(S, {"mo": {"look": "bear", "height": 1.05}, "kit": {"look": "cat", "height": 1.05}})
+    mo, kit = cast["mo"], cast["kit"]
+    mo.at(1, -0.8, -0.03, 0, ease="hold")             # at the table: hanging hands are in its top
+    kit.at(1, -1.6, -1.6, 90, ease="hold")
+    kit.walk(4, 38, 2.4, -1.6)
+    mo.mood(6, "happy").babble(8, 30)
+    S.shot(1, (0.4, -6.2, 1.1), (0.4, -0.8, 0.9), lens=30, fstop=8)
+'''
+
+
+def run_actors(ctx):
+    """realistic actors: a Rigify figure generated in Blender plays a toy scene unchanged ("figures": "rigify"),
+    feet stand on the floor, hands hanging into the table are moved off it, contact.json measures both"""
+    need("blender")
+    d = ctx.dir / "actors"
+    ctx.uv(FILM3D, "new", d, "--title", "E2E actors", "--seed", "7", "--cast", "mo:bear,kit:cat", "--size", "640x360",
+           "--figures", "rigify")
+    P = read_json(d / "project.json")
+    expect(P.get("figures") == "rigify", f"film3d.py new --figures rigify wrote {P.get('figures')!r}")
+    P["clips"][0]["frames"] = 40
+    P["look"] = "none"
+    write_json(d / "project.json", P)
+    blend = d / "actors" / "testy" / "figur.blend"
+    blend.parent.mkdir(parents=True)
+    ctx.run([tool("blender"), "-b", "--factory-startup", "--python-exit-code", "1", "--python",
+             Path(__file__).with_name("make_actor.py"), "--", blend], timeout=600)
+    expect(blend.exists(), "make_actor.py wrote no figur.blend")
+    (d / "scenes" / "c01_opening.py").write_text(ACTOR_SCENE, encoding="utf-8")
+    out = ctx.uv(RUN, "clip", d, "c01_opening", "--stills", "1,20,36", "--contact", timeout=900)
+    expect(out.stdout.count("ACTOR ") == 2, "the two parts were not played by actors: " + out.stdout[-800:])
+    steps = int(re.search(r"CONTACT 2 actors: (\d+) foot steps", out.stdout).group(1))
+    moved = int(re.search(r"(\d+) arm frames moved", out.stdout).group(1))
+    expect(steps >= 3, f"the walking actor made only {steps} steps")
+    expect(moved > 0, "the hands in the table were not moved off it")
+    C = read_json(d / "out" / "c01_opening" / "contact.json")
+    deep = max([x["cm"] for x in C["feet"]], default=0.0)
+    expect(deep < 1.5, f"shoes {deep} cm below the floor")
+    expect(not C["hands"], f"hands still in the table in {len(C['hands'])} measurements")
+    stills = sorted((d / "out" / "c01_opening" / "stills_draft").glob("f_*.png"))
+    expect(len(stills) == 3 and all(f.stat().st_size > 20000 for f in stills), "missing stills")
+    P["actors"] = {"mo": "nobody"}
+    write_json(d / "project.json", P)
+    bad = ctx.run(["uv", "run", "--offline", RUN, "clip", d, "c01_opening", "--stills", "1"], check=False, timeout=600)
+    expect(bad.returncode != 0 and "not found" in bad.stdout, "an unknown actor was not refused")
+    ctx.note(f"generated Rigify actor plays a toy scene: {steps} foot steps, {moved} arm frames moved off the table, "
+             f"shoes at most {deep} cm below the floor, no hand in the table; unknown actor refused")
+
+
+TESTS = [Test("animated-3d-film-actors", run_actors, about='"figures": "rigify": a generated Rigify actor plays a toy '
+                                                           "scene; feet planted, arm off the table, contact.json"),
+         Test("animated-3d-film-makes", run_makes, about="project.json figures: every make (ragdoll ... marionette, toy) renders and they "
                                                          "differ, an unknown make is refused"),
          Test("animated-3d-film", run_film, about="film3d.py new/clip/line -> stage_speech -> Blender draft render "
                                                   "-> sound mix -> clip_film cut")]

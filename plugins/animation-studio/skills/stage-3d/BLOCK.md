@@ -15,17 +15,20 @@ A film is a project folder: `project.json` (the clips in order, sizes, palette, 
 - Blender 4.2+ (tested 5.2 LTS): config key `blender`. Check: `uv run "<plugin>/skills/stage-3d/scripts/stage_run.py" check`
 - A graphics card is used when Cycles finds one (OptiX, CUDA, HIP, Metal, oneAPI), otherwise the CPU (slow).
 - Lip sync needs `rhubarb`; the cut needs `ffmpeg`.
+- Realistic actors (`"figures": "rigify"`): a folder of `<name>/figur.blend` - per project in `actors/`, or for the
+  machine config key `actors3d` (`check_tools.py --set actors3d=<folder>`).
 
 ## Scripts
 | script | runs in | what |
 |---|---|---|
-| `stage_run.py clip <project> <clip> --stills 1,40,90 --sheet` | uv | key frames in draft quality + labelled `out/<clip>/sheet.png` (`--every 20` = a strip through the clip, `--q film` for hero stills, `--range a b [--overwrite]` for frames, `--save` writes a .blend) |
+| `stage_run.py clip <project> <clip> --stills 1,40,90 --sheet` | uv | key frames in draft quality + labelled `out/<clip>/sheet.png` (`--every 20` = a strip through the clip, `--q film` for hero stills, `--range a b [--overwrite]` for frames, `--save` writes a .blend, `--contact` measures actors' feet and hands → `out/<clip>/contact.json`) |
 | `stage_run.py film <project> --q draft\|film [--clips a,b]` | uv | every missing frame of every clip (resumable; holds the shared GPU lock) |
 | `stage_run.py status <project> [--q film]` | uv | rendered / missing frames per clip |
 | `stage_speech.py prepare\|show <project>` | uv | Rhubarb mouth cues + word times of project.json `lines` → `speech/lines.json`; `show` prints the word frames |
 | `stage_film.py` | Blender | builds one clip and renders it (started by stage_run.py); writes `out/<clip>/build.json` (cuts, spoken lines with their frames) |
 | `stage_core.py` | Blender | `Stage`, `Node`, channels and easing, primitives, materials, text, cameras, lights, palettes, render settings |
 | `stage_actor.py` | Blender | the rig `Char` + acting API, poses, moods, lip sync, the bundled figure `Toy`, `cast()` |
+| `stage_rig.py` | Blender | realistic actors: Rigify figures (`"figures": "rigify"`, `"actors"`) with the same acting API, Rhubarb face sliders, feet planted on the floor with steps, arms kept out of furniture (`contact()` after the bake), `report()` = `--contact` |
 | `stage_looks.py` | Blender | six other makes of the same figures: `ragdoll` (cloth, seams, button eyes), `puppet` (fleece, flap mouth, arm rods), `stopmotion` (gothic armature puppets: clay skin, huge eyes, stripes), `clay` (plasticine), `paper` (papercraft), `marionette` (wooden string puppets) |
 | `stage_props.py` / `stage_sets.py` / `stage_shots.py` | Blender | props; the office set with light moods; `closeup`, `medium`, `two_shot`, `ots` |
 | `stage_project.py` | any | `Film`: project.json, clips, frame paths, missing frames |
@@ -111,12 +114,20 @@ The full API (channels and easing, `Node`, camera, every acting call, poses, moo
     strings hang a little loose). The eyes stay as modelled and still blink. The cross follows the figure's place,
     not its spins: after a somersault the strings would be wound round it - avoid spins, or `{"strings": False}`.
     Leave headroom: the cross hangs about a metre above the head.
+  - `"rigify"`: **realistic actors** - every part is played by a Rigify figure (`<actors>/<name>/figur.blend`, e.g.
+    from the 3D figure kit; `"actors": {"mo": "tim"}` casts them). Same scenes, same acting calls; the face
+    sliders take moods, blinks and Rhubarb mouth shapes; after the bake the feet are planted on the floor and step,
+    and arms are moved out of desks and tables. Fits sets for ~1 m figures; see [references/guide.md](references/guide.md)
+    "Realistic actors". A single actor in any make: `K.cast(S, {"tim": {"actor": "tim"}})`.
   - Limits: button, ping-pong, clay, paper and porcelain eyes do not blink or widen (moods still move the brows); a figure with a beak or
     without a modelled mouth keeps its own mouth. Details, the option keys (`cut`, `hinge`, `parts`, `eye`, `lid` ...)
     and how an own `Char` class sets them: the docstring of `stage_looks.py` and
     [references/guide.md](references/guide.md) "Other makes".
 
 ## Known limits
+- Realistic actors: hands rest on a table only if the shoulders are above its top (otherwise contact moves the
+  arms under or over it); fingers keep the pose of the file; walking faster than about 1 m per metre of figure
+  height per second gives long running strides; the contact pass adds ~5 s per clip and actor.
 - `Char.reach()` ignores the lean of the body (re-aim after a big `body=` override); a channel with a single key is
   constant before that key; `core.text` size is roughly the line height (cap height ≈ 0.4 × size).
 - Speech: lip sync needs English dialogue text for Rhubarb's recogniser to be at its best; other languages still

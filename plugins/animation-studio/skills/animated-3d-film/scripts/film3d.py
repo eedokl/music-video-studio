@@ -352,9 +352,11 @@ def main():
     n.add_argument("--cast", help="name:look pairs, looks: bear, cat, bunny (e.g. mo:bear,kit:cat)")
     n.add_argument("--seed", type=int)
     n.add_argument("--size", default="1920x1080")
-    n.add_argument("--figures", choices=("toy", "ragdoll", "puppet", "stopmotion", "clay", "paper", "marionette"),
+    n.add_argument("--figures", choices=("toy", "ragdoll", "puppet", "stopmotion", "clay", "paper", "marionette",
+                                         "rigify"),
                    default="toy", help="the make of the figures: felt toys (default), sewn rag dolls, hand puppets, "
-                                       "gothic stop-motion puppets, plasticine, papercraft or wooden string puppets")
+                                       "gothic stop-motion puppets, plasticine, papercraft, wooden string puppets or "
+                                       "rigify = realistic actors (<actors>/<name>/figur.blend, stage-3d stage_rig.py)")
     c = sub.add_parser("clip")
     c.add_argument("folder")
     c.add_argument("name")

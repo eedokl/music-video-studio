@@ -14,6 +14,8 @@ project.json:
   "figures": "toy" | "ragdoll" | "puppet" | "stopmotion" | "clay" | "paper" | "marionette"   the make of the
                                        figures (stage_looks.py): as modelled, sewn rag dolls, hand puppets with flap
                                        mouths, gothic stop-motion puppets, plasticine, papercraft, string puppets
+                                       | "rigify": realistic actors (stage_rig.py)
+  "actors": {"mo": "tim"}              which actor (<actors>/<name>/figur.blend) plays which part ("rigify")
 """
 import json
 import os

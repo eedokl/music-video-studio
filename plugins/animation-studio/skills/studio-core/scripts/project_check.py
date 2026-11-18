@@ -156,10 +156,14 @@ FILM3D = {                                            # animated-3d-film project
     "palette": {"type": (STR, DICT),
                 "doc": '"ivory" (default), "petrol", "forest" or {"base": "ivory", "accent": "#C24F2D"}'},
     "lips": {"type": (STR,), "values": ("soft", "strong")},
-    "figures": {"type": (STR,), "values": ("toy", "ragdoll", "puppet", "stopmotion", "clay", "paper", "marionette"),
+    "figures": {"type": (STR,), "values": ("toy", "ragdoll", "puppet", "stopmotion", "clay", "paper", "marionette",
+                                           "rigify"),
                 "doc": 'the make of the figures: "toy" (default), "ragdoll" (sewn cloth), "puppet" (hand puppets), '
-                       '"stopmotion" (gothic stop-motion puppets), "clay" (plasticine), "paper" (papercraft) or '
-                       '"marionette" (wooden string puppets)'},
+                       '"stopmotion" (gothic stop-motion puppets), "clay" (plasticine), "paper" (papercraft), '
+                       '"marionette" (wooden string puppets) or "rigify" (realistic actors, stage-3d stage_rig.py)'},
+    "actors": {"type": (DICT,), "each": {"type": (STR,)},
+               "doc": '{"mo": "tim"} - which realistic actor (<actors>/<name>/figur.blend) plays which part '
+                      '("figures": "rigify")'},
     "cast": {"type": (DICT,), "doc": '{"mo": "bear", "kit": {"look": "cat", "glasses": true}} - the bundled toy figures'},
     "final": {"type": (STR,)},
 }
