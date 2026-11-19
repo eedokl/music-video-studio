@@ -11,6 +11,8 @@
   stage_run.py clip <project> <clip> --every 20 --sheet                         a strip through the whole clip
   stage_run.py clip <project> <clip> --range 1 120 [--q film] [--overwrite]     a frame range
   stage_run.py film <project> [--q draft|film] [--clips c01,c02] [--overwrite]  every missing frame of every clip
+  stage_run.py film <project> --changed [--clips c03]   also the frames that look different now (after a plugin
+                                                       update or a change outside scenes/ the source key misses)
   stage_run.py status <project> [--q film]            frames rendered / missing per clip
 
 --engine eevee (clip / film / status) renders with EEVEE instead of Cycles - experimental, several times faster,
@@ -19,7 +21,12 @@ Qualities: draft (half size, 24 samples - the whole-film preview and all contact
 40 samples + denoiser, motion blur), final (128 samples, hero stills). `film` skips frames that exist, so it can be
 stopped and started again. A clip whose scene module (or a helper module in scenes/), project settings (size,
 palette, lips, figures, seed, cast, frames) or spoken lines changed since its frames were made is rendered again by `film`
-(the key is out/<clip>/<q>/source.json); `clip ... --range a b --overwrite` renders a part again by hand.
+(the key is out/<clip>/<q>/source.json) - but only the frames that look different: every film render stores a
+fingerprint per frame (out/<clip>/<q>/frames.json, stage_frames.py: poses, faces, light, camera, materials), and a
+changed clip is built once, fingerprinted again and only its changed frames (+ neighbours under motion blur) are
+deleted and rendered. `--changed` does that check for every clip with frames, even when the key is the same;
+`--overwrite` renders everything; `clip ... --range a b --overwrite` renders a part again by hand.
+While Blender runs the computer does not go to idle sleep (studio-core awake.py via the GPU lock).
 Output: <project>/out/<clip>/<q>/f_####.png, stills in out/<clip>/stills_<q>/, the sheet in out/<clip>/sheet.png.
 Blender comes from the config key `blender`; the shared GPU lock is held while it runs (job "stage3d_blender").
 """
@@ -50,13 +57,16 @@ def blender(project, clip, *args):
     if config.get("actors3d") and not env.get("STAGE3D_ACTORS"):      # folders of the realistic actors (stage_rig)
         env["STAGE3D_ACTORS"] = config.get("actors3d")
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace", env=env)
-    tail, show = [], ("BUILT", "RENDERED", "DONE", "Traceback", "Error", "  File ", "SystemExit", "ACTOR", "CONTACT")
+    tail, shown = [], []
+    show = ("BUILT", "RENDERED", "DONE", "Traceback", "Error", "  File ", "SystemExit", "ACTOR", "CONTACT", "CHANGED",
+            "FINGERPRINT")
     try:
         for line in p.stdout:
             line = line.rstrip()
             tail = (tail + [line])[-25:]
             if line.startswith(show) or "Error" in line:
                 print(line, flush=True)
+                shown.append(line)
     except BaseException:                          # Ctrl+C / kill: Blender must not render on after the GPU lock
         p.kill()
         p.wait(10)
@@ -64,6 +74,7 @@ def blender(project, clip, *args):
     if p.wait() != 0:
         print("\n".join(tail), file=sys.stderr)
         raise SystemExit(f"Blender failed on clip {clip} (exit {p.returncode})")
+    return shown
 
 
 def sheet(F, clip, q, frames, cols=4, width=480):
@@ -164,11 +175,22 @@ def cmd_film(a):
         if only and c not in only:
             continue
         k, kf, miss = source_key(F, c, a.q, a.engine), F.out(c, fq) / "source.json", F.missing(c, fq)
-        over = a.overwrite
-        if len(miss) < n:                              # frames exist: made from the same scene / settings / lines?
+        over, check = a.overwrite, False
+        if len(miss) < n and not over:                 # frames exist: made from the same scene / settings / lines?
             old = json.loads(kf.read_text(encoding="utf-8")) if kf.exists() else None
-            if old is None or "lines" not in old:    # none (before 0.5.2) or the 0.5.2 one-key format
-                print(f"{c}: frames without a current source.json (older version) - taken as they are", flush=True)
+            fp = (F.out(c, fq) / "frames.json").exists()
+            if a.changed and fp:
+                check = True
+                print(f"{c}: checking which frames look different (--changed)", flush=True)
+            elif old is None or "lines" not in old:  # none (before 0.5.2) or the 0.5.2 one-key format
+                print(f"{c}: frames without a current source.json (older version) - taken as they are"
+                      + (" (--changed needs the fingerprints of a render since 0.9)" if a.changed else ""), flush=True)
+            elif not same_source(old, k) and fp:
+                # only the frames that look different go: Blender builds the clip, compares the fingerprints and
+                # deletes those; source.json is written after that run (a run stopped before the check redoes it)
+                check = True
+                print(f"{c}: the scene, the project settings or its lines changed - re-rendering only the frames "
+                      f"that look different", flush=True)
             elif not same_source(old, k):
                 # the old frames are deleted BEFORE the new key is stored: a re-render stopped half way resumes
                 # with only new frames (keeping them mixed old/new frames as "complete")
@@ -179,24 +201,32 @@ def cmd_film(a):
                       f"{len(gone)} old frames deleted, rendering the clip again", flush=True)
                 miss = F.missing(c, fq)
         F.out(c, fq).mkdir(parents=True, exist_ok=True)
-        derived.write_text(kf, json.dumps(k))          # before rendering: a stopped run resumes with this key
-        todo.append((c, n, n if over else len(miss), over))
-    total = sum(m for _, _, m, _ in todo)
-    print(f"{F.dir.name}: {total} of {sum(n for _, n, _, _ in todo)} frames to render in quality '{a.q}'", flush=True)
+        if not check:
+            derived.write_text(kf, json.dumps(k))      # before rendering: a stopped run resumes with this key
+        todo.append((c, n, n if over else len(miss), over, check))
+    total = sum(t[2] for t in todo)
+    checks = sum(1 for t in todo if t[4])
+    print(f"{F.dir.name}: {total} of {sum(t[1] for t in todo)} frames to render in quality '{a.q}'"
+          + (f" + the changed frames of {checks} clip(s)" if checks else ""), flush=True)
     t0, done = time.time(), 0
-    for c, n, m, over in todo:
-        if not m:
+    for c, n, m, over, check in todo:
+        if not m and not check:
             continue
-        blender(F.dir, c, "--q", a.q, "--engine", a.engine, "--range", 1, n, *(["--overwrite"] if over else []))
+        said = blender(F.dir, c, "--q", a.q, "--engine", a.engine, "--range", 1, n, "--fingerprint",
+                       *(["--changed"] if check else []), *(["--overwrite"] if over else []))
+        if check:                                      # the frames the check deleted were rendered as well
+            extra = next((int(x.split()[2]) for x in said if x.startswith("CHANGED ")), 0)
+            total += extra
+            m += extra
         # again after the build: build.json now names the lines this clip says (the first run had none)
         derived.write_text(F.out(c, fq) / "source.json", json.dumps(source_key(F, c, a.q, a.engine)))
         done += m
-        left = (time.time() - t0) / done * (total - done)
+        left = (time.time() - t0) / done * (total - done) if done else 0.0
         print(f"FILM {c} done - {done}/{total} frames, about {left / 60:.0f} min left", flush=True)
-    miss = {c: len(F.missing(c, fq)) for c, _, _, _ in todo if F.missing(c, fq)}
+    miss = {t[0]: len(F.missing(t[0], fq)) for t in todo if F.missing(t[0], fq)}
     if miss:
         raise SystemExit(f"frames still missing: {miss}")
-    print(f"FILM complete: {sum(n for _, n, _, _ in todo)} frames in out/<clip>/{fq}/ ({(time.time() - t0) / 60:.1f} min)")
+    print(f"FILM complete: {sum(t[1] for t in todo)} frames in out/<clip>/{fq}/ ({(time.time() - t0) / 60:.1f} min)")
     return 0
 
 
@@ -232,6 +262,8 @@ def main():
     f.add_argument("--q", default="draft", choices=QUALITIES)
     f.add_argument("--clips")
     f.add_argument("--overwrite", action="store_true")
+    f.add_argument("--changed", action="store_true",
+                   help="also check clips whose source key is the same and re-render the frames that look different")
     s = sub.add_parser("status")
     s.add_argument("project")
     s.add_argument("--q", default="film", choices=QUALITIES)

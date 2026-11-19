@@ -11,6 +11,7 @@ Every GPU script calls, right after parsing its arguments:
 The call waits until no other job holds the lock and keeps it until the process ends (or release()).
 After max_wait (6 h) it raises gpu_lock.LockTimeout - catch it to skip a job instead of ending the run.
 The operating system also releases the lock if a job crashes or is killed - nothing stays stuck.
+While the lock is held the computer does not go to idle sleep (awake.py; config key `awake` = 0 turns it off).
 
 If the model differs from the previous job's (e.g. FLUX -> Wan video -> depth map), ComfyUI is first asked to
 drop its models from GPU and RAM (POST /free). So two big models are never in memory at the same time;
@@ -136,6 +137,11 @@ def acquire(name, model=None, max_wait=6 * 3600):
     if reported:
         print(f"[GPU lock] free after {time.time() - t0:.0f} s", file=sys.stderr, flush=True)
     _use_model(name, model)
+    try:
+        import awake
+        awake.hold(f"{name} holds the GPU")
+    except ImportError:
+        pass
     if not _atexit_done:
         atexit.register(release)
         _atexit_done = True
@@ -152,6 +158,11 @@ def release():
         pass
     _handle.close()
     _handle = None
+    try:
+        import awake
+        awake.free()
+    except ImportError:
+        pass
 
 
 if __name__ == "__main__":

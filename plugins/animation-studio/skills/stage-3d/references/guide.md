@@ -234,3 +234,28 @@ at the table (`sets.PLACES`, `sets.TABLE_Z` = table top). Palettes and light moo
 6. Never render whole ranges while authoring; the film render is one central step (`stage_run.py film`).
    Several people (or agents) can write clips in parallel when each owns its scene files and nobody edits the
    shared library – helpers a clip needs live in its own module.
+
+## The long render and fixing a rendered film
+
+Lessons of a 5,960-frame film (12 clips, Rigify actors, theatre set changes, 1080p, ~4 h per full render):
+- **Fix, then re-render only what changed.** Every film render stores a fingerprint per frame
+  (`out/<clip>/<q>/frames.json`: poses, face values, light, camera, materials, visibility). When a scene module,
+  the project settings or a line changes, `stage_run.py film` builds the clip once, compares the fingerprints and
+  renders only the frames that look different (+ one neighbour each side under motion blur) – a late gag or a
+  corrected arm costs minutes, not the clip. After a **plugin update** (a better contact pass, a new light rig) the
+  source key does not see the change: `stage_run.py film <project> --changed` checks every clip (~0.05 s per frame
+  plus one build per clip) and re-renders the frames that differ. `--overwrite` is for "render it all again".
+- **Measure before you watch.** `stage_run.py clip <p> <c> --contact` lists shoes below the floor and hands in the
+  furniture per frame (realistic actors); fix the scene (or the set: a desk at chest height needs the arm to go
+  down, not up), then let `film` re-render the changed frames.
+- **One render loop.** Two or three loops sharing the GPU lock gain nothing (one card) and one can wait 40 minutes
+  for the lock; one `film` run renders clip after clip and resumes after a stop.
+- **Final size last.** Author and preview at 1280x720; switch `"size"` to 1920x1080 right before the final render.
+  The size (like the samples, the engine and the image files) is part of every frame: a change renders all frames.
+- **Keep the old frames when the look changes** (a redesigned actor): copy `out/<clip>/film` to `film_v1` before
+  the new render if the old cut may be wanted back.
+- **Expensive light only where it pays**: the light show with haze costs several times as much per frame (volume scattering: ~5-6 s at 720p) – the
+  finale, not the whole film.
+- **The computer stays awake** while Blender holds the GPU lock (studio-core `awake.py`; the screen may switch off);
+  the config key `awake` = 0 turns that off. Closing the lid still sends a laptop to sleep.
+- Never edit a script that a running chain of renders is still reading – write a new one and start that.

@@ -9,6 +9,9 @@
   --range a b          frame range -> out/<clip>/<q>/f_####.png (existing files are skipped: resumable;
                        --overwrite renders them again)
   --save               write out/<clip>/<clip>.blend for inspection
+  --fingerprint        (with --range) per-frame fingerprints of the built clip -> out/<clip>/<q>/frames.json
+  --changed            (with --fingerprint) first delete the frames whose fingerprint differs from the stored one
+                       (stage_frames.py) - then only those are rendered again
   --contact            realistic actors (stage_rig.py): measure every frame - shoes below the floor, hands in
                        furniture -> out/<clip>/contact.json (+ a summary line)
 Always writes out/<clip>/build.json: frames, the camera cuts and the frame ranges of the spoken lines.
@@ -31,7 +34,7 @@ def main():
     i = 2
     while i < len(a):
         k = a[i].lstrip("-")
-        if k in ("save", "overwrite", "contact"):
+        if k in ("save", "overwrite", "contact", "fingerprint", "changed"):
             opt[k] = True
             i += 1
         elif k == "range":
@@ -89,6 +92,20 @@ def main():
         C.render(S, out / ("stills_" + q + tag), stills=stills)
     elif "range" in opt:
         f0, f1 = opt["range"]
+        if opt.get("fingerprint"):                 # what each frame is made from -> re-render only changed frames
+            import stage_frames as FP
+            t1, fj = time.time(), out / (q + tag) / "frames.json"
+            new = FP.fingerprints(S, mod.FRAMES)
+            if opt.get("changed"):
+                diff = FP.changed(FP.load(fj), new, S.scene.render.use_motion_blur, mod.FRAMES)
+                gone = [p for p in (out / (q + tag) / f"f_{f:04d}.png" for f in diff) if p.exists()]
+                for p in gone:
+                    p.unlink()
+                runs = ", ".join(str(a) if a == b else f"{a}-{b}" for a, b in FP.runs(diff)) or "-"
+                print(f"CHANGED {clip} {len(diff)} of {mod.FRAMES} frames look different ({len(gone)} rendered ones "
+                      f"deleted): {runs}", flush=True)
+            FP.save(fj, new)
+            print(f"FINGERPRINT {clip} {mod.FRAMES} frames in {time.time() - t1:.1f}s", flush=True)
         C.render(S, out / (q + tag), frames=(max(1, f0), min(mod.FRAMES, f1)), overwrite=bool(opt.get("overwrite")))
     print(f"DONE {clip} {time.time() - t0:.1f}s ({S.device})", flush=True)
 

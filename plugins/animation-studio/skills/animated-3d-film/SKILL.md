@@ -133,7 +133,9 @@ film goes wrong, the actors break up laughing, look into the lens, a stagehand w
 
 ## 7. Film render and finish
 
-`film3d.py render <folder>` – film quality for every clip (resumable: stop and start again any time), then the cut:
+`film3d.py render <folder>` – film quality for every clip (resumable: stop and start again any time; after a fix
+only the frames that look different are rendered again; after a plugin update `stage_run.py film <folder> --q film
+--changed` finds the frames it changes; the computer stays awake meanwhile), then the cut:
 `film.mp4` + `film_small.mp4` (< 30 MB) + `film_mail.mp4`, each decode-checked. While it runs, cut what is done
 (`clip_film.py <folder> --clips c01_opening,c02_plan`) to show progress. After a late change render only those
 frames (`--range a b --q film --overwrite`) and cut again.

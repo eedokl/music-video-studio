@@ -79,11 +79,13 @@ def run_film(ctx):
     ctx.uv(CUT, d, "--q", "draft", "--clips", "c02_answer", "--look", "ad")
     part = d / "preview" / "film_draft_c02_answer.mp4"
     expect_film(ctx, part, 8, tol_audio=0.06)
-    # the say() frame moves + a narrator voice-over: only c01 is rendered again (its scene changed, source.json), the
-    # sound is mixed again by itself (it used to stay and slide against the picture)
+    # the say() frame moves + a narrator voice-over: only c01 is rendered again (its scene changed, source.json) and
+    # of it only the frames that look different (fingerprints, frames.json); the sound is mixed again by itself
     c02_png = d / "out" / "c02_answer" / "draft" / "f_0001.png"
-    c01_png = d / "out" / "c01_opening" / "draft" / "f_0001.png"
-    m01, m02 = c01_png.stat().st_mtime, c02_png.stat().st_mtime
+    c01_dir = d / "out" / "c01_opening" / "draft"
+    expect((c01_dir / "frames.json").exists(), "the film render wrote no frames.json (fingerprints)")
+    m01 = {f.name: f.stat().st_mtime for f in c01_dir.glob("f_*.png")}
+    m02 = c02_png.stat().st_mtime
     line_at = 7
     (d / "scenes" / "c01_opening.py").write_text(SCENE.format(frames=12, mood="golden", cut=9,
                                                              say=f'mo.say("l01", {line_at})'), encoding="utf-8")
@@ -97,10 +99,12 @@ def run_film(ctx):
     ctx.uv(FILM3D, "line", d, "l01", "mo", "Hello there")
     ctx.uv(SPEECH, "prepare", d)
     out = ctx.uv(FILM3D, "preview", d, timeout=1200)
-    expect("rendering the clip again" in out.stdout and "mixing again" in out.stdout,
-           f"preview after a scene change did not render c01 again / mix again:\n{out.stdout[-1500:]}")
-    expect(c01_png.stat().st_mtime > m01 and c02_png.stat().st_mtime == m02,
-           "c01 should be rendered again (scene changed), c02 kept (unchanged)")
+    expect("frames that look different" in out.stdout and "mixing again" in out.stdout,
+           f"preview after a scene change did not re-render c01's changed frames / mix again:\n{out.stdout[-1500:]}")
+    newer = sorted(int(n[2:6]) for n, t in m01.items() if (c01_dir / n).stat().st_mtime > t)
+    # (Mo anticipates the line from frame 1 on, so in this short clip every frame really changes)
+    expect(re.search(r"CHANGED c01_opening \d+ of 12", out.stdout) and line_at + 1 in newer
+           and c02_png.stat().st_mtime == m02, f"after moving say(): re-rendered c01 frames {newer}, c02 kept?")
     smp = audio_samples(film)
     t = first_loud(smp, 48000, 8000)
     want = (line_at - 1) / 24 + 0.1
@@ -144,6 +148,21 @@ def run_film(ctx):
     expect(len(left) == 12 and all(f.stat().st_mtime >= t_change for f in left),
            f"after the resume: {len(left)} frames, old ones {[f.name for f in left if f.stat().st_mtime < t_change]}")
     ctx.note(f"re-render {'stopped after 2 frames and ' if stopped else '(finished before the stop) '}resumed with new frames only")
+    # a late change (Kit nods at the end): only the last frames are rendered again
+    m = {f.name: f.stat().st_mtime for f in drafts.glob("f_*.png")}
+    (d / "scenes" / "c01_opening.py").write_text(SCENE.format(
+        frames=12, mood="night", cut=9, say=f'mo.say("l01", {line_at})\n    kit.nod(10)'), encoding="utf-8")
+    out = ctx.uv(RUN, "film", d, "--q", "draft", "--clips", "c01_opening", timeout=900)
+    late = sorted(int(f.name[2:6]) for f in drafts.glob("f_*.png") if f.stat().st_mtime > m[f.name])
+    expect(late and 12 in late and 1 not in late and len(late) < 8,
+           f"a nod at frame 10 re-rendered frames {late}:\n{out.stdout[-800:]}")
+    ctx.note(f"a late nod re-rendered only frames {late[0]}-{late[-1]} of 12 (fingerprints)")
+    # --changed with nothing changed: the clip is built and fingerprinted, no frame is touched
+    m = {f.name: f.stat().st_mtime for f in drafts.glob("f_*.png")}
+    out = ctx.uv(RUN, "film", d, "--q", "draft", "--clips", "c01_opening", "--changed", timeout=900)
+    same = all(f.stat().st_mtime == m[f.name] for f in drafts.glob("f_*.png"))
+    expect("CHANGED c01_opening 0 of 12" in out.stdout and same,
+           f"--changed without a change touched frames:\n{out.stdout[-800:]}")
     ctx.note(f"2 clips, 20 draft frames ({B['device']}), line moved to frame {line_at} heard at {t:.3f} s, narrator at {t2:.3f} s, only the changed clip re-rendered, looks cinema + ad")
 
 

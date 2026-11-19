@@ -27,7 +27,8 @@ work goes on. The full list of tools and models is in the plugin's `TOOLS.md`.
 | Module | Use |
 |---|---|
 | `config.py` | `config.need("synfig")` (stops with a clear message if missing), `config.get("earshot")`, `config.setup_env()` (model caches, ffmpeg on PATH), `config.lock_dir()`, `config.comfy_url()` |
-| `gpu_lock.py` | `acquire("job", model="comfy:ltx23")` before any AI model run: waits while another job holds the lock, flushes ComfyUI when the model changes; `python gpu_lock.py` shows who holds it. Never delete another job's lock. |
+| `gpu_lock.py` | `acquire("job", model="comfy:ltx23")` before any AI model run: waits while another job holds the lock, flushes ComfyUI when the model changes; `python gpu_lock.py` shows who holds it. Never delete another job's lock. While the lock is held the computer does not go to idle sleep (awake.py). |
+| `awake.py` | `with awake("rendering"):` / `hold()` + `free()` - no idle sleep while a long job runs (Windows SetThreadExecutionState, macOS caffeinate, Linux systemd-inhibit; the screen may still switch off). gpu_lock holds it by itself; config key `awake` = 0 turns it off. |
 | `encoding.py` | `h264()` ffmpeg options: x264 CRF 18 for anything shown or handed over; with `PREVIEW=1` NVENC for fast work-in-progress files (probed once; x264 veryfast where there is no NVENC) |
 | `media.py` | `decode`, `duration`, `has_audio`, `voice_activity`, `check_video` ("" = 0 decode errors), `contact_sheet` (`python media.py sheet film.mp4 sheet.png`, prints frame/second per tile), `compare` (`python media.py compare a.mp4 b.mp4`: size, length, PSNR/SSIM, sound identical?), CLI `check <video>...` |
 | `ear.py` | earshot with the configured launcher, no path lookup, no cmd AutoRun noise: `python ear.py timeline film.mp4`, `ear.py sheet film.mp4 -o x.png`, `ear.py ab a b` (exit 2 without earshot) |

@@ -401,6 +401,9 @@ Python-Szene geschrieben: nichts wird von Hand modelliert, alles lässt sich än
   Ein **Abspann wie im Kinofilm** gehört dazu, wenn Sie möchten: Rolltitel in Blöcken, dazwischen Extra-Szenen,
   daneben **Outtakes vom Dreh** (Filmklappe, eine Einstellung geht schief, die Figuren lachen und schauen in die
   Kamera) und eine Szene nach dem Abspann – sagen Sie z. B. „mit Abspann und Outtakes“.
+  Nach einer Korrektur (ein Arm im Tisch, ein späterer Gag, ein neuer Satz) rendert der Skill **nur die Bilder neu,
+  die sich wirklich ändern** – nicht den ganzen Clip. Nach einem Plugin-Update sagen Sie „rendere nach, was sich
+  geändert hat“. Während des Renderns geht der PC nicht in den Ruhezustand (der Bildschirm darf aus).
   Ein fertiger Film lässt sich ohne Änderung der Szenen in einer anderen Machart neu rendern.
 - **Ton?** Gesprochene Zeilen (Stimmen-Baustein), eigene Aufnahmen, eine fertige Tonspur, Musik.
 - **Look?** Standard: elfenbeinfarbene Wände, dunkles Nussholz, ein korallenroter Akzent, tiefes goldenes Licht und

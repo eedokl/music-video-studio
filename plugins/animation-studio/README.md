@@ -34,7 +34,7 @@ Every user skill was tested by rebuilding finished films of its kind and measuri
 | `voice` | fixed character voices, text-to-speech with Whisper checks and retakes |
 | `ai-video` | ComfyUI client, FLUX / Qwen-Image-Edit images, LTX-2.3 and Wan2.2-S2V video, Depth Anything, mouth measurement, canon checks, night runs with milestones |
 | `bricks-3d` | LDraw importer, minifig rig, decals, sets, EEVEE film runner |
-| `stage-3d` | Blender stage for character films: animation tracks with easing, toy rig with acting API and lip sync, props, office set with five light moods, colour palettes, shot helpers, resumable draft / film renders, contact sheets |
+| `stage-3d` | Blender stage for character films: animation tracks with easing, toy rig with acting API and lip sync, props, office set with five light moods, colour palettes, shot helpers, resumable draft / film renders that re-render only the frames a change touches, contact sheets |
 | `film-finish` | gag (text and picture) and lyrics overlays, sound effects, full cut on the song timeline, frame-computed transitions (zoom through, glow, screen zoom, iris, flash, dip), title, end credits with gags and outtakes, pop-up version, second audio language, 48 fps, cuts for films without a song, generated film music, subtitles, Kdenlive hand-off, the cut of 3D films from rendered clips with the cinema / ad look, Shaders looks, the standard film look, output sizes (full / < 30 MB / ~12 MB mail), decode checks |
 
 ```

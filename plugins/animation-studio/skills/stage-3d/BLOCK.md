@@ -22,10 +22,11 @@ A film is a project folder: `project.json` (the clips in order, sizes, palette, 
 | script | runs in | what |
 |---|---|---|
 | `stage_run.py clip <project> <clip> --stills 1,40,90 --sheet` | uv | key frames in draft quality + labelled `out/<clip>/sheet.png` (`--every 20` = a strip through the clip, `--q film` for hero stills, `--range a b [--overwrite]` for frames, `--save` writes a .blend, `--contact` measures actors' feet and hands → `out/<clip>/contact.json`) |
-| `stage_run.py film <project> --q draft\|film [--clips a,b]` | uv | every missing frame of every clip (resumable; holds the shared GPU lock) |
+| `stage_run.py film <project> --q draft\|film [--clips a,b] [--changed]` | uv | every missing frame of every clip (resumable; holds the shared GPU lock, keeps the computer awake). After a change only the frames that look different are rendered again (fingerprints per frame in `out/<clip>/<q>/frames.json`); `--changed` checks every clip (after a plugin update), `--overwrite` renders everything |
 | `stage_run.py status <project> [--q film]` | uv | rendered / missing frames per clip |
 | `stage_speech.py prepare\|show <project>` | uv | Rhubarb mouth cues + word times of project.json `lines` → `speech/lines.json`; `show` prints the word frames |
 | `stage_film.py` | Blender | builds one clip and renders it (started by stage_run.py); writes `out/<clip>/build.json` (cuts, spoken lines with their frames) |
+| `stage_frames.py` | Blender | per-frame fingerprints of a built clip (object matrices + visibility, mesh / curve data, shape key values, modifier + constraint settings, rig poses, lights, cameras, every node value of materials / world, render settings) and the list of changed frames - not the deformed vertices (multi-threaded modifiers change their last bit on every build) |
 | `stage_core.py` | Blender | `Stage`, `Node`, channels and easing, primitives, materials, text, cameras, lights, palettes, render settings |
 | `stage_actor.py` | Blender | the rig `Char` + acting API, poses, moods, lip sync, the bundled figure `Toy`, `cast()` |
 | `stage_rig.py` | Blender | realistic actors: Rigify figures (`"figures": "rigify"`, `"actors"`) with the same acting API, Rhubarb face sliders, feet planted on the floor with steps, arms kept out of furniture (`contact()` after the bake), `report()` = `--contact` |
