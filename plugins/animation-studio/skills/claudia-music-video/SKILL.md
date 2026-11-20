@@ -203,7 +203,7 @@ material a second way: the cut is data on the beat grid (jump-ins on word onsets
 the beat), and lyrics, labels, ticker and cards are drawn in code frame by frame -> `film_code_v01.mp4` (next free
 number, `film.mp4` is untouched) + sheet. Offer it when the user wants a graphic layer that follows words and beats, a
 faster or data-driven cut, or names the film Y2Y2R / "You're Too Young to Remember" as the model.
-- **Ask for the pace** (project.json `"pace"`, default `medium`): `calm` holds every take for its whole line, `fast`
+- **Ask for the pace** (project.json `"pace"`, default `calm`): `calm` holds every take for its whole line, `fast`
   cuts stills every beat in a chorus. The first film in this method was judged "a bit too fast" at `fast`.
 - B-roll needs only its picked image here (no B-roll clips): for a film made only this way, skip the moving B-roll jobs.
 - Start images for sung shots should be frontal for this cut (the face is framed into the upper half and tracked).

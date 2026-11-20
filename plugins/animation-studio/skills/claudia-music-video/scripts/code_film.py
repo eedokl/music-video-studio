@@ -15,7 +15,7 @@ Reads project.json (sections = shots, "pace", "code_layer"), selection.json and 
 
 Usage: uv run code_film.py [<project>] [--pace calm|medium|fast] [--plan-only] [--from K --to K] [--work DIR]
 
-Pace (project.json "pace" or --pace, default medium): how long a picture holds.
+Pace (project.json "pace" or --pace, default calm): how long a picture holds.
   calm    a sung take runs through its whole shot; stills hold up to 8 beats; beat pulse halved
   medium  takes get one jump-in on a word onset (shots of 4 beats and more); stills change every 3 beats
   fast    jump-ins from 3 beats, a one-beat reframe in long takes; stills every 2 beats, every beat in a chorus
@@ -148,7 +148,7 @@ def main():
     secs = P.sections()
     if not secs:
         raise SystemExit("project.json has no shots - run plan.py first")
-    pace_name = a.pace or P.get("pace") or "medium"
+    pace_name = a.pace or P.get("pace") or "calm"
     pace = PACES[pace_name]
     layer = P.get("code_layer") or {}
     work = Path(a.work).resolve() if a.work else P.dir / "code_cut"

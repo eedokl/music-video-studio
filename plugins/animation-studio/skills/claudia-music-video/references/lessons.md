@@ -69,4 +69,4 @@ Weak spots that stayed (no model solved them): lips closing on short p/b/m; fast
 - **LTX turns medium shots into close-ups by itself**, so the film gets more close-ups than planned and code jump-ins
   stay small (8-12 %).
 - **Pace is a choice per song**: the first cut (one picture per beat in the chorus, a cut inside almost every take)
-  was "a bit too fast" for the user; `medium` is the default.
+  was "a bit too fast" for the user; `calm` is the default (the user's choice after seeing all three).
