@@ -11,16 +11,17 @@ Everything is a **pure function of song time**, which is what makes the MP4 expo
 ## Files
 | File | Role |
 |---|---|
-| `src/main.ts` | Scene manager (builds a scene when its time starts), black-dip cut, riff-hit flash/shake/RGB split (from `hits.json`), film grain hook (`?staticgrain`), render hook, live player UI |
+| `src/main.ts` | Scene manager (builds a scene when its time starts), black-dip cut, riff-hit flash/shake/RGB split (from `hits.json`), film grain hook (stands still; `?movinggrain` moves it every frame = ~10x the file size), `VARIANT` body class, render hook, live player UI |
 | `src/scenes.ts` | **The video**: `SCENES` list + timeline rule. This is what you rewrite per song. |
 | `src/lyric.ts` | `SungLine` (letter-synced lyric), `HeldWord` (held-note stretch), `heldFx()`, `LEAD` (0.08 s after refine_timing) |
-| `src/lyrics.ts` | Lyric lines + sections, `SONG_END`, `BPM`, `BEAT_OFFSET`, `beatAt()` – `SEED` – filled by `install_data.py` |
+| `src/lyrics.ts` | Lyric lines + sections, `SONG_END`, `BPM`, `BEAT_OFFSET`, `beatAt()`, `beatTime()`, `beatLen()`, `snapBeat(t, div, dir)` – `SEED` – filled by `install_data.py` |
 | `src/timing.json` / `hits.json` / `held.json` | Data from the audio: `[{t, e, words[], ends[]}]` per lyric line (one entry per space-separated display word), `{hits, big}`, `{name: {t0, fps, env, pitch}}` |
 | `src/vocal.ts` | Reads held.json: `vocalEnv(track, t)` 0..1, `vocalPitch(track, t)` ≈ −6..6 semitones |
 | `src/world3d.ts` | 3D modes (storm, city, network, globe, vault, tunnel) – recolour constants at the top per video |
 | `src/util.ts` | `mk`, `prog`, `easeOut`, `easeInOut`, `easeOutBack`, `hash`, `popStyle`, `slideIn`, `typed` |
+| `src/kit.ts` + `kit.css` | Optional motion-graphics kit: `stage()` (1920 x 1080 in px), `box`, `up` / `pop` / `stamp` / `hit`, self-drawing SVG (`svg`, `path`, `reveal`, `poly`), `subs()` subtitle lyrics, `kinetic()` big type with beat pulse, `flap()` split-flap cell, `chess()` board with moves, `scrollList()` |
 | `src/audio.ts` | Playback for the live version |
-| `scripts/render.mjs` | Export (browser + ffmpeg from env ANIMATION_STUDIO_CHROME / FFMPEG or the machine config). Options: `--fps 30 --width 1920 --height 1080 --crf 18 --from S --to S --out out/x.mp4 --query staticgrain` |
+| `scripts/render.mjs` | Export (browser + ffmpeg from env ANIMATION_STUDIO_CHROME / FFMPEG or the machine config). Options: `--fps 30 --width 1920 --height 1080 --crf 18 --from S --to S --out out/x.mp4 --query movinggrain`; an uncaught error while the page loads stops the render at once (exit 3) |
 
 ## Scene API (scenes.ts)
 ```ts
@@ -91,3 +92,32 @@ a `build*()` and a `case` in `update()` (set the camera first, then compute labe
 - Odometer: strips with digits 0–9 twice, translateY by a continuous value (so 9 → 0 keeps rolling).
 - CRT switch-off: content scaleY → 0.006 with brightness up (0.22 s), white line scaleX → 0.01 (0.28 s), dot fades (0.8 s), LED off.
 - Shutter: ribbed panel translateY −100% → 0 with ease-in, tiny bounce, stencil title stamped after.
+
+## Text follows the words, graphics follow the beat
+Lyrics appear on the sung word (`W(line, word)`); every *graphic* event lands on the beat grid. Events hung on word
+times look almost right and feel loose - measured on a reference video frame by frame: chess moves one per beat,
+list ticks and cards one per half beat, stamps and branch points on the beat, a highlight hopping every half beat,
+and in the choruses the whole type block bumps (+1.5 %) and brightens on every beat. Verses have no constant pulse.
+```ts
+const B = beatLen();                              // inside build(), never at module top level
+const t0 = snapBeat(W(li, 3), 2);                 // the half beat nearest to the sung word
+rows.forEach((r, i) => up(r, c.t, t0 + i * B / 2));          // one row per half beat
+stamp(el, c.t, snapBeat(W(li, 7), 2) - 0.1);                 // starts 0.1 s early, lands on the grid
+el.style.transform = `scale(${1 + 0.1 * hit(c.t, t0)})`;     // accent on landing
+kin(c.t, c.pulse);                                           // kinetic(): bump + brightness on every beat
+```
+A piece that moves for 0.3 s starts early enough to *arrive* on the beat. Counters and continuous draws (a curve, a
+scrolling list) stay continuous; give them a small `c.pulse` bump instead.
+
+## Variants - another cut of the same song
+Same song and timing, other scenes (a second look, a homage, a short version): put the scenes into their own file,
+register them in `VARIANTS` (scenes.ts) and render with `--variant NAME`. The page gets `?v=NAME`, the body the class
+`v-NAME` (scope the variant's CSS with it and hide what it does not use, e.g. `#grain`), the files are named
+`preview_NAME.mp4`, `clip_NAME_…`, `<title> (NAME).mp4`. The default cut stays untouched.
+
+## kit.ts in short
+`const st = stage(root)` then lay out in pixels: `box(st, 'cls', x, y, text?, w?, h?)`. `subs(st, lines)` shows the
+lyric as a subtitle line (word rises in, only the sung word white + underlined, then grey); `kinetic(st, rows)` big
+words slamming in from a blurred ghost. Self-drawing line: `const p = path(svg(st), d, colour); reveal(p, 0..1)`.
+`scrollList(...)`: `update(n * prog(t, a, b))` lets lines arrive while the list scrolls smoothly, `follow(k)` scrolls
+a full list (lines being struck out). Both subtitle and letter-synced lyrics (`SungLine`) may be used in one video.

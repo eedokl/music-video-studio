@@ -131,12 +131,24 @@ export const SCENES: SceneDef[] = [
   },
 ];
 
+// ---------- variants (optional) ----------
+// Another cut of the same song (same timing, other scenes): write its scenes in their own file, register them here
+// and render with `render.py PROJECT preview|clip|final --variant NAME` (page parameter ?v=NAME; file names get
+// " (NAME)"; the body gets the class v-NAME for its styles):
+//   import { buildScenes as retro } from './film_retro';
+//   const VARIANTS: Record<string, () => SceneDef[]> = { retro };
+// A scene file imports from this file - it must not USE those imports at module top level (only inside functions).
+export const VARIANT = new URLSearchParams(location.search).get('v') ?? '';
+const VARIANTS: Record<string, () => SceneDef[]> = {};
+if (VARIANT && !VARIANTS[VARIANT]) throw new Error(`unknown variant "${VARIANT}" - register it in VARIANTS (scenes.ts)`);
+const ACTIVE: SceneDef[] = VARIANT ? VARIANTS[VARIANT]() : SCENES;
+
 // ---------- timeline (keep) ----------
 export interface Timed extends SceneDef {
   t0: number;
   t1: number;
 }
-export const TIMELINE: Timed[] = SCENES.map((s) => {
+export const TIMELINE: Timed[] = ACTIVE.map((s) => {
   if (s.start !== undefined) return { ...s, t0: s.start, t1: 0 };
   const f = s.lines[0];
   // ideally just before the first word – but only once the previous line is complete and readable;

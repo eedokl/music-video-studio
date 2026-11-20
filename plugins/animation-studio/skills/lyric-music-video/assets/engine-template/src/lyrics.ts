@@ -73,6 +73,16 @@ export function sectionAt(t: number): { id: SectionId; p: number } {
 export const BPM = 120;
 export const BEAT_OFFSET = 0;
 export const beatAt = (t: number) => ((t - BEAT_OFFSET) * BPM) / 60;
+/** song time of beat number b */
+export const beatTime = (b: number) => BEAT_OFFSET + (b * 60) / BPM;
+/** one beat in seconds (functions, not constants: this file is read before scenes.ts in import cycles) */
+export const beatLen = () => 60 / BPM;
+/** Snap a time to the beat grid - graphic events land on the beat, lyrics on the words.
+ *  div 1 = beats, 2 = half beats, 4 = quarter beats; dir 0 = the nearest grid point, 1 = the next one. */
+export const snapBeat = (t: number, div = 1, dir = 0) => {
+  const b = beatAt(t) * div;
+  return beatTime((dir > 0 ? Math.ceil(b - 0.001) : Math.round(b)) / div);
+};
 
 // Creative seed of the project (project.json "seed"): use it for variation, e.g. hash(i + SEED) instead of hash(i),
 // so a new seed gives a new take while the same seed renders the same video.

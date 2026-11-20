@@ -1,7 +1,7 @@
 import './style.css';
 import { AudioEngine } from './audio';
 import { SONG_END, beatAt } from './lyrics';
-import { type Timed, TIMELINE, sceneAt } from './scenes';
+import { type Timed, TIMELINE, VARIANT, sceneAt } from './scenes';
 import hitsData from './hits.json';
 import { hash, prog } from './util';
 import { World3D } from './world3d';
@@ -13,8 +13,10 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 // ?render=1 → MP4 export mode (frames rendered on request by scripts/render.mjs)
 const params = new URLSearchParams(location.search);
 const RENDER = params.has('render');
-const STATIC_GRAIN = params.has('staticgrain');
+// grain stands still by default: grain that moves every frame multiplies the file size (992 MB vs 82 MB for 3 min)
+const MOVING_GRAIN = params.has('movinggrain');
 if (RENDER) document.body.classList.add('render');
+if (VARIANT) document.body.classList.add(`v-${VARIANT}`); // another cut of the same song (scenes.ts VARIANTS)
 
 const world = new World3D($('stage3d'), $('labels'), RENDER);
 const root = $('scene');
@@ -77,8 +79,8 @@ function step(t: number) {
   const sh = hit.flash * 10 + (beat % 4 < 0.12 ? 2 : 0);
   root.style.transform = sh > 0.2 ? `translate(${(Math.sin(t * 97) * sh).toFixed(1)}px, ${(Math.cos(t * 83) * sh).toFixed(1)}px)` : '';
   root.style.setProperty('--rgb', `${(hit.flash * 0.08 + pulse * 0.012).toFixed(3)}em`);
-  // ?staticgrain → grain stays put (much smaller video files)
-  if (!STATIC_GRAIN) grain.style.backgroundPosition = `${Math.floor(hash(Math.floor(t * 30)) * 256)}px ${Math.floor(hash(Math.floor(t * 30) + 7) * 256)}px`;
+  // ?movinggrain → the grain tile jumps every frame (film look, far bigger files)
+  if (MOVING_GRAIN) grain.style.backgroundPosition = `${Math.floor(hash(Math.floor(t * 30)) * 256)}px ${Math.floor(hash(Math.floor(t * 30) + 7) * 256)}px`;
 }
 
 /** Flash strength of the most recent riff hit (big hits are brighter). */

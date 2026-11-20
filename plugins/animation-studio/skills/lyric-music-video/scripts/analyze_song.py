@@ -14,6 +14,9 @@ Uses the building blocks of the plugin, nothing of its own:
   4    lyric lines -> analysis/timing_raw.json in the engine format: per line {"t","e","words","ends"} with one
        entry per DISPLAY word (line.split(" ") - punctuation-only words such as a dash get the neighbour's time)
   5    song-analysis refine_timing.py: every word start snapped to the real vocal onset -> analysis/timing.json
+  5b   words that still start in silence (a line's first word glued to the line before) move to the next vocal
+       onset; repeated sections that are the same recording (choruses of generated songs) get the same word times
+       (refine_timing.py silence_fix / repeat_fix; both print what they changed; --no-repair skips them)
   6    song-analysis hits.py: riff hits + constant beat grid -> analysis/hits.json ({"hits","big","bpm","offset"})
   6b   held notes shown as performed: song-analysis held_notes.py finds words held clearly longer than the song's
        normal word as one sustained note (also mid-line words whose end Whisper cut short, e.g. "Fifteeeen"),
@@ -38,7 +41,7 @@ import _studio  # noqa: E402
 _studio.use("song-analysis")
 import held_notes  # noqa: E402
 import hits as hits_mod  # noqa: E402
-from refine_timing import Onsets, refine_lines  # noqa: E402
+from refine_timing import Onsets, in_silence, refine_lines, repeat_fix, silence_fix  # noqa: E402
 from song_project import Project
 from analyze import leading_strays  # noqa: E402  (song-analysis)
 
@@ -161,6 +164,7 @@ def main():
                          "together (> 15 %% of them < 0.08 s after the previous one)")
     ap.add_argument("--passes", default="mix,vocals,vocals-vad")
     ap.add_argument("--no-refine", action="store_true")
+    ap.add_argument("--no-repair", action="store_true", help="skip silence_fix / repeat_fix after the refinement")
     ap.add_argument("--redo", action="store_true")
     a = ap.parse_args()
     P = Project(a.project)
@@ -188,6 +192,9 @@ def main():
     if not a.no_refine:
         print("refining word starts on the vocal onsets (analysis/vocals_lead.wav):")
         refine_lines(on, timing)
+        if not a.no_repair:
+            silence_fix(on, timing, lines)
+            repeat_fix(on, timing, lines)
     picked = auto_held(P, on, timing, lines)
     (P.analysis / "timing.json").write_text(json.dumps(timing, indent=0), encoding="utf-8")
     hf = P.analysis / "hits.json"
@@ -211,6 +218,9 @@ def main():
             late += 1
         print(f"{L['t']:7.2f} {L['e']:7.2f}  {rec:>2}+{al}/{n:<2}  {text}{flag}")
     tot = sum(q[2] for q in quality)
+    ns, nt = in_silence(on, timing, lines, lead=0.08)
+    print(f"words shown while the voice is still silent (0.25 s): {ns}/{nt}"
+          + ("  <- check these lines in a clip (render.py clip --sheet)" if ns > 0.03 * nt else ""))
     print(f"words recognized {sum(q[0] for q in quality)}/{tot}, aligned {sum(q[1] for q in quality)}, "
           f"lines without any recognized word: {sum(1 for q in quality if q[0] + q[1] == 0)}")
     if late:

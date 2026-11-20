@@ -23,7 +23,7 @@ body.idle { cursor: none; }
 #bg.off { display: none; }
 #wipe { background: #000; opacity: 0; z-index: 20; }
 #flash { background: #fff; opacity: 0; z-index: 21; mix-blend-mode: screen; }
-#grain { display: none; z-index: 22; mix-blend-mode: overlay; } /* enable for a film look (bigger files!) */
+#grain { display: none; z-index: 22; mix-blend-mode: overlay; } /* enable for a film look; it stands still unless the page gets ?movinggrain (far bigger files) */
 #vignette { z-index: 23; background: radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.4) 100%); }
 .scene { overflow: hidden; }
 .scene.light { color: #111; }

@@ -8,10 +8,14 @@
 
   uv run render.py PROJECT check
   ... render.py PROJECT preview [--fps 1] [--every 6 | --times 4,12,20]   1-fps run of the WHOLE song + contact sheet
-  ... render.py PROJECT clip --from 88 --to 98 [--fps 10]                 timing check around tight cuts / held notes
+  ... render.py PROJECT clip --from 88 --to 98 [--fps 10] [--sheet]       timing check around tight cuts / held notes;
+                                                                          --sheet: every frame on contact sheets (motion,
+                                                                          text entrances, on-beat events)
   ... render.py PROJECT final [--crf 20] [--title "Song Title"] [--look none|standard] [--from S --to S]
   ... render.py PROJECT versions out/<title>.mp4                           only (re)make the smaller copies
-  ... render.py PROJECT sheet VIDEO --times 4,12,20                        contact sheet of any video
+  ... render.py PROJECT sheet VIDEO [--times 4,12,20 | --every 6]          contact sheet of any video
+  --variant NAME   another cut of the same song (page parameter v=NAME, see engine.md "variants"): files get " (NAME)"
+  --online-fonts   keep loading the fonts from Google Fonts at every render (default: fetched once into public/fonts)
   sheet --times are seconds of THAT file: for a clip made with --from 88, 2.5 = song time 90.5. preview --times are
   song times, snapped to the preview's frames (at --fps 1: whole seconds) and labelled with the time shown.
 
@@ -23,19 +27,24 @@ final writes to <project>/out/:
 Every file is decoded once (0 errors expected), its duration compared with the rendered range and its audio
 stream checked. Files are rendered to *_tmp first; a file locked by a video player is kept under a new name.
 --look standard lays film-finish's paper + grain + vignette over the full file before the copies are made
-(off by default: a lyric video brings its own look; grain that changes every frame multiplies the file size).
+(off by default: a lyric video brings its own look; grain that changes every frame multiplies the file size - the
+engine's own grain stands still unless --query movinggrain; a final over ~25 MB per minute prints a warning).
 The browser: config "chrome" (check_tools.py --set chrome=PATH, env ANIMATION_STUDIO_CHROME), or a chrome-headless-shell in
 %TEMP%/mvchrome or ~/.cache/puppeteer - downloaded there with npx only after the user agreed (INSTALL_BROWSER=1).
 Do not edit files of the project while a render runs (Vite reloads the page).
 """
 import argparse
 import glob
+import hashlib
 import os
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
+import urllib.request
 from pathlib import Path
+from urllib.parse import urlparse
 
 import _studio  # noqa: E402
 _studio.use("song-analysis", "film-finish")
@@ -97,6 +106,52 @@ def video_dir(P):
     return v
 
 
+GOOGLE_LINK = re.compile(r'[ \t]*<link[^>]+href="(https://fonts\.googleapis\.com/css2?\?[^"]+)"[^>]*>\s*\n?')
+UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+
+
+def localize_fonts(video):
+    """Google Fonts link in index.html -> the .woff2 files once into public/fonts/ + fonts.css, the link points there.
+    Afterwards a render needs no network and makes no request to Google. Failing (offline) only warns: the link stays.
+    New fonts: put a Google Fonts link back into index.html (the old one is kept in data-google) - it is fetched again."""
+    idx = Path(video) / "index.html"
+    html = idx.read_text(encoding="utf-8")
+    urls = GOOGLE_LINK.findall(html)
+    if not urls:
+        return
+    dest = Path(video) / "public" / "fonts"
+    dest.mkdir(parents=True, exist_ok=True)
+    parts, n = [], 0
+    try:
+        for url in urls:
+            req = urllib.request.Request(url.replace("&amp;", "&"), headers={"User-Agent": UA})   # a browser UA gets woff2
+            css = urllib.request.urlopen(req, timeout=20).read().decode("utf-8")
+            for u in sorted(set(re.findall(r"url\((https://[^)]+)\)", css))):
+                name = hashlib.sha1(u.encode()).hexdigest()[:12] + (Path(urlparse(u).path).suffix or ".woff2")
+                f = dest / name
+                if not f.exists():
+                    f.write_bytes(urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": UA}), timeout=30).read())
+                    n += 1
+                css = css.replace(u, name)
+            parts.append(f"/* {url} */\n{css}")
+    except Exception as e:                                   # noqa: BLE001 - offline, blocked, changed format
+        print(f"fonts: could not fetch them once ({e}) - the page keeps loading them from Google Fonts at every render")
+        return
+    old = (dest / "fonts.css").read_text(encoding="utf-8") if (dest / "fonts.css").exists() else ""
+    (dest / "fonts.css").write_text(old + "\n".join(parts) + "\n", encoding="utf-8")
+    first = True
+
+    def swap(m):
+        nonlocal first
+        tag = f'    <link href="fonts/fonts.css" rel="stylesheet" data-google="{m.group(1)}" />\n' if first else ""
+        first = False
+        return tag
+    html = GOOGLE_LINK.sub(swap, html)
+    html = re.sub(r'[ \t]*<link rel="preconnect" href="https://fonts\.g[^"]+"[^>]*>\s*\n?', "", html)
+    idx.write_text(html, encoding="utf-8")
+    print(f"fonts: {n} file(s) fetched once into video/public/fonts - renders no longer ask Google Fonts")
+
+
 def tsc(video):
     r = subprocess.run([tool("npx"), "tsc", "--noEmit"], cwd=video, capture_output=True, text=True, errors="replace")
     if r.returncode:
@@ -105,8 +160,10 @@ def tsc(video):
     print("tsc: no errors")
 
 
-def run_render(P, out, fps=30, crf=20, t0=None, t1=None, query=None, width=1920, height=1080):
+def run_render(P, out, fps=30, crf=20, t0=None, t1=None, query=None, width=1920, height=1080, online_fonts=False):
     video = video_dir(P)
+    if not online_fonts:
+        localize_fonts(video)
     env = dict(os.environ, FFMPEG=ffmpeg(), ANIMATION_STUDIO_CHROME=ensure_browser(video))
     out = Path(out).resolve()
     tmp = out.with_name(out.stem + "_tmp.mp4")
@@ -121,7 +178,9 @@ def run_render(P, out, fps=30, crf=20, t0=None, t1=None, query=None, width=1920,
         cmd += ["--query", query]
     r = subprocess.run(cmd, cwd=video, env=env)
     if r.returncode or not tmp.exists() or tmp.stat().st_size < 1000:
-        raise SystemExit(f"render failed (exit {r.returncode}) - no new file; check for leftover node/chrome processes")
+        why = ("the page did not load - see 'page error' above (often a typo or an import cycle between scenes.ts and "
+               "a scene file)" if r.returncode == 3 else "check for leftover node/chrome processes")
+        raise SystemExit(f"render failed (exit {r.returncode}) - no new file; {why}")
     out.parent.mkdir(parents=True, exist_ok=True)
     return place(tmp, out)
 
@@ -172,11 +231,19 @@ def main():
     ap.add_argument("--to", dest="t1", type=float)
     ap.add_argument("--title")
     ap.add_argument("--look", default="none")
-    ap.add_argument("--query", help="extra page parameters, e.g. staticgrain")
+    ap.add_argument("--query", help="extra page parameters, e.g. movinggrain")
+    ap.add_argument("--variant", help="another cut of the same song: page parameter v=NAME, file names get ' (NAME)'")
+    ap.add_argument("--sheet", action="store_true", help="clip: contact sheets with every frame of the clip")
+    ap.add_argument("--online-fonts", action="store_true", help="keep the Google Fonts link (a request at every render)")
     ap.add_argument("--times")
     ap.add_argument("--every", type=float, default=6.0)
     ap.add_argument("--out")
     a = ap.parse_args()
+    if a.variant:
+        if not re.fullmatch(r"[\w-]+", a.variant):
+            raise SystemExit("--variant: letters, digits, - and _ only")
+        a.query = "&".join(x for x in (a.query, f"v={a.variant}") if x)
+    vtag = f"_{a.variant}" if a.variant else ""
     P = Project(a.project)
     P.check("lyric-music-video")                 # project.json validated before any long step
     outdir = P.dir / "out"
@@ -192,11 +259,17 @@ def main():
     if a.what == "check":
         tsc(video_dir(P))
     elif a.what == "sheet":
-        times = [float(x) for x in a.times.split(",")]
+        if a.times:
+            times = [float(x) for x in a.times.split(",")]
+        else:                                            # no --times: one frame every --every seconds (was a crash)
+            d = duration(a.file)
+            step = a.every if d > 2 * a.every else max(d / 12, 0.1)
+            times = [round(min(step / 2 + i * step, d - 0.05), 2) for i in range(max(1, int(d // step)))][:48]
         print(sheet_at(a.file, a.out or str(Path(a.file).with_suffix(".jpg")), times))
     elif a.what == "preview":
         tsc(video_dir(P))
-        f = run_render(P, a.out or outdir / "preview.mp4", fps=a.fps or 1, crf=28, t0=a.t0, t1=a.t1, query=a.query)
+        f = run_render(P, a.out or outdir / f"preview{vtag}.mp4", fps=a.fps or 1, crf=28, t0=a.t0, t1=a.t1, query=a.query,
+                       online_fonts=a.online_fonts)
         t0 = a.t0 or 0
         times = [float(x) for x in a.times.split(",")] if a.times else \
             [round(t0 + 1 + i * a.every, 1) for i in range(int(((a.t1 or song) - t0 - 1) // a.every) + 1)]
@@ -206,7 +279,7 @@ def main():
             print(f"   preview at {pf} fps: times snapped to its frames - for exact times render a clip around them")
         sheets = []
         for k in range(0, len(shown), 12):               # 12 frames per sheet (4 x 3)
-            s = outdir / f"preview_sheet_{k // 12 + 1}.jpg"
+            s = outdir / f"preview{vtag}_sheet_{k // 12 + 1}.jpg"
             # the preview starts at --from: its clock is song time - t0; labels = song time
             sheet_at(f, s, [t - t0 for t in shown[k:k + 12]], cols=4, width=400,
                      labels=[f"{t:.2f} s" for t in shown[k:k + 12]])
@@ -215,15 +288,30 @@ def main():
     elif a.what == "clip":
         if a.t0 is None or a.t1 is None:
             raise SystemExit("clip needs --from and --to")
-        f = run_render(P, a.out or outdir / f"clip_{a.t0:g}-{a.t1:g}.mp4", fps=a.fps or 10, crf=23, t0=a.t0, t1=a.t1,
-                       query=a.query)
+        cfps = a.fps or 10
+        f = run_render(P, a.out or outdir / f"clip{vtag}_{a.t0:g}-{a.t1:g}.mp4", fps=cfps, crf=23, t0=a.t0, t1=a.t1,
+                       query=a.query, online_fonts=a.online_fonts)
         verify(f, a.t1 - a.t0)
+        if a.sheet:                                      # every frame, 16 per sheet: how things move between two seconds
+            n = int(round((a.t1 - a.t0) * cfps))
+            ts = [(i + 0.5) / cfps for i in range(n)]
+            names = []
+            for k in range(0, n, 16):
+                s = Path(f).with_name(f"{Path(f).stem}_frames_{k // 16 + 1}.jpg")
+                sheet_at(f, s, ts[k:k + 16], cols=4, width=480, labels=[f"{a.t0 + i / cfps:.2f} s" for i in range(k, min(n, k + 16))])
+                names.append(s.name)
+            print(f"-> every frame at {cfps:g} fps (labels = song time): {', '.join(names)}")
     elif a.what in ("final", "versions"):
-        title = a.title or P.get("name", "music-video")
+        title = (a.title or P.get("name", "music-video")) + (f" ({a.variant})" if a.variant and a.what == "final" else "")
         t0, t1 = a.t0 or 0.0, min(a.t1 or song, song)
         if a.what == "final":
             tsc(video_dir(P))
-            full = run_render(P, outdir / f"{title}.mp4", fps=a.fps or 30, crf=a.crf, t0=a.t0, t1=a.t1, query=a.query)
+            full = run_render(P, outdir / f"{title}.mp4", fps=a.fps or 30, crf=a.crf, t0=a.t0, t1=a.t1, query=a.query,
+                              online_fonts=a.online_fonts)
+            mb_min = Path(full).stat().st_size / 1e6 / max((t1 - t0) / 60, 0.05)
+            if mb_min > 25 * (a.fps or 30) / 30 and t1 - t0 > 20:
+                print(f"   NOTE: {mb_min:.0f} MB per minute is a lot for a lyric video - something changes on every frame "
+                      "across the whole picture (moving grain, noise, a full-screen shimmer)? Standing grain is ~10x smaller")
             if a.look != "none":
                 looked = Path(full).with_name(Path(full).stem + "_look_tmp.mp4")
                 subprocess.run([sys.executable, str(FF_DIR / "apply_look.py"), str(full), "-o", str(looked),

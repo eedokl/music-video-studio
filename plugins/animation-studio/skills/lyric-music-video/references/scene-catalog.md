@@ -29,6 +29,8 @@ when you want to see exactly how something was built.
 | `stadium-broadcast` | Second recording of song A, as a live-concert version | TV broadcast of a stadium concert (concert.ts): LIVE badge + camera labels, the song's story as LED-wall graphics (wall.ts, canvas texture), side screens with a live close-up (render target), 25 moving heads with shader beams in haze, follow spot, flames on big hits, CO2, spark curtain on held notes, confetti, fireworks, ~5,000 instanced fans jumping on the beat, phone lights forming a ring of stars from the sky camera, matte black band silhouettes (bright/metallic figures looked like mannequins), bloom; scenes are declarative (shot + light look + wall visual + lyric style) |
 | (scenes/bl, not in examples) | German folk-pop storytelling song about Sutton's "bitter lesson" (song F, "Die bittere Lektion") | School exercise book + blackboard: verses on cream ruled paper with red margin line in royal-blue fountain-pen ink, wobbly pen drawings that draw themselves on the sung words (sketch.ts: stroke-dash reveal, hash-wobbled lines), a handwritten date top right that tells the years (1997, 2017, 2012-16, heute, nächstes Jahr); choruses on a green slate board in chalk (Caveat Brush) with a sponge wiping the memorised stuff away; bridge as pencil on a blank sheet. Caveat handwriting = human, Courier Prime typed = machine; the "better model" is the only un-wobbled, filled shape. Letters flow in like ink (no stamp), cut = a turned page (sheet sweeping across), ending = teacher's red pen "Richtig. Leider.", homework "loslassen.", the book closes on a beat and a stamp seals the label |
 
+| (scenes/bl `--variant`, not in examples) | Same song F, second cut: the scenes of an English reference video the user named, re-staged in German | Dark motion graphics: navy / warm brown / red / blue radial backgrounds with faint vertical stripes, Anton + Playfair Display + Inter + IBM Plex Mono, small mono header top left with a typed caption, subtitle lyrics at the bottom, choruses as full-screen kinetic type (red = the lesson, blue = the machine), short dips to black, recap cards on the beat, credits naming the essay and the original |
+
 ## 2. Lyric presentation techniques
 
 - **Pop-up speech bubbles** with karaoke word highlight (popup-bubbles, `popups.ts`).
@@ -38,6 +40,8 @@ when you want to see exactly how something was built.
 - **Caption bar** with word highlight under a 3D scene (stage-dodge).
 - **Flying 3D words** that arrive exactly when sung and get punched/dodged (stage-dodge `words.ts`).
 - **Full-screen word slams** for chants ("HEY! RISE UP, PEOPLE") – one word at a time, huge, rotated, flash (industrial-riff `heyScene`).
+- **Subtitle line** (`kit.ts subs()`): the whole line is laid out centred, each word rises in when sung; only the word being sung is white + underlined, sung words cool to grey (the underline fades when the word ends). Calm verses under busy graphics.
+- **Kinetic chorus type** (`kit.ts kinetic()`): words slam in from a large blurred ghost (scale 2.2 -> 1 in 0.2 s); the whole block bumps +1.6 % and brightens on every beat, a soft radial glow behind it pulses with it.
 - **Beat bump**: lyric block scales 1 + 0.065–0.085 × pulse while singing.
 - **Replace mode** (only current line) for choruses; **stacked mode** for two-line verses.
 - **Self-drawing sketches** (scenes/bl `sketch.ts`/`draw.ts`): SVG paths with `pathLength=1` + dash offset from song time, lines wobbled with `hash()`, handwriting revealed letter by letter, erase by per-item `out` time (sponge sweep = out time from x position). A lone dash word rides inside the previous word's box so it never starts a row.
@@ -67,11 +71,16 @@ when you want to see exactly how something was built.
 - **Scene cuts**: diagonal colour wipe (glass-ui-mascot), black dip + hit flash (industrial-riff, content-cards), hard cut with 0.16 s scale-in (office-scenes).
 - **Instrumental breaks**: give them their own scene (deployment progress over the 3D city; breaking news; title build with riser brightness ramp).
 
+- **Graphics on the beat grid** (song F second cut; see engine.md "Text follows the words, graphics follow the beat"): one chess move per beat, list ticks / cards / flow-chart boxes per half or quarter beat, stamps landing on the grid, a highlight hopping over a word cloud every half beat, departure-board rows one per beat with each item reaching its target one beat later (flash).
+- **Props built for it** (kit.ts): split-flap departure board, chess board from FEN with moves and highlights, document window whose numbered lines arrive while it scrolls smoothly and are later struck out while it scrolls again; (in that project only) a railroad track laid by a glowing head with branches and signs, paper cards that flip to neon cards one per half beat, a newspaper slam + equation + rubber stamp, a robot hopping from step tile to step tile on the beat, a capability curve with scaffold blocks that tumble away.
+
 ## 5. 3D modes (world3d.ts in the template)
 
 `storm` (rain, rushing grid, lightning on hits, ring of 12 stars: `scatter` blows them apart, `light` = golden dawn), `city` (instanced towers bouncing on the beat under a floating cloud), `network` (hub→spokes nodes lighting up; reacts to `vocal`/`release` opts), `globe` (wireframe globe with arcs drawing between sites), `vault` (exploded-view object with labels; `cage` = private network box), `tunnel` (laptop→proxy→SASE→IDE packet; `success`). Older one-off 3D: data-center corridor with firewall wall and packets, hero cloud with orbit rings (popup-bubbles/world.ts); full concert stage with singer rig (stage-dodge); stadium concert broadcast with LED-wall storytelling (stadium-broadcast/concert.ts – keep beams dim in shots that must read the wall, keep the follow-spot haze out of close-ups). Add a new mode when the song needs a new world.
 
 ## 6. What the user liked / disliked (carry this forward)
+
+- Corrected twice on song F's second cut: (1) "look closely at how the lyric is faded in - finer than 2 s"; (2) "the beat is on the graphic elements too". Sampling a reference every 2 s misses entrances, pulses and scrolling - see `study-a-reference-video.md`. Graphic events hung on word times were not accepted; on the beat grid they were.
 
 - Liked: one scene per lyric idea, text that is precisely synced, beat bumps, held-note effects that follow the voice, special endings (CRT off), clean readable cards, per-section colour changes, a fresh look per song.
 - Disliked: anything that looks like a copy of a reference video (asked to make it "less like a copy"); coloured marker boxes behind the sung word ("looks better without"); text lagging behind the voice; huge files.

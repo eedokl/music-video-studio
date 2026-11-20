@@ -10,8 +10,8 @@ function of song time, rendered frame by frame in headless Chrome to MP4. The pi
 (see `assets/examples/`: industrial-riff, stadium-broadcast, glass-ui-mascot, content-cards, stage-dodge,
 popup-bubbles, office-scenes); the creative part must be new every time.
 
-**Two things matter most:** the text must sit exactly on the voice, and every video must look and feel like its own
-piece - inspired by earlier work, never a copy of it.
+**Three things matter most:** the text must sit exactly on the voice, graphic events must sit on the beat, and every
+video must look and feel like its own piece - inspired by earlier work, never a copy of it.
 
 Scripts: `L="${CLAUDE_PLUGIN_ROOT}/skills/lyric-music-video/scripts"`, `SA="${CLAUDE_PLUGIN_ROOT}/skills/song-analysis/scripts"`.
 Run them with `uv run "$L/<script>.py" ...`. Tools are checked with
@@ -32,7 +32,9 @@ file matching the song title is very likely it). One round of questions where po
 - **Context & story**: what is the song about, who watches it (team, company, friends, public)? **Source material**
   to present (an HTML page, document, roles/products list, images)?
 - **Style wishes**: genre/mood, colours/brand, references they like, things to avoid. A named reference video gives
-  *ideas*, never the look.
+  *ideas*, never the look - unless the user asks for a re-staging of it: then study it as described in
+  `references/study-a-reference-video.md` (fine time steps, measured pulses), rebuild it in code without taking its
+  images, and name the original in the credits.
 - **Language(s)** sung (mixed German/English is fine: `--language auto`).
 - **Output**: default = full quality + `_compressed` + `_small` (< 30 MB) + `_mail` (~12 MB); where to put it
   (default: `<project>/out/`, copied wherever the user wants).
@@ -63,6 +65,11 @@ Read `references/scene-catalog.md` (all past scenes, techniques, identities, lik
 2. **Analyse**: `analyze_song.py PROJECT` (run in the background; Demucs + Whisper take the GPU lock and wait for
    other AI jobs). It runs song-analysis (vocals, Whisper word times aligned to the lyrics, repairs), snaps every word
    start to the real vocal onset and stretches held line endings to where the voice stops (`refine_timing.py`),
+   then repairs what snapping cannot see: words that still start in silence (a line's first word glued to the end of
+   the line before) move to the next vocal onset, and repeated sections that are the same recording a fixed offset
+   apart (the choruses of a generated song) get the same word times - it prints every change and the number of
+   words shown while the voice is still silent (should be 0; reference song F: 63 -> 19 of 291 words more than
+   0.15 s from a hand-corrected timing; `--no-repair` skips both). Then it
    finds riff hits + the beat grid (`hits.py`) and prints every line with recognized/total words plus the held-note
    candidates. When whole lines were not heard (Whisper's VAD drops sung passages) it runs `best_words.py`
    automatically: Whisper again on the full mix and on the vocals without VAD, best pass per line in sung order
@@ -91,13 +98,15 @@ Read `references/scene-catalog.md` (all past scenes, techniques, identities, lik
 4. **Install**: `install_data.py PROJECT` -> `video/src/lyrics.ts` (lines, sections, SONG_END, BPM, BEAT_OFFSET,
    SEED), `timing.json`, `hits.json`, `held.json`, `vocal.ts` track names, `public/song.wav`.
 5. **Write the video**: `video/src/scenes.ts` + `video/src/style.css` (see `references/engine.md` for the scene API,
-   SungLine/held-note options, 3D modes and recipes). Set the fonts in `video/index.html` (Google Fonts link) AND in
+   SungLine/held-note options, 3D modes, the beat grid, `kit.ts`, variants and recipes). Set the fonts in `video/index.html` (Google Fonts link) AND in
    the `document.fonts.load(...)` list of `main.ts`. Recolour/extend `world3d.ts` if you use 3D. Mark ideas done:
    `brief.py PROJECT --status N done`.
 6. **Preview**: `render.py PROJECT preview` (type check, 1-fps render of the whole song, contact sheets every 6 s in
    `out/`; `--times` for one time per scene). Look at every sheet: overlaps, unreadable text, empty frames, leaks from
    earlier scenes, anything that looks copied. Timing-critical moments: `render.py PROJECT clip --from 88 --to 98`
-   (10 fps).
+   (10 fps); with `--sheet` every frame of the clip lands on contact sheets - the only way to judge entrances,
+   on-beat events and scrolling (a 1-fps preview cannot show motion).
+   A second cut of the same song (other scenes, same timing): `--variant NAME` (engine.md "Variants").
 7. **Render**: `render.py PROJECT final --title "Song Title"` -> `out/<title>.mp4` (CRF 20, 1080p30, ~6-10 min for
    3-4 min of song on a GPU - run in the background), then `_compressed` (CRF 28), `_small` (< 30 MB, 720p two-pass)
    and `_mail` (~12 MB, 540p, AAC 64k) via film-finish's encoder; every file is decoded, its duration and audio
@@ -117,6 +126,10 @@ Read `references/scene-catalog.md` (all past scenes, techniques, identities, lik
   use them at a size their resolution allows; tone bright white screenshots down on dark stages (light grey cards,
   ~0.85 brightness). Never just place an image: deal it in, let it drift (Ken Burns), bump it on the beat, sweep a
   glint over it.
+- **Text follows the words, graphics follow the beat.** Lyrics appear on the sung word; every graphic event (a
+  move, a tick, a row, a card, a stamp) lands on the beat grid: `snapBeat(time, div)` (lyrics.ts), sequences in steps
+  of a beat, half or quarter beat, `hit()` for the accent on landing; choruses pulse on every beat
+  (`kinetic(...)(c.t, c.pulse)`). Events hung on word times look nearly right and feel loose (engine.md has the recipe).
 - **Use the voice**: held-note stretch on the 2-4 most prominent held words (automatic, see 3.3; react to them in
   the scene with `heldFx`), hits for flashes/shakes, the beat for
   bumps and on-beat events (`timeAtBeat`), silences for contrast.
@@ -141,9 +154,10 @@ Read `references/scene-catalog.md` (all past scenes, techniques, identities, lik
 - **LEAD**: words appear `LEAD` (0.08 s, `lyric.ts`) before their time. That is right for refined timing (default).
   With `--no-refine` (unrefined Whisper times) use ~0.2 s.
 - **Fonts**: wait for them in render mode (`document.fonts.load` in main.ts) - update the list with the fonts.
-  The template loads them from Google Fonts at EVERY render (a request to Google; offline: silent fallback
-  fonts). Tell the user; for offline / private renders put the .woff2 files into `video/public/fonts/` with an
-  `@font-face` in style.css instead of the link (downloading them = ask first).
+  `render.py` fetches the fonts of the Google Fonts link in index.html ONCE into `video/public/fonts/` and points
+  the link there (the old URL stays in `data-google`): later renders need no network and send nothing to Google.
+  Offline at that first render it only warns and the link stays (silent fallback fonts!). New fonts: put a Google
+  Fonts link back into index.html. `--online-fonts` keeps the old behaviour (a request at every render).
 - **Windows paths**: deep folders exceed MAX_PATH - keep PROJECT and the headless Chrome short (`%TEMP%/mvchrome`).
 - **Browser**: render.py takes config `chrome` / env `ANIMATION_STUDIO_CHROME`, then an existing chrome-headless-shell (%TEMP%/mvchrome,
   ~/.cache/puppeteer), and only then the machine's general `browser` (Edge). A full Edge/Chrome runs in new headless
@@ -152,8 +166,12 @@ Read `references/scene-catalog.md` (all past scenes, techniques, identities, lik
   Launching may need the shell sandbox disabled.
 - **Sample rates**: all analysis decodes at a fixed rate through ffmpeg; if text drifts *progressively* against the
   voice, check that the stems and the mix are the same version and length.
-- **File size**: grain that changes every frame multiplies the size (950 MB vs 65 MB); for small versions render
-  with `--query staticgrain` or no grain. Keep the full file at CRF 20-22 unless the user wants a master.
+- **File size**: grain that changes every frame multiplies the size (992 MB vs 82 MB) - the template's grain stands
+  still (`--query movinggrain` moves it); `final` warns above ~25 MB per minute. Keep the full file at CRF 20-22
+  unless the user wants a master.
+- **Import cycles**: a scene file (or kit.ts) imports `W`/`T0`/`timeAtBeat` from scenes.ts and scenes.ts imports the
+  scene file - use those imports only inside functions, never at module top level (`const B = timeAtBeat(1)` there
+  = "Cannot access 'timeAtBeat' before initialization"; render.py stops with exit 3 and the page error).
 - **Long renders** run in the background - meanwhile write the README / next scenes, but do not edit files of the
   project being rendered (Vite reloads the page).
 - **Verify the final file, not the exit code**: render.py renders to `*_tmp.mp4`, checks decode errors, duration and
@@ -165,8 +183,10 @@ Read `references/scene-catalog.md` (all past scenes, techniques, identities, lik
 ## 6. Reference material
 - `references/scene-catalog.md` - every past scene, technique, identity, like/dislike. Read before designing.
 - `references/engine.md` - engine architecture, scene API, SungLine/held-note options, 3D modes, recipes.
+- `references/study-a-reference-video.md` - how to look at a reference video so that entrances, beat pulses and
+  scrolling are not missed (fine time steps, measuring instead of guessing).
 - `references/reference-tests.md` - how this skill was checked against the seven reference videos, with numbers.
-- `assets/engine-template/` - the starter project (new_video.py copies it).
+- `assets/engine-template/` - the starter project (new_video.py copies it); `src/kit.ts` = optional motion-graphics kit.
 - `assets/examples/<technique>/` - complete `src/` + `index.html` of the past videos as technique demos with placeholder
   lyrics (open one `scenes.ts` to see how a technique was built; never copy whole scenes). Their `public/` media (song,
   role images) are not included - each README says what to supply.

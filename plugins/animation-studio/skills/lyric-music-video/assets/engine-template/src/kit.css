@@ -1,0 +1,47 @@
+/* Styles of kit.ts (optional motion-graphics kit). Recolour freely - the classes are only defaults. */
+.kit-st { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; z-index: 1; }
+.kit-st .a { position: absolute; white-space: nowrap; }
+.kit-sv { left: 0; top: 0; width: 1920px; height: 1080px; overflow: visible; pointer-events: none; }
+.kit-sv path, .kit-sv line, .kit-sv circle { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+/* subtitle lyrics: --hot (0..1) is set per word - 1 while it is sung */
+.kit-subs { z-index: 5; width: 1920px; text-align: center; font: 600 40px var(--sans, sans-serif); text-shadow: 0 2px 14px rgba(0, 0, 0, 0.9); }
+.kit-subs::before { content: ''; position: absolute; left: 0; right: 0; top: -70px; height: 240px; background: linear-gradient(transparent, rgba(0, 0, 0, 0.72) 45%); z-index: -1; }
+.kit-subs .w { --hot: 0; display: inline-block; margin: 0 0.14em; padding-bottom: 2px;
+  color: color-mix(in srgb, #fff calc(var(--hot) * 100%), #bebec6);
+  border-bottom: 4px solid color-mix(in srgb, var(--accent, #e9a13b) calc(var(--hot) * 100%), transparent); }
+
+/* big kinetic type */
+.kit-krow { transform-origin: 50% 50%; width: 1920px; text-align: center; font-family: var(--display, sans-serif); text-transform: uppercase; line-height: 1.04; color: #efe9df; text-shadow: 0 0 40px rgba(255, 255, 255, 0.18); }
+.kit-krow .kw { display: inline-block; margin: 0 0.11em; transform-origin: 50% 60%; }
+.kit-krow .kw.r { color: #ff4d2e; text-shadow: 0 0 34px rgba(255, 77, 46, 0.85), 0 0 90px rgba(255, 77, 46, 0.5); }
+.kit-krow .kw.c { color: #62d6f5; text-shadow: 0 0 30px rgba(98, 214, 245, 0.85), 0 0 90px rgba(98, 214, 245, 0.45); }
+.kit-krow .kw.g { color: #fff; text-shadow: 0 0 30px rgba(190, 235, 255, 0.95), 0 0 100px rgba(98, 214, 245, 0.7); }
+
+/* split-flap board */
+.kit-flap { font: 600 25px/38px var(--mono, monospace); }
+.kit-flap span { display: inline-block; width: 23px; height: 38px; margin-right: 2px; text-align: center; background: #16181d; color: #f0b560; border-radius: 2px; box-shadow: inset 0 -19px 0 rgba(0, 0, 0, 0.25); }
+
+/* chess board */
+.kit-bd { box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6); }
+.kit-bd .pc { text-align: center; font-family: 'Segoe UI Symbol', 'DejaVu Sans', sans-serif; }
+.kit-bd.wood { outline: 10px solid #5b3a20; }
+.kit-bd.wood .sq.l { background: #e8cfa2; }
+.kit-bd.wood .sq.d { background: #a9753f; }
+.kit-bd.wood .pc.w { color: #fbf6ea; text-shadow: 0 0 2px #000, 0 2px 3px rgba(0, 0, 0, 0.8); }
+.kit-bd.wood .pc.b { color: #17120d; }
+.kit-bd.neon { outline: 2px solid rgba(98, 214, 245, 0.6); }
+.kit-bd.neon .sq.l { background: #1a3145; }
+.kit-bd.neon .sq.d { background: #0c1826; }
+.kit-bd.neon .pc.w { color: #bfeeff; text-shadow: 0 0 12px rgba(98, 214, 245, 0.9); }
+.kit-bd.neon .pc.b { color: #3f86a6; }
+
+/* scrolling document */
+.kit-doc { background: #f1ece0; border-radius: 10px; overflow: hidden; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6); color: #1d1a16; }
+.kit-doc .bar { position: relative; z-index: 2; height: 46px; background: #2a2f38; color: #c8ccd4; font: 500 17px/46px var(--mono, monospace); text-align: center; }
+.kit-doc .lst { position: absolute; left: 44px; right: 30px; top: 66px; }
+.kit-doc .li { font: 600 27px/42px var(--sans, sans-serif); white-space: nowrap; position: relative; height: 42px; }
+.kit-doc .li b { color: #b07a22; display: inline-block; width: 52px; text-align: right; margin-right: 16px; }
+.kit-doc .li.cut { color: rgba(200, 60, 40, 0.5); }
+.kit-doc .li.cut::after { content: ''; position: absolute; left: 30px; right: 60px; top: 21px; height: 3px; background: #e2452c; }
+.kit-doc .fade { position: absolute; left: 0; right: 0; bottom: 0; height: 70px; background: linear-gradient(transparent, #f1ece0); }

@@ -59,9 +59,26 @@ const browser = await puppeteer.launch({
 });
 const page = await browser.newPage();
 await page.setViewport({ width, height, deviceScaleFactor: 1 });
-page.on('pageerror', (e) => console.error('page error:', e.message));
-await page.goto(url, { waitUntil: 'networkidle0', timeout: 120000 });
-await page.waitForFunction('window.__ready === true', { timeout: 180000 });
+// An uncaught error while the page loads (a typo, an import cycle: "Cannot access 'x' before initialization") means
+// window.__ready never comes - stop at once instead of waiting for the 180 s timeout.
+let loading = true;
+const loadError = new Promise((_, rej) =>
+  page.on('pageerror', (e) => {
+    console.error('page error:', e.message);
+    if (loading) rej(new Error(`the page failed to load: ${e.message}`));
+  }),
+);
+loadError.catch(() => {});
+try {
+  await Promise.race([page.goto(url, { waitUntil: 'networkidle0', timeout: 120000 }), loadError]);
+  await Promise.race([page.waitForFunction('window.__ready === true', { timeout: 180000 }), loadError]);
+} catch (e) {
+  console.error(`render stopped: ${e.message}`);
+  await browser.close();
+  await server.close();
+  process.exit(3);
+}
+loading = false;
 
 const gpu = await page.evaluate(() => {
   const gl = document.createElement('canvas').getContext('webgl2');

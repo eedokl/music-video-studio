@@ -39,8 +39,26 @@ def run_lyric(ctx):
     # node_modules as a real folder of links (vite writes its .vite cache there, never into the linked one)
     link = d / "video" / "node_modules"
     link_tree(link, nm)
+    extra = ""
     try:
         ctx.uv(RENDER, d, "final", "--fps", str(FPS), "--title", "e2e", timeout=900)
+        # 0.11.0: sheet without --times (was a crash), clip --sheet (every frame), a page that fails to load stops
+        # the render at once instead of after the 180 s timeout
+        ctx.uv(RENDER, d, "sheet", "out/e2e.mp4", timeout=300)
+        expect((d / "out" / "e2e.jpg").exists(), "sheet without --times wrote no out/e2e.jpg")
+        ctx.uv(RENDER, d, "clip", "--from", "0.5", "--to", "1.5", "--fps", "6", "--sheet", timeout=600)
+        expect((d / "out" / "clip_0.5-1.5_frames_1.jpg").exists(), "clip --sheet wrote no frame sheet")
+        main_ts = d / "video" / "src" / "main.ts"
+        good = main_ts.read_text(encoding="utf-8")
+        main_ts.write_text(good + "\nthrow new Error('e2e: broken on purpose');\n", encoding="utf-8")
+        import time
+        t0 = time.time()
+        r = ctx.uv(RENDER, d, "clip", "--from", "0", "--to", "1", "--fps", "2", timeout=170, check=False)
+        dt = time.time() - t0
+        main_ts.write_text(good, encoding="utf-8")
+        expect(r.returncode != 0, "a page error at load did not fail the render")
+        expect(dt < 120, f"a page error at load took {dt:.0f} s to fail (should stop at once, not wait for the timeout)")
+        extra = f", sheet + clip --sheet ok, page error stops after {dt:.0f} s"
     finally:
         unlink_links(link)                                  # the links only - never the linked node_modules
     out = d / "out"
@@ -54,7 +72,7 @@ def run_lyric(ctx):
     expect(abs(n - want) <= 1, f"e2e.mp4: {n} frames at {FPS} fps, the song needs {want}")
     a = audio_seconds(out / "e2e.mp4")
     expect(abs(a - SONG) < 0.15, f"e2e.mp4 audio {a:.2f} s, song {SONG} s")
-    ctx.note(f"tsc ok, {n} frames at {FPS} fps for {SONG} s, 4 files decode, audio {a:.2f} s")
+    ctx.note(f"tsc ok, {n} frames at {FPS} fps for {SONG} s, 4 files decode, audio {a:.2f} s{extra}")
 
 
 TESTS = [Test("lyric-music-video", run_lyric, slow=True,
