@@ -26,6 +26,11 @@ variant tag (last "_" part of its name), so a new choice makes new clips instead
 Rules:
   - resumable: existing outputs are skipped - after a crash or a stop just start again. Every output is written under
     a temporary name (<name>.part.<ext> + its .json) and renamed when complete, so a killed job is redone, not skipped
+  - changed jobs are redone: every finished output gets a fingerprint of what it was made from (kind, prompt, seed,
+    reference file names, the picked start image AND that image's own fingerprint) in jobs_made.json beside the jobs
+    file. An output whose job changed since (a rewritten prompt, a re-made start image) counts as open; the old file is
+    kept as <folder>/replaced/<name>.<old fingerprint>.<ext>. Outputs from before this rule are adopted as they are.
+    --keep-stale adopts the existing outputs once (after a plugin update that reworded prompts) instead of redoing them
   - per phase: wait for the shared GPU lock, flush ComfyUI, compute all jobs, release the lock (a lock that stays
     taken too long skips the phase with a message; the run goes on with the next phase)
   - hooks run after their phase also when the phase had nothing to do (a hand pick may have changed)
@@ -41,9 +46,10 @@ Audio args: "quiet_start": true moves the window start back into a silence (<= 0
 "prepare": true levels the vocal (clips.prepare_vocal). LTX args: "compression" (img_compression, crowds 42).
 Usage:
   uv run night_run.py jobs.json [--phases ltx,s2v] [--only s02,s05] [--dry-run] [--status]
-         [--min-free-gb 20] [--clean-comfy] [--no-preflight]
+         [--min-free-gb 20] [--clean-comfy] [--no-preflight] [--keep-stale]
 """
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -95,6 +101,74 @@ class Run:
         self._warned = set()
         self.min_free_gb = 20.0
         self.clean_comfy = False
+        self.made_file = self.file.with_name("jobs_made.json")
+        try:
+            self.made = json.loads(self.made_file.read_text(encoding="utf-8"))
+        except Exception:
+            self.made = {}
+        self.keep_stale = False
+        self._by_out = None
+
+    # ------------------------------------------------------------- fingerprints: is an existing output still current?
+    def rel(self, q):
+        q = Path(q)
+        try:
+            return q.resolve().relative_to(self.dir).as_posix()
+        except ValueError:
+            return q.as_posix()
+
+    def file_key(self, q):
+        """Fingerprint of a file another job made (a start image): its record, else its job's current fingerprint
+        (adoption - the same value whichever job is looked at first); "-" for a file no job makes (hand-made image)."""
+        r = self.rel(q)
+        if r in self.made:
+            return self.made[r]
+        if self._by_out is None:
+            self._by_out = {self.rel(self.p(j["out"])): j for j in self.d["jobs"] if "{img}" not in j["out"]}
+        j = self._by_out.get(r)
+        return self.job_key(j) if j else "-"
+
+    def job_key(self, job):
+        a = dict(job.get("args") or {})
+        a.pop("meta", None)
+        if "refs" in a:                               # names only: a moved project / plugin must not look "changed"
+            a["refs"] = [Path(str(r)).name for r in a["refs"]]
+        if "image" in a:
+            q, _ = self.resolve_image(a["image"])
+            a["image"] = [q.name, self.file_key(q)] if q is not None else None
+        txt = json.dumps([job["kind"], a], sort_keys=True, ensure_ascii=False)
+        return hashlib.sha1(txt.encode("utf-8")).hexdigest()[:12]
+
+    def is_done(self, job, out):
+        """The output exists AND was made from this job as it is now. Unknown outputs (older runs) are adopted."""
+        if not out.exists():
+            return False
+        r, key = self.rel(out), self.job_key(job)
+        if self.made.get(r) in (None, key) or self.keep_stale:
+            self.made[r] = key
+            return True
+        return False
+
+    def save_made(self):
+        tmp = self.made_file.with_name(self.made_file.name + ".tmp")
+        tmp.write_text(json.dumps(self.made, ensure_ascii=False, indent=0, sort_keys=True), encoding="utf-8")
+        os.replace(tmp, self.made_file)
+
+    def set_aside(self, out):
+        """A stale output makes room for its re-render: kept as replaced/<name>.<old fingerprint>.<ext> (+ its json)."""
+        if not out.exists():
+            return
+        old = self.made.pop(self.rel(out), "old")
+        dst = out.parent / "replaced" / f"{out.stem}.{old}{out.suffix}"
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(out, dst)
+        if clips.meta_path(out).exists():
+            os.replace(clips.meta_path(out), clips.meta_path(dst))
+        self.log(f"changed job: {self.rel(out)} was made from another prompt / image -> kept as {self.rel(dst)}, re-rendering")
+
+    def mark_made(self, job, out):
+        self.made[self.rel(out)] = self.job_key(job)
+        self.save_made()
 
     def disk_ok(self, what):
         """Enough free space on the project drive (and ComfyUI's, if comfy_dir is configured)? Logs when not."""
@@ -158,7 +232,7 @@ class Run:
         """Check the running ComfyUI for every node class / model file the OPEN jobs need (starts ComfyUI like a phase
         does). Logs each missing item; False = stop the run before any job."""
         try:
-            names = preflight.workflows_for_jobs([j for j in jobs if not self.out_of(j).exists()])
+            names = preflight.workflows_for_jobs([j for j in jobs if not self.is_done(j, self.out_of(j))])
         except ValueError as ex:
             self.log(f"ERROR preflight: {ex} - run stopped")
             return False
@@ -251,11 +325,12 @@ class Run:
     def depth_phase(self, todo):
         import estimate_depth
         tmp = self.dir / "ai" / "_depth_tmp"
-        pairs = []
+        pairs, job_of = [], {}
         for job, out in todo:
             img, _ = self.resolve_image(job["args"]["image"])
             if img is not None:
                 pairs.append((img, out))
+                job_of[out] = job
         if not pairs:
             return
         t0 = time.time()
@@ -268,19 +343,24 @@ class Run:
             src = tmp / f"{img.stem}_depth.png"
             if src.exists():
                 out.parent.mkdir(parents=True, exist_ok=True)
+                self.set_aside(out)
                 shutil.move(str(src), str(out))
+                self.mark_made(job_of[out], out)
                 ok += 1
         shutil.rmtree(tmp, ignore_errors=True)
         self.log(f"depth OK {ok}/{len(pairs)} maps in {time.time() - t0:.0f} s")
 
     def phase(self, ph, jobs, dry):
         todo = [(j, self.out_of(j)) for j in jobs]
-        open_ = [(j, o) for j, o in todo if not o.exists()]
+        open_ = [(j, o) for j, o in todo if not self.is_done(j, o)]
+        if not dry:
+            self.save_made()                          # adoptions of outputs from older runs
         est = (LOAD.get(ph, 120) if open_ else 0) + sum(estimate(j) for j, _ in open_)
         if dry:
             print(f"\n=== {ph}: {len(todo)} jobs, {len(todo) - len(open_)} done, {len(open_)} open, ~{fmt(est)}")
             for j, o in todo:
-                st = "done" if o.exists() else "open"
+                st = "open" if (j, o) in open_ else "done"
+                st = "redo" if st == "open" and o.exists() else st     # exists, but its job changed
                 print(f"  {j['id']:28s} ~{estimate(j):5.0f}s  {st:5s} {o.relative_to(self.dir) if o.is_relative_to(self.dir) else o}")
             return est
         if not open_:
@@ -307,9 +387,10 @@ class Run:
             comfy.free()                     # always fresh: ComfyUI keeps leftovers of earlier jobs otherwise
             for j, out in open_:
                 out = self.out_of(j)         # a pick may have changed meanwhile
-                if out.exists():
+                if self.is_done(j, out):
                     continue
                 out.parent.mkdir(parents=True, exist_ok=True)
+                self.set_aside(out)
                 part = out.with_name(out.stem + ".part" + out.suffix)
                 for attempt in (1, 2):
                     t0 = time.time()
@@ -320,6 +401,7 @@ class Run:
                         if clips.meta_path(part).exists():                 # meta first, the clip last:
                             os.replace(clips.meta_path(part), clips.meta_path(out))
                         os.replace(part, out)                              # "out exists" = complete
+                        self.mark_made(j, out)
                         self.log(f"{ph} OK     {j['id']}  {time.time() - t0:6.1f}s -> {out.relative_to(self.dir)}")
                         break
                     except BaseException as ex:          # SystemExit from tools as well
@@ -382,9 +464,11 @@ def main():
                     help="delete the files this run created in ComfyUI's input/output folders (config comfy_dir)")
     ap.add_argument("--no-preflight", action="store_true",
                     help="do not check ComfyUI's node classes and model files before the first job")
+    ap.add_argument("--keep-stale", action="store_true",
+                    help="adopt existing outputs whose job changed (e.g. after a plugin update) instead of redoing them")
     a = ap.parse_args()
     R = Run(a.jobs)
-    R.min_free_gb, R.clean_comfy = a.min_free_gb, a.clean_comfy
+    R.min_free_gb, R.clean_comfy, R.keep_stale = a.min_free_gb, a.clean_comfy, a.keep_stale
     if a.clean_comfy and comfy.comfy_dir() is None and not (a.dry_run or a.status):
         print("[night_run] --clean-comfy needs ComfyUI's base folder (holding input/ and output/): "
               "check_tools.py --set comfy_dir=<folder> or environment variable COMFY_DIR - nothing will be deleted",
@@ -399,8 +483,10 @@ def main():
     if a.status:
         for ph in order:
             js = by.get(ph, [])
-            done = sum(R.out_of(j).exists() for j in js)
-            print(f"{ph:10s} {done}/{len(js)} done")
+            outs = [(j, R.out_of(j)) for j in js]
+            done = sum(R.is_done(j, o) for j, o in outs)
+            redo = sum(o.exists() and not R.is_done(j, o) for j, o in outs)
+            print(f"{ph:10s} {done}/{len(js)} done" + (f"  ({redo} to redo: their job changed)" if redo else ""))
         return
     if not a.dry_run:
         R.log(f"===== night run start: phases {','.join(p for p in order if p in want)}" + (f", only {only}" if only else ""))
@@ -418,6 +504,7 @@ def main():
     if a.dry_run:
         print(f"\nTotal estimate {fmt(total)} (phases one after another, plus waiting for other GPU jobs)")
     else:
+        R.save_made()
         R.log(f"===== night run end after {fmt(time.time() - t0)}")
 
 

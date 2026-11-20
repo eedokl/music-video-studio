@@ -702,6 +702,25 @@ Zeitleiste und rendere A und B, damit ich vergleichen kann.
 Vergleich V1 und V2 Einstellung für Einstellung und schneide aus beiden die beste Fassung.
 ```
 
+**Andere Hauptfigur, zweite Figur (ab 0.10).** Das Video muss nicht von Claudia gesungen werden: Mit ein oder zwei
+Referenzbildern und einer kurzen Beschreibung singt eine eigene Figur im selben fotografischen Stil, und Claudia kann
+als Gast ohne Bühnenmikrofon dazukommen (auch beide in einem Bild).
+
+```
+Mach das Musikvideo im Claudia-Stil, aber mit Oliver als Sänger. In der Strophe mit der Tochter spielt Claudia mit.
+```
+
+**Mehr Auswahl für einzelne Einstellungen.** Wenn eine Einstellung nicht passt, lassen sich zusätzliche Fassungen
+drehen, ohne die vorhandenen zu verlieren – auch von einem neuen Startbild. Auf der Vergleichsseite stehen sie dann
+nebeneinander.
+
+```
+Für s05 hätte ich gern zwei zusätzliche Fassungen mit einem ruhigeren Startbild, die jetzige soll bleiben.
+```
+
+Geänderte Beschreibungen werden beim nächsten Nachtlauf von selbst neu gerechnet; die alte Datei bleibt im
+Unterordner `replaced` erhalten.
+
 ---
 
 ### 3.6 Animierte Präsentationsfiguren (`animated-powerpoint`)

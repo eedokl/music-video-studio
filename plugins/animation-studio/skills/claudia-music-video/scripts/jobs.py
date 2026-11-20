@@ -27,7 +27,12 @@ goes into the file name (<shot>_<img>_sd<seed>.mp4), so a re-render with a new s
 Reference images of Claudia: project.json "character_refs": [face, close-up] or config `claudia_refs`
 (paths separated by ";" or a folder). Instrumental for moving clips: stems.instrumental (e.g. a mix of the Suno
 non-vocal stems), else Demucs no_vocals (song-analysis separate_vocals.py, cache/sep/), else the song (warning).
-Usage: uv run jobs.py [<project>] [--start 2] [--seeds 2] [--broll 2] [--no-depth] [--only s02,s05]
+Other characters than Claudia: project.json "characters" + "lead", shot "who" (claudia.py, section "other
+characters") - identity text, reference images, negatives and the canon rules then come from the shot's cast.
+More takes of a shot: --only s05 --all-starts makes clips from EVERY start image variant (not only the picked one), so
+the takes page offers them side by side; add --start 3 for one more start image, --seeds 4 for more seeds.
+Direction hints (hand at the hair, raised eyebrows, laptops, people in B-roll, repeated poses) are printed, not fatal.
+Usage: uv run jobs.py [<project>] [--start 2] [--seeds 2] [--broll 2] [--no-depth] [--only s02,s05] [--all-starts]
 Then:  uv run <ai-video>/scripts/night_run.py <project>/jobs.json [--dry-run]
 """
 import argparse
@@ -129,16 +134,26 @@ def main():
     ap.add_argument("--broll", type=int, help="FLUX variants per B-roll shot")
     ap.add_argument("--no-depth", action="store_true")
     ap.add_argument("--only", default="")
+    ap.add_argument("--all-starts", action="store_true",
+                    help="clips from every start image variant of the shots (more takes to choose from), not only the pick")
     ap.add_argument("--ignore-checks", action="store_true")
     a = ap.parse_args()
     P = Project(a.project)
+    P.check("claudia-music-video")                 # before the night run, not only at the cut (a wrong "title" cost a run)
+    claudia.setup(P)
     var = dict(dict(start=2, seeds=2, broll=2), **(P.get("variants") or {}))
     nst, nseed, nbr = a.start or var["start"], min(4, a.seeds or var["seeds"]), a.broll or var["broll"]
     version = P.get("version", "studio")
     brief = P.get("brief") or {}
     wardrobe = brief.get("wardrobe") or creative.pick(P, "wardrobe", claudia.WARDROBE[version])
     only = [x for x in a.only.split(",") if x]
-    refs = None
+    ref_cache = []
+
+    def default_refs():                               # Claudia's refs: only asked for when she is in a shot
+        if not ref_cache:
+            ref_cache.append(character_refs(P))
+        return ref_cache[0]
+
     vocals = P.analysis / "vocals_lead.wav"
     if not vocals.exists():
         raise SystemExit("analysis/vocals_lead.wav missing - run song-analysis analyze.py first")
@@ -163,22 +178,25 @@ def main():
         if tech in ("typo", "placed"):
             continue                                  # typo: drawn by render_shots; placed: an existing clip (pick.py)
         if tech in ("lipsync", "claudia_moving"):
-            refs = refs or ([] if s.get("start_image") else character_refs(P))
             sp = claudia.start_image_prompt(s, wardrobe, look_img, version)
             pr["start_image"] = sp
-            problems += [f"{name} start image: {e}" for e in claudia.check(sp, "image")]
-            use_refs = refs[:1] if claudia.is_wide(s.get("framing")) else refs[:2]
+            problems += [f"{name} start image: {e}" for e in claudia.check(sp, "image", s)]
+            use_refs = [] if s.get("start_image") else claudia.shot_refs(s, default_refs, P.path)
             cands = []
             if s.get("start_image"):                 # a given start image (re-shoot of an earlier film's shot)
                 cands = [rel(P, P.path(s["start_image"]))]
             for k in range(1, (0 if cands else nst) + 1):
                 out = f"ai/start/{name}_v{k}.png"
                 cands.append(out)
-                add("qwen_edit", f"{name}/start_v{k}", out, refs=use_refs, prompt=sp, neg=claudia.NEG_IMAGE, seed=base + k)
+                add("qwen_edit", f"{name}/start_v{k}", out, refs=use_refs, prompt=sp, neg=claudia.neg_image(s), seed=base + k)
             chosen = (sel_start.get(name) if not s.get("start_image") else None)
             if chosen and P.path(chosen).exists() and chosen not in cands:
                 cands.append(chosen)                  # the start image picked before (test: a hand-made v4 was missing)
             img = {"pick": "start", "key": name, "candidates": cands}
+            # --all-starts / shot "all_starts": one set of clips per start image variant (fixed image, its tag in the
+            # file name) - "give me more takes of this shot" without pinning each variant by hand
+            every = (a.all_starts or s.get("all_starts")) and not s.get("start_image")
+            imgs = [(c, Path(c).stem.split("_")[-1]) for c in cands] if every else [(img, "{img}")]
             if not a.no_depth:
                 add("depth", f"{name}/depth", f"ai/depth/{name}_start_depth.png", image=img)
             if tech == "lipsync":
@@ -191,7 +209,7 @@ def main():
                                            round(float(t1) + lead, 2), act] for t0, t1, act in s["timeline"]])
                 lp = claudia.lipsync_prompt(s, wardrobe, look_vid, line)
                 pr["lipsync"] = lp
-                problems += [f"{name} lipsync: {e}" for e in claudia.check(lp, "lipsync")]
+                problems += [f"{name} lipsync: {e}" for e in claudia.check(lp, "lipsync", s)]
                 # a "timeline" shot is mixed by default: odd seeds the plain prompt (A), even seeds the timeline (B);
                 # "prompt_style": "timeline" | "plain" forces one style for all seeds
                 mode = s.get("prompt_style", "mixed") if s.get("timeline") else "plain"
@@ -202,7 +220,7 @@ def main():
                     lp = lp_a = claudia.lipsync_prompt(s, wardrobe, look_vid, line, style="plain")
                 if mode == "mixed":
                     pr["lipsync_plain"] = lp_a
-                    problems += [f"{name} lipsync (plain): {e}" for e in claudia.check(lp_a, "lipsync")]
+                    problems += [f"{name} lipsync (plain): {e}" for e in claudia.check(lp_a, "lipsync", s)]
                 n_ltx = nseed if s.get("engine", "ltx") == "ltx" else 1      # s2v/infinitetalk: + 1 LTX seed
                 if mode == "mixed" and s.get("engine", "ltx") == "ltx" and not a.seeds:
                     n_ltx = max(n_ltx, 4)                     # a real A/B: 2 seeds of each prompt
@@ -210,14 +228,15 @@ def main():
                     n_ltx = 0                                 # longer than LTX can do in one clip (121 frames)
                 # mixed: odd seeds A, even seeds B; with a single LTX seed B (a timeline shot is one where B won)
                 plain_k = (lambda k: mode == "plain" or (mode == "mixed" and k % 2 == 1 and n_ltx > 1))
-                for k in range(1, n_ltx + 1):
+                for im, tg, k in [(im, tg, k) for im, tg in imgs for k in range(1, n_ltx + 1)]:
                     # timeline shots: _pa / _pb in the name (test: the old s08_v4_s1.mp4 of the same seed, made with the
                     # old prompt, counted as done and would have been shown as prompt A)
                     pt = ("_pa" if plain_k(k) else "_pb") if s.get("timeline") else ""
-                    add("ltx_lipsync", f"{name}/ltx_s{k}", f"ai/lipsync/{name}_{{img}}_s{k}{pt}.mp4", image=img,
+                    add("ltx_lipsync", f"{name}/ltx_s{k}" + ("" if tg == "{img}" else f"_{tg}"),
+                        f"ai/lipsync/{name}_{tg}_s{k}{pt}.mp4", image=im,
                         audio={"src": rel(P, vocals), "from": round(s["from"] - lead, 3), "dur": round(frames / 24 + 0.2, 3),
                                "quiet_start": True, "prepare": True},
-                        prompt=lp_a if plain_k(k) else lp, neg=claudia.NEG_LIPSYNC, frames=frames,
+                        prompt=lp_a if plain_k(k) else lp, neg=claudia.neg_lipsync(s), frames=frames,
                         seed=base + 100 + k,
                         strength=STRENGTHS[(k - 1) % 4],
                         meta={"song_start": round(s["from"] - lead, 3), "lead_in": lead, "shot": name,
@@ -241,7 +260,7 @@ def main():
                     n, li = mod.frames_for(dur), 0.25
                     rp = claudia.s2v_prompt(s, look_vid)
                     pr[kind] = rp
-                    problems += [f"{name} {kind}: {e}" for e in claudia.check(rp, "s2v")]
+                    problems += [f"{name} {kind}: {e}" for e in claudia.check(rp, "s2v", s)]
                     add(kind, f"{name}/{kind}", f"ai/{kind}/{name}_{{img}}.mp4", image=img,
                         audio={"src": rel(P, vocals), "from": round(s["from"] - li, 3), "dur": round(n / fps + 0.2, 3),
                                "quiet_start": True, "prepare": True},
@@ -264,17 +283,18 @@ def main():
                 inst = inst or instrumental(P)
                 frames, lead = clips.ltx_fit(dur)
                 mp = claudia.moving_prompt((claudia.timeline_text(s["timeline"]) if s.get("timeline") else None)
-                                           or s.get("motion") or s.get("action") or "She moves slowly, her hair moves slightly",
+                                           or s.get("motion") or s.get("action") or claudia.default_motion(s),
                                            s.get("camera", "slow push-in"), look_vid)
                 pr["moving"] = mp
-                problems += [f"{name} moving: {e}" for e in claudia.check(mp, "moving")]
+                problems += [f"{name} moving: {e}" for e in claudia.check(mp, "moving", s)]
                 sd = s.get("seed", base + 300)
-                add("ltx_moving", f"{name}/moving" + seed_tag(sd, base + 300),
-                    f"ai/moving/{name}_{{img}}{seed_tag(sd, base + 300, P, 'moving', name)}.mp4",
-                    image=img,
-                    audio={"src": rel(P, inst), "from": round(s["from"] - lead, 3), "dur": round(frames / 24 + 0.2, 3)},
-                    prompt=mp, neg=claudia.NEG_MOVING, frames=frames, seed=sd,
-                    meta={"song_start": round(s["from"] - lead, 3), "lead_in": lead, "shot": name})
+                for im, tg in imgs:
+                    add("ltx_moving", f"{name}/moving" + seed_tag(sd, base + 300) + ("" if tg == "{img}" else f"_{tg}"),
+                        f"ai/moving/{name}_{tg}{seed_tag(sd, base + 300, P, 'moving', name)}.mp4",
+                        image=im,
+                        audio={"src": rel(P, inst), "from": round(s["from"] - lead, 3), "dur": round(frames / 24 + 0.2, 3)},
+                        prompt=mp, neg=claudia.neg_moving(s), frames=frames, seed=sd,
+                        meta={"song_start": round(s["from"] - lead, 3), "lead_in": lead, "shot": name})
         else:   # broll
             if not s.get("subject") and not s.get("start_image"):
                 problems.append(f"{name} broll: no 'subject' - the creative brief must say what we see")
@@ -286,6 +306,8 @@ def main():
                 cands.append(out)
                 add("flux", f"{name}/still_v{k}", out, prompt=bp, seed=base + k)
             img = {"pick": "broll", "key": name, "candidates": cands}
+            every = (a.all_starts or s.get("all_starts")) and not s.get("start_image")
+            imgs = [(c, Path(c).stem.split("_")[-1]) for c in cands] if every else [(img, "{img}")]
             if not a.no_depth:
                 add("depth", f"{name}/depth", f"ai/depth/{name}_broll_depth.png", image=img)
             inst = inst or instrumental(P)
@@ -297,17 +319,20 @@ def main():
                 import ltx
                 mp = ltx.crowd_prompt(mp)
             pr["moving"] = mp
-            problems += [f"{name} moving: {e}" for e in claudia.check(mp, "moving")]
+            problems += [f"{name} moving: {e}" for e in claudia.check(mp, "moving", s)]
             sd = s.get("seed", base + 300)
-            add("ltx_moving", f"{name}/moving" + seed_tag(sd, base + 300),
-                f"ai/moving/{name}_{{img}}{seed_tag(sd, base + 300, P, 'moving', name)}.mp4",
-                image=img,
-                audio={"src": rel(P, inst), "from": round(s["from"] - lead, 3), "dur": round(frames / 24 + 0.2, 3)},
-                prompt=mp, neg=claudia.NEG_MOVING, frames=frames, seed=sd,
-                compression=s.get("compression", 42 if crowd else 18),
-                meta={"song_start": round(s["from"] - lead, 3), "lead_in": lead, "shot": name})
+            for im, tg in imgs:
+                add("ltx_moving", f"{name}/moving" + seed_tag(sd, base + 300) + ("" if tg == "{img}" else f"_{tg}"),
+                    f"ai/moving/{name}_{tg}{seed_tag(sd, base + 300, P, 'moving', name)}.mp4",
+                    image=im,
+                    audio={"src": rel(P, inst), "from": round(s["from"] - lead, 3), "dur": round(frames / 24 + 0.2, 3)},
+                    prompt=mp, neg=claudia.neg_moving(s), frames=frames, seed=sd,
+                    compression=s.get("compression", 42 if crowd else 18),
+                    meta={"song_start": round(s["from"] - lead, 3), "lead_in": lead, "shot": name})
     prompts = merged(P.dir / "prompts.json", prompts, only, None)
     (P.dir / "prompts.json").write_text(json.dumps(prompts, ensure_ascii=False, indent=1), encoding="utf-8")
+    for h in claudia.hints([s for s in P.sections() if not only or s["name"] in only]):
+        print("hint:", h)
     if problems:
         print("Prompt problems:\n  " + "\n  ".join(problems))
         if not a.ignore_checks:

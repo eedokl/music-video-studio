@@ -93,8 +93,11 @@ def mouth_curve(video, cache=True):
 
 def motion_check(video):
     """Picture checks of an AI clip (claudia-live v2_auswahl/v4_messung): per frame the mean absolute grey difference
-    at 160x88. cuts = jumps > 6 levels AND > 4x the median (a hidden scene cut); frozen = a run of >= 12 frames below
-    0.6 (the picture stops); motion = mean difference (moving B-roll below ~3 reads as a still)."""
+    at 160x88. cuts = jumps > 6 levels AND > 4x the median (a hidden scene cut); frozen = a run of >= 12 frames in
+    which the picture stops; motion = mean difference (moving B-roll below ~3 reads as a still).
+    "Stops" is measured against the clip itself: below a quarter of its median difference (at most 0.6, at least 0.08).
+    The fixed 0.6 called every calm shot frozen - a static camera on a misty field, a singer in front of a still
+    background (Das Warum: 40 of 100 shots, the user took the moving clip back by hand in most of them)."""
     import cv2
     cap = video_capture(video)
     prev, d = None, []
@@ -111,9 +114,10 @@ def motion_check(video):
         return dict(motion=0.0, cuts=0, frozen=0, frozen_run=0)
     med = float(np.median(d))
     cuts = int(np.sum((d > 6) & (d > 4 * max(med, 0.5))))
+    still = min(0.6, max(0.08, 0.25 * med))
     run = longest = 0
     for x in d:
-        run = run + 1 if x < 0.6 else 0
+        run = run + 1 if x < still else 0
         longest = max(longest, run)
     return dict(motion=round(float(d.mean()), 2), cuts=cuts, frozen=int(longest >= 12), frozen_run=int(longest))
 

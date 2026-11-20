@@ -120,6 +120,37 @@ def run_claudia(ctx):
     expect("seed tag ok" in out.stdout, f"jobs.seed_tag:\n{out.stdout}")
     for f in ("s09_v1.json", "s09_v1.mp4"):
         (d / "ai" / "s2v" / f).unlink()
+    # other characters (project.json "characters" / "lead", shot "who"): their own identity, refs and negatives; none
+    # of Claudia's canon (microphone, streak) in a prompt, a check or the mic repair; Claudia herself unchanged
+    drv = "\n".join([
+        f"import sys; sys.path.insert(0, r'{JOBS.parent}'); import claudia",
+        "old = claudia.start_image_prompt({'framing': 'close-up', 'technique': 'lipsync'}, 'a coat', 'L.')",
+        "P = {'lead': 'tom', 'characters': {'tom': {'pronoun': 'he', 'full': 'a tall man with grey hair', 'refs': ['a.png', 'b.png'],",
+        "     'options': {'cap': 'a flat cap'}, 'negative': 'beard'}}}",
+        "claudia.setup(P)",
+        "s = {'name': 's01', 'technique': 'lipsync', 'framing': 'close-up', 'cap': True, 'action': 'he nods', 'set': 'in a field'}",
+        "sp = claudia.start_image_prompt(s, 'a jacket', 'Warm light.')",
+        "assert 'a tall man with grey hair, a flat cap' in sp and 'His lips' in sp and 'microphone' not in sp and 'streak' not in sp, sp",
+        "lp = claudia.lipsync_prompt(s, 'a jacket', 'warm light', 'Hallo Welt')",
+        "assert 'he sings into the camera, nods' in lp and 'He sings the words \"Hallo Welt\"' in lp and 'headset' not in lp, lp",
+        "assert claudia.check(sp, 'image', s) == [] and claudia.check(lp, 'lipsync', s) == [], (claudia.check(sp, 'image', s), claudia.check(lp, 'lipsync', s))",
+        "assert not claudia.has_canon(s) and 'beard' in claudia.neg_image(s) and 'microphone, headset' in claudia.neg_lipsync(s)",
+        "assert claudia.shot_refs(s, lambda: 1 / 0) == ['a.png', 'b.png']",
+        "duo = dict(s, who=['tom', 'claudia'], technique='claudia_moving')",
+        "dp = claudia.start_image_prompt(duo, 'a jacket', 'Warm light.')",
+        "assert dp.startswith('Two people in one picture: the man keeps') and 'Remove her headset microphone' in dp, dp",
+        "assert claudia.shot_refs(duo, lambda: ['c1.png', 'c2.png']) == ['a.png', 'c1.png']",
+        "h = claudia.hints([dict(s, action='he runs a hand through his hair'), dict(s, name='s02', action='he raises his eyebrows'),",
+        "                   {'name': 's03', 'technique': 'broll', 'subject': 'a man with a laptop on a field path'}])",
+        "assert len(h) == 4 and h[0].startswith('s01: a hand at the hair') and 'stranger' in h[3], h",
+        "assert 'passers-by' in claudia.neg_moving({'technique': 'broll', 'subject': 'an old tractor, no people'})",
+        "assert 'passers-by' not in claudia.neg_moving({'technique': 'broll', 'subject': 'five colleagues at a table'})",
+        "claudia.setup({})",
+        "assert claudia.has_canon({}) and claudia.start_image_prompt({'framing': 'close-up', 'technique': 'lipsync'}, 'a coat', 'L.') == old",
+        "assert claudia.neg_image({}) == claudia.NEG_IMAGE and any('microphone' in e for e in claudia.check('a woman', 'image', {}))",
+        "print('characters ok')", ""])
+    out = ctx.py(drv, deps_from=[JOBS], name="characters.py")
+    expect("characters ok" in out.stdout, f"claudia characters:\n{out.stdout}")
     ctx.uv(RENDER, d, "--only", "s02", timeout=900)
     log = (d / "render.log").read_text(encoding="utf-8").splitlines()
     expect(len(log) == 2 and " clip " in log[0] and "still ai/broll/s02_v1.png" in log[1], f"render.log after --only:\n{log}")

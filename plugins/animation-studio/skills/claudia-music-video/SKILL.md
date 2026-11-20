@@ -48,6 +48,27 @@ Check `analysis/song_sheet.png`: the sung lines must sit on the vocals (they bec
 `uv run "$S/plan.py" <proj> --version studio|live [--lipsync 0.5] [--no-s2v]` - one shot per sung
 line on the beat, techniques `lipsync` / `broll` / `claudia_moving`, framings and cameras drawn with the creative seed.
 
+**Another lead or a second character** (the film stays in Claudia's photographic style, with someone else in it):
+describe the people in project.json and name them per shot - the plugin then takes identity text, reference images,
+negatives and checks from the shot's cast, and none of Claudia's canon (microphone, streak, mic repair):
+
+```
+"lead": "oliver",
+"characters": {
+  "oliver": {"pronoun": "he", "full": "<identity text, pasted into every image prompt>", "far": "<short, for wide shots>",
+             "video": "<short, for video prompts>", "keep": "face, head shape, skin and hair",
+             "refs": ["refs/front.jpg", "refs/threequarter.jpg"],
+             "options": {"headband": "a black running headband around his forehead"},
+             "wardrobe": "<default clothes>", "negative": "beard, bald head, glasses"},
+  "claudia": {"base": "claudia", "mic": false, "refs": ["refs/claudia_close.png"]}   // Claudia as a guest, no stage mic
+}
+```
+Shot keys: `"who": "oliver"` | `"claudia"` | `["oliver", "claudia"]` (default: the lead; two people = one reference
+each, the first one sings), an option switched on by its key (`"headband": true`), `"wardrobe"` / `"wardrobe2"`.
+Start images of such shots have no measured canon: `pick.py` takes the first variant and the sheet says "check by eye".
+**Every shot that shows a character of the film is `lipsync` or `claudia_moving` with `who`** - a person described in
+a `broll` subject has no reference image and comes out as a stranger.
+
 **Engines for sung shots** (field `engine`, default `ltx`):
 
 | engine | when | cost |
@@ -99,21 +120,29 @@ new pictures. A new seed (`project.json "seed"`) gives a new take of plan, wardr
 ## 4. Prompts and night run
 
 ```
-uv run "$S/jobs.py" <proj> [--start 2 --seeds 2 --broll 2]     # prompts.json + jobs.json
+uv run "$S/jobs.py" <proj> [--start 2 --seeds 2 --broll 2]     # prompts.json + jobs.json (checks project.json first)
+uv run "$S/jobs.py" <proj> --only s05 --all-starts [--start 3] # MORE TAKES of a shot: clips from every start image
 uv run "$A/night_run.py" <proj>/jobs.json --dry-run   # jobs + time estimate
 uv run "$A/night_run.py" <proj>/jobs.json             # GPU (waits for the shared lock)
 ```
 Vocal inputs of LTX / InfiniteTalk start in a silence and are levelled (-16 dBFS sung RMS, peaks <= -1 dBFS,
 15 ms ramps - `clips.prepare_vocal`, identical to the live reference). `jobs.py` refuses prompts that break the canon/LTX rules (see `references/lessons.md`). Order: FLUX stills -> Qwen
 start images -> pick hook (canon check) -> depth -> LTX lip-sync + moving -> S2V. Resumable; `milestones.log`.
+`jobs.py` also prints **direction hints** (not errors): a hand named at the hair, raised eyebrows, laptops / phones
+(brand logos), a person of the film in B-roll, the same action in many shots - fix the brief before the night run.
+**Changed jobs are redone**: the night run keeps a fingerprint of every output (`jobs_made.json`: prompt, seed, the
+picked start image and that image's fingerprint). Rewrite a shot in the brief, run `jobs.py --only <shot>` and the
+night run again - its images and clips are made anew, the old files move to `ai/<kind>/replaced/`. `--status` /
+`--dry-run` show them as "to redo". After a plugin update that rewords prompts, `--keep-stale` adopts what is there.
 Rough cost: ~10 min loading + per lip-sync shot 2 seeds x ~2.5 min, per B-roll ~2.5 min; a 3-min song ~4-7 h.
 Keep other big programs closed (LTX peaks near 45 GB RAM). Only ever one GPU job: never kill other jobs or locks.
 
 ## 5. Pick by measurement, then look
 
 `uv run "$S/pick.py" all <proj>` - canon check for start images, lip score for every seed (best lag within +-3
-frames, closed mouths, hidden scene cuts and frozen stretches rejected; moving clips warned when they barely
-move; when every moving clip of a shot has a hidden cut or freezes, the automatic pick is the still with the depth
+frames, closed mouths, hidden scene cuts and frozen stretches rejected ("frozen" = the picture stops, measured
+against the clip's own motion, so a calm shot with a static camera is not frozen); moving clips warned when they
+barely move; when every moving clip of a shot has a hidden cut or freezes, the automatic pick is the still with the depth
 move - the clips stay on the takes page; a hand pick on another start image is rated but never the automatic pick), contact sheets `sheet_start.jpg`, `sheet_broll.jpg`, `sheet_clips.jpg`, log in
 `picks.log`. Start images that fail only on the microphone (two booms, or the boom on the wrong cheek) are
 repaired automatically in the night-run hook (`pick.py start --repair-mic`, ai-video `mic_repair.py`: wrong boom

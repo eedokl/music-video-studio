@@ -105,7 +105,28 @@ def run_night(ctx):
     expect(m.get("song_start") == 1.5 and m.get("frames") == 25, f"clip meta after the rerun: {m}")
     log = (d / "milestones.log").read_text(encoding="utf-8")
     expect("ltx OK     s02/ltx_s1" in log, "milestones.log has no OK line for the resumed job")
-    ctx.note("kill mid-write left only s02 .part (no final file), --status 1/2, rerun redid only s02, clip + meta complete")
+    # a changed job is redone and the old output kept (Das Warum: a rewritten prompt made nothing new while the old
+    # file was there). An untouched rerun renders nothing; outputs from before the fingerprints are adopted.
+    expect((d / "jobs_made.json").exists(), "no jobs_made.json (fingerprints of the finished outputs)")
+    (d / "calls.txt").unlink()
+    ctx.run([py, drv, "resume", *args], timeout=300)
+    expect(not (d / "calls.txt").exists(), "an unchanged rerun rendered a job again")
+    jobs["jobs"][0]["args"]["prompt"] = "test, rewritten"
+    write_json(d / "jobs.json", jobs)
+    st = ctx.uv(NIGHT, d / "jobs.json", "--status").stdout
+    expect("1/2 done" in st and "1 to redo" in st, f"--status after a prompt change: {st.strip()}")
+    ctx.run([py, drv, "resume", *args], timeout=300)
+    calls = (d / "calls.txt").read_text().split()
+    expect(calls == ["s01_v1_s1.part.mp4"], f"after the prompt change the rerun rendered {calls}, expected only s01")
+    kept = sorted(f.name for f in (lip / "replaced").iterdir())
+    expect(len(kept) == 2 and all(n.startswith("s01_v1_s1.") for n in kept), f"old s01 clip + meta not kept: {kept}")
+    expect((lip / "s01_v1_s1.mp4").exists() and (lip / "s01_v1_s1.json").exists(), "the redone s01 is incomplete")
+    (d / "jobs_made.json").unlink()                                            # a project from before the fingerprints
+    (d / "calls.txt").unlink()
+    ctx.run([py, drv, "resume", *args], timeout=300)
+    expect(not (d / "calls.txt").exists(), "outputs without a fingerprint were redone instead of adopted")
+    ctx.note("kill mid-write left only s02 .part (no final file), --status 1/2, rerun redid only s02, clip + meta complete; "
+             "a rewritten prompt redid only that job and kept the old clip in replaced/; old outputs are adopted")
 
 
 TESTS = [Test("night-run-resume", run_night, about="ai-video night_run.py: hard kill mid-write, .part outputs, rerun completes")]

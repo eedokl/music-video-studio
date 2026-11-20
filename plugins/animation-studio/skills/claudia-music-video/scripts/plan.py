@@ -97,6 +97,7 @@ def main():
     a = ap.parse_args()
     P = Project(a.project)
     P.check("claudia-music-video")                 # project.json validated before any long step
+    claudia.setup(P)
     if any(s.get("idea") for s in P.sections()) and not a.force:
         raise SystemExit("project.json already has a shot plan with ideas - use --force to replace it")
     sheet = P.sheet()

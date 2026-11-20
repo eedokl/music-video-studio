@@ -101,7 +101,7 @@ SONG = {**SHARED,                                     # music-video projects (so
         "music_by": {"type": (STR, LIST, NULL)}, "song_title": {"type": (STR, NULL)},
         "bricks": {"type": (DICT,)},                                              # bricks-music-video
         "video": {"type": (STR,)}, "version": {"type": (STR,)}, "brief": {"type": (DICT,)},   # claudia / lyric
-        "character_refs": {"type": (LIST, DICT)}, "variants": {"type": (INT, DICT)}, "finish": {"type": (DICT, STR)},
+        "character_refs": {"type": (LIST, DICT)}, "characters": {"type": (DICT,)}, "lead": {"type": (STR,)}, "variants": {"type": (INT, DICT)}, "finish": {"type": (DICT, STR)},
         "ai_label": {"type": (STR, BOOL, NULL)}, "lip_curve": {"type": (DICT, LIST, STR)},
         "identity": {"type": (STR,)}, "tempo": {"type": (DICT,)}, "word_passes": {"type": (LIST,)},   # lyric-music-video
         "held_max": {"type": (NUM,)}, "held_stretch": {"type": (BOOL, NUM, DICT)}, "held_style": {"type": (STR, DICT)},

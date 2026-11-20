@@ -331,8 +331,12 @@ def changed(P, sel=None):
             if not d.startswith("still"):
                 out.append(name)
         elif c.get("file") and P.path(c["file"]).exists():
+            first = P.dir / "scenes" / name / "f.0000.png"
             if d != f"clip {c['file']} lag {c.get('lag', 0):+d}":
                 out.append(name)
+            elif first.exists() and P.path(c["file"]).stat().st_mtime > first.stat().st_mtime + 1:
+                out.append(name)                           # the clip was re-rendered under the same name (Das Warum:
+                #                                            two re-shot shots were missing from "Build cut")
     return out
 
 

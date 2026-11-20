@@ -140,7 +140,11 @@ def is_wide(framing):
 
 
 def start_image_prompt(s, wardrobe, look_img, version="studio"):
-    """Qwen-Image-Edit prompt for a start image of Claudia (two refs for close/medium, one for wide)."""
+    """Qwen-Image-Edit prompt for a start image of Claudia (two refs for close/medium, one for wide); a shot of other
+    characters (project.json "characters", shot "who") gets the generic prompt of its cast."""
+    cast = cast_of(s)
+    if cast is not None:
+        return _start_generic(cast, s, wardrobe, look_img)
     wide = is_wide(s.get("framing"))
     place = s.get("set", "")
     if version == "live" and "stage" not in place.lower():
@@ -158,6 +162,9 @@ def lipsync_prompt(s, wardrobe, look_vid, line, style=None):
     in the action, never right before the sung words (a mood bound to the words, "deadpan: ...", kept mouths shut)."""
     words = re.sub(r"\s+", " ", (line or "").replace('"', "").replace("„", "").replace("“", "")).strip()
     words = words.rstrip(",;:.")                                 # ?! stay; the sentence ends after the quote
+    cast = cast_of(s)
+    if cast is not None:
+        return _lipsync_generic(cast, s, wardrobe, look_vid, words)
     if s.get("timeline") and (style or "timeline") == "timeline":   # style "plain" = the A prompt of a timeline shot
         return timeline_prompt(s, wardrobe, look_vid, words)
     manner = (s.get("manner") or "into the camera").strip().rstrip(".")
@@ -209,7 +216,12 @@ SING_MOODS_ANY = [("into the camera", "a slight sway of the head"), ("softly", "
 
 def sing_mood(look, rng, used=()):
     """(manner, action) for a singing shot without its own: the look's SING_MOODS first, then SING_MOODS_ANY, never a
-    movement already used in this film while there are others (user test: three shots got the same movement)."""
+    movement already used in this film while there are others (user test: three shots got the same movement).
+    Another lead (project.json "lead") gets the neutral list in his / her own pronouns."""
+    if LEAD in CAST:
+        c = CAST[LEAD]
+        opts = [(m, a.format(subj=c["subj"], poss=c["poss"])) for m, a in SING_MOODS_NEUTRAL]
+        return rng.choice([o for o in opts if o[1] not in used] or opts)
     opts = list(SING_MOODS.get(look, [])) + SING_MOODS_ANY
     fresh = [o for o in opts if o[1] not in used] or opts
     own = [o for o in fresh if o in SING_MOODS.get(look, [])]
@@ -225,23 +237,38 @@ def broll_still_prompt(subject, look_img):
 
 
 def s2v_prompt(s, look_vid):
+    cast = cast_of(s)
+    if cast is not None:
+        c = cast[0]
+        return (f"{s.get('framing', 'Close-up').capitalize()} of {c['video']}{_opts(c, s)}, {c['subj']} sings "
+                f"{s.get('manner', 'with emotion')}, clear mouth movements, {s.get('set_short') or s.get('set', '')}, "
+                f"{look_vid}, static camera, photographic 35mm film")
     return (f"{s.get('framing', 'Close-up').capitalize()} of a woman with a glossy black bob, heavy bangs and one orange "
             f"streak, a small orange star hair clip and a thin beige headset microphone, she sings "
             f"{s.get('manner', 'with emotion')}, clear mouth movements, {s.get('set_short') or s.get('set', '')}, {look_vid}, "
             f"static camera, photographic 35mm film")
 
 
-def check(prompt, kind):
-    """Problems of one prompt -> list of strings (empty = fine). kind: image | lipsync | moving | broll_still | s2v"""
+def check(prompt, kind, s=None):
+    """Problems of one prompt -> list of strings (empty = fine). kind: image | lipsync | moving | broll_still | s2v
+    s = the shot: the canon rules (microphone, streak, "young") are Claudia's and only apply to her shots."""
     p = prompt.lower()
     errs = []
+    if s is not None and cast_of(s) is not None:
+        if kind in ("lipsync", "moving") and re.search(r"\bno (text|letters|logos?|words)\b", p):
+            errs.append('LTX positive prompt contains "no text" - move text/letters to the negative prompt')
+        if kind in ("lipsync", "moving", "s2v") and not any(w in p for w in LIGHT_WORDS):
+            errs.append("no light/look sentence - LTX jumps scenes without one")
+        if re.search(r"\blogo\b", p) and "no logo" not in p:
+            errs.append("asks for a logo - companies only as neutral text")
+        return errs
     if re.search(r"\byoung\b", p):
         errs.append('contains "young" (she reads teenage) - use "in her late twenties"')
     if kind in ("lipsync", "moving") and re.search(r"\bno (text|letters|logos?|words)\b", p):
         errs.append('LTX positive prompt contains "no text" - move text/letters to the negative prompt')
     if kind in ("image", "lipsync") and ("beige" not in p or "right cheek" not in p):
         errs.append("microphone not pinned (thin beige headset on her right cheek)")
-    if kind in ("lipsync", "moving", "s2v") and not any(w in p for w in ("light", "palette", "glow", "spotlight", "beams")):
+    if kind in ("lipsync", "moving", "s2v") and not any(w in p for w in LIGHT_WORDS):
         errs.append("no light/look sentence - LTX jumps scenes without one")
     rest = p
     for canon_text in (QWEN_INTRO_2, QWEN_INTRO_1, ID_FULL, ID_FAR, ID_VIDEO):
@@ -251,3 +278,230 @@ def check(prompt, kind):
     if re.search(r"\blogo\b", p) and "no logo" not in p:
         errs.append("asks for a logo - companies only as neutral text")
     return errs
+
+
+# ------------------------------------------------------------------ other characters ---------------------------------
+# project.json "characters": {"oliver": {"pronoun": "he", "full": "a 55-year-old ... man ...", "far": "...", "video":
+#   "...", "refs": ["refs/front.jpg", "refs/threequarter.jpg"], "keep": "face, head shape, skin and hair",
+#   "options": {"headband": "a black running headband around his forehead"}, "wardrobe": "a black softshell jacket",
+#   "negative": "beard, bald head, glasses"}}, "lead": "oliver".  A shot says "who": "oliver" | "claudia" |
+#   ["oliver", "claudia"] (default: the lead) and switches an option on with its key ("headband": true).
+# Claudia stays the built-in default with her microphone canon; {"claudia": {"base": "claudia", "mic": false}} (or
+# naming her in another lead's film) is Claudia as a guest without the stage microphone.
+# Measured (Das Warum, 2026-11-20): Claudia's canon check and mic repair run on another character painted her headset
+# and streak onto him - every canon rule below is bound to the shot's cast.
+LIGHT_WORDS = ("light", "palette", "glow", "spotlight", "beams", "sun", "dusk", "dawn")
+PRONOUNS = {"she": ("she", "her", "her", "woman"), "he": ("he", "his", "him", "man")}
+CLAUDIA_PLAIN = {
+    "pronoun": "she", "keep": "face, hair, single orange streak and star clip",
+    "full": ("a 28-year-old woman with a grown-up angular face, defined cheekbones, pale skin and light freckles, a glossy "
+             "black blunt jaw-length bob with heavy straight bangs and one clay-orange streak through the bangs, a small "
+             "flat clay-orange eight-pointed star hair clip, no microphone and no headset"),
+    "far": ("a woman in her late twenties with pale skin and a glossy black blunt bob with heavy straight bangs and one "
+            "clay-orange streak"),
+    "video": ("a woman in her late twenties with a glossy black bob with heavy bangs, one single clay-orange streak in "
+              "her hair and a small orange star hair clip"),
+    "ref_fix": "Remove her headset microphone completely, her cheeks are bare", "wardrobe": "a soft grey knitted jumper",
+    "negative": "second orange streak, two orange streaks"}
+SING_MOODS_NEUTRAL = [("into the camera", "a slight sway of the head"), ("softly", "{subj} tilts {poss} head a little"),
+                      ("with conviction", "a small nod on the beat"),
+                      ("calmly into the lens", "{subj} breathes in and looks into the lens"),
+                      ("with energy", "{subj} leans forward slightly"),
+                      ("quietly", "{subj} looks down, then up into the lens"),
+                      ("warmly, telling a story", "{subj} opens one hand toward the camera"),
+                      ("thoughtfully", "{subj} looks to the side for a moment, then back into the lens")]
+GEN_NEG_IMAGE = ("illustration, drawing, anime, cartoon, 3d render, painting, text, letters, logo, watermark, brand name, "
+                 "flag, deformed hands, extra fingers, blurry")
+GEN_NEG_LIPSYNC = ("pc game, console game, video game, cartoon, childish, ugly, static, frozen face, blurry mouth, text, "
+                   "letters, subtitles, watermark, logo, scene cut, sudden scene change")
+NO_PEOPLE_NEG = ", people, a person walking into the frame, passers-by"
+PEOPLE = re.compile(r"\b(man|men|woman|women|people|person|persons|colleagues?|crowd|farmers?|workers?|child|children|"
+                    r"girl|boy|couple|audience|hands?|someone)\b", re.I)
+CAST = {}
+LEAD = "claudia"
+
+
+def _norm(name, spec):
+    c = dict(spec)
+    if c.pop("base", name) == "claudia":
+        c = dict(CLAUDIA_PLAIN, **c)
+    if not c.get("full"):
+        raise SystemExit(f'project.json characters.{name}: "full" (the identity text pasted into every prompt) is missing')
+    subj, poss, obj, noun = PRONOUNS.get(str(c.get("pronoun", "she")).lower(), PRONOUNS["she"])
+    c.update(name=name, subj=subj, poss=poss, obj=obj, noun=c.get("noun") or noun)
+    c.setdefault("far", c["full"])
+    c.setdefault("video", c["far"])
+    c.setdefault("keep", "face and hair")
+    return c
+
+
+def setup(P):
+    """Register the project's characters and lead (call once after loading the project; no "characters" = Claudia)."""
+    global LEAD
+    CAST.clear()
+    for name, spec in (P.get("characters") or {}).items():
+        if name.lower() == "claudia" and spec.get("mic", True) and "full" not in spec:
+            continue                                  # {"claudia": {"refs": [...]}}: the built-in Claudia with her mic
+        CAST[name.lower()] = _norm(name.lower(), spec)
+    LEAD = str(P.get("lead") or "claudia").lower()
+    if LEAD != "claudia" and LEAD not in CAST:
+        raise SystemExit(f'project.json "lead": "{LEAD}" is not in "characters" ({", ".join(CAST) or "none"})')
+
+
+def cast_of(s):
+    """The shot's characters as specs, or None = Claudia alone with her microphone (the built-in canon path)."""
+    who = (s or {}).get("who") or LEAD
+    names = [str(w).strip().lower() for w in (who if isinstance(who, list) else str(who).replace(",", "+").split("+"))]
+    if names == ["claudia"] and "claudia" not in CAST and LEAD == "claudia":
+        return None
+    out = []
+    for n in names:
+        if n in CAST:
+            out.append(CAST[n])
+        elif n == "claudia":                          # a guest in another lead's film: without the stage microphone
+            out.append(_norm("claudia", {"base": "claudia"}))
+        else:
+            raise SystemExit(f'shot {(s or {}).get("name", "?")}: "who": "{n}" is not in project.json "characters" '
+                             f'({", ".join(CAST) or "none"})')
+    if len(out) > 2:
+        raise SystemExit(f'shot {(s or {}).get("name", "?")}: at most two characters in one start image (two reference images)')
+    return out
+
+
+def has_canon(s):
+    """True = Claudia's measured canon (streak side, one headset boom) and the mic repair apply to this shot."""
+    return cast_of(s) is None
+
+
+def shot_refs(s, default_refs, path=lambda r: r):
+    """Reference images of the shot's cast: one character -> one (wide) or two refs, two characters -> one each.
+    default_refs: a callable returning Claudia's project / config refs (only asked when she is in the shot)."""
+    cast = cast_of(s)
+    if cast is None:
+        refs = default_refs()
+        return refs[:1] if is_wide(s.get("framing")) else refs[:2]
+    per = []
+    for c in cast:
+        r = [str(path(x)) for x in c.get("refs") or []] or (list(default_refs()) if c["name"] == "claudia" else [])
+        if not r:
+            raise SystemExit(f'project.json characters.{c["name"]}: "refs" missing (one or two reference images)')
+        per.append(r)
+    if len(cast) == 2:
+        return [per[0][0], per[1][0]]
+    return per[0][:1] if is_wide(s.get("framing")) else per[0][:2]
+
+
+def _opts(c, s):
+    return "".join(f", {text}" for key, text in (c.get("options") or {}).items() if s.get(key))
+
+
+def _wardrobe(c, s, wardrobe, key="wardrobe"):
+    return s.get(key) or c.get("wardrobe") or (wardrobe if key == "wardrobe" else "plain everyday clothes")
+
+
+def _start_generic(cast, s, wardrobe, look_img):
+    wide = is_wide(s.get("framing"))
+    place = s.get("set", "")
+    fr = s.get("framing", "Medium shot").capitalize()
+    a = cast[0]
+    ready = (f"{a['poss'].capitalize()} lips are slightly parted as if {a['subj']} is about to sing the next word, "
+             f"{a['poss']} face is clearly visible and lit, turned to the camera, eyes open."
+             if s.get("technique") == "lipsync" else "")
+    if len(cast) == 1:
+        two = not wide and len(a.get("refs") or [0, 0]) > 1
+        intro = (f"Keep the exact {a['keep']} of the {a['noun']} in image 1"
+                 + (f" (image 2 shows the same {a['noun']} from another angle, use it only for {a['poss']} face and hair, "
+                    "not for the framing, the clothes or the background)" if two
+                    else f", but not {a['poss']} clothes or the background")
+                 + (f". {a['ref_fix']}" if a.get("ref_fix") else "") + ":")
+        parts = [intro, (a["far"] if wide else a["full"]) + _opts(a, s) + ".",
+                 f"Now {a['subj']} wears {_wardrobe(a, s, wardrobe)}.",
+                 f"{fr}, {s.get('action') or a['subj'] + ' looks at the camera'},", f"{place}." if place else "", ready, look_img]
+    else:
+        b = cast[1]
+        la, lb = (a["noun"], b["noun"]) if a["noun"] != b["noun"] else (f"first {a['noun']}", f"second {b['noun']}")
+        fix = "".join(f" {c['ref_fix']}." for c in cast if c.get("ref_fix"))
+        parts = [f"Two people in one picture: the {la} keeps the exact {a['keep']} of the {a['noun']} in image 1; the {lb} "
+                 f"keeps the exact {b['keep']} of the {b['noun']} in image 2.{fix}",
+                 f"The {la} is {a['far'] if wide else a['full']}{_opts(a, s)}, wearing {_wardrobe(a, s, wardrobe)}.",
+                 f"The {lb} is {b['far'] if wide else b['full']}{_opts(b, s)}, wearing {_wardrobe(b, s, wardrobe, 'wardrobe2')}.",
+                 f"{fr}, {s.get('action') or 'they stand side by side'},", f"{place}." if place else "", ready, look_img]
+    return " ".join(p for p in parts if p)
+
+
+def _lipsync_generic(cast, s, wardrobe, look_vid, words):
+    a = cast[0]
+    manner = (s.get("manner") or "into the camera").strip().rstrip(".")
+    action = (s.get("action") or timeline_action(s.get("timeline")) or "a slight sway of the head").strip().rstrip(".")
+    act = action[len(a["subj"]) + 1:] if action.lower().startswith(a["subj"] + " ") else action
+    first = act if act.lower().startswith("sings") else f"sings {manner}, {act}"
+    sing = f' {a["subj"].capitalize()} sings the words "{words}".' if words else ""
+    mouth = (f"{a['poss'].capitalize()} lips clearly form every word, the mouth opens wide on the vowels and the lips close "
+             "fully on m, b and p, natural small head movements and breathing.")
+    other = "".join(f" The {b['noun']} next to {a['obj']} stays silent with {b['poss']} mouth closed and listens."
+                    for b in cast[1:])
+    place = s.get("set_short") or s.get("set", "")
+    return (f"{s.get('framing', 'Medium shot').capitalize()} of {a['video']}{_opts(a, s)}, wearing "
+            f"{_wardrobe(a, s, wardrobe)}, {a['subj']} {first}.{sing} {mouth}{other}"
+            f"{(' ' + place[0].upper() + place[1:] + '.') if place else ''} "
+            f"{s.get('camera', 'Static camera').capitalize()}, cinematic photographic 35mm film look, {look_vid}.")
+
+
+def _neg(cast, base):
+    extra = [c["negative"] for c in cast if c.get("negative")]
+    return ", ".join([base, "microphone, headset"] + extra)
+
+
+def neg_image(s):
+    cast = cast_of(s)
+    return NEG_IMAGE if cast is None else _neg(cast, GEN_NEG_IMAGE)
+
+
+def neg_lipsync(s):
+    cast = cast_of(s)
+    return NEG_LIPSYNC if cast is None else _neg(cast, GEN_NEG_LIPSYNC + (", second person singing" if len(cast) > 1 else ""))
+
+
+def neg_moving(s):
+    """B-roll without people in its subject: keep LTX from walking a stranger into the picture (Das Warum s02)."""
+    subject = (s.get("subject") or "").lower()
+    if s.get("technique") == "broll" and (not PEOPLE.search(subject) or "no people" in subject):
+        return NEG_MOVING + NO_PEOPLE_NEG
+    return NEG_MOVING
+
+
+def default_motion(s):
+    cast = cast_of(s)
+    return "She moves slowly, her hair moves slightly" if cast is None else f"{cast[0]['subj'].capitalize()} moves slowly"
+
+
+def hints(shots):
+    """Direction advice that is not an error (printed by jobs.py). Lessons of Das Warum (2026-11-20):
+    a hand named in the hair text became a hand in the hair in a third of the shots; "raises his eyebrows" gave a
+    frozen stare; laptops grew brand logos; a "man" in B-roll is a stranger, never the film's character."""
+    out = []
+    acted = [s for s in shots if s.get("technique") in ("lipsync", "claudia_moving")]
+    nouns = sorted({c["noun"] for c in CAST.values()})
+    for s in shots:
+        n, text = s.get("name", "?"), " ".join(str(s.get(k) or "") for k in ("action", "set", "subject", "motion")).lower()
+        if re.search(r"\b(by hand|hand (in|through) (his|her) hair|pushes? (his|her) hair|pushed back by)\b", text):
+            out.append(f"{n}: a hand at the hair in the text - Qwen draws the hand there in every variant; describe the hair itself")
+        if "eyebrow" in text:
+            out.append(f"{n}: raised eyebrows read as a frozen stare in the start image - describe a relaxed face instead")
+        if re.search(r"\b(laptops?|notebook computers?|monitors?|smartphones?)\b", text) and "unbranded" not in text:
+            out.append(f"{n}: laptops / phones grow brand logos - write \"plain unbranded\" or use paper, folders, tools")
+        if s.get("technique") == "broll" and nouns and "no people" not in text and re.search(
+                r"\b(" + "|".join(nouns + sorted(CAST)) + r")\b", s.get("subject") or "", re.I):
+            out.append(f"{n}: B-roll shows a {'/'.join(nouns)} - without a reference image that is a stranger; use "
+                       "technique \"claudia_moving\" with \"who\" if it is the film's character")
+    count = {}
+    for s in acted:
+        if s.get("action"):
+            count.setdefault(s["action"].strip().lower(), []).append(s.get("name", "?"))
+    for act, names in count.items():
+        if len(names) > max(3, len(acted) // 8):
+            out.append(f"{len(names)} shots share the action \"{act[:60]}\" ({', '.join(names[:6])} ...) - vary the start poses")
+    hands = [s.get("name", "?") for s in acted if re.search(r"\bhands?\b", (s.get("action") or "").lower())]
+    if len(hands) > max(4, len(acted) // 3):
+        out.append(f"{len(hands)} of {len(acted)} acted shots name a hand in the action - the same gesture will repeat")
+    return out

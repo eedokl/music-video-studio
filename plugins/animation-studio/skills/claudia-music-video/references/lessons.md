@@ -32,6 +32,24 @@
 | Real-ESRGAN smooths freckles | upscale test on an S2V close-up |
 | Profile shots are not measurable (no face found) | live shot 14 - judge by eye |
 
+## Lessons from Das Warum (2026-11-20: another lead, Oliver, with Claudia as a guest; 100 shots, one night run)
+
+| rule | why (what happened) |
+|---|---|
+| Another character = project.json `characters` + shot `who`; never run Claudia's canon check or mic repair on him | the night-run hook "repaired" four start images of the male lead: headset and orange streak painted onto him |
+| A person of the film is never B-roll | FLUX has no reference image: "a man with a black headband and a dog" came out as a stranger in s85 and s98; as `claudia_moving` with `who` it was him |
+| "no people" in a B-roll subject is not enough for the moving clip | LTX walked a man with a printed T-shirt into the empty field of s02; people now go into the negative prompt of such clips |
+| Do not describe hair or pose through a hand ("pushed back by hand", "runs a hand through his hair") | Qwen drew the hand in the hair in a third of the sung shots - the user noticed the repetition |
+| No "raises his eyebrows" in a start image | wide-open staring eyes in the first frames (s05); "a relaxed face, a small smile" fixed it |
+| Laptops and phones grow brand logos; write "plain unbranded" or use paper, folders, tools | an apple logo on three of four laptops (s34, s42, s48) |
+| Say where people sit ("on chairs along the two long sides of the table, the head of the table empty") | "five colleagues at a meeting table" put one of them inside the table (s48) |
+| A look back over the shoulder: "only the backs of their heads" gave a natural profile glance; asking for the glance turned the other person to the camera | s98, four start images |
+| A changed prompt must make a new file | the old file counted as "done" (file name only): rewritten shots changed nothing until the files were moved away by hand - hence the job fingerprints |
+| More takes = clips from every start image variant (`--all-starts`) | the user asked for "one more version" of seven shots; pinning each variant by hand took a run per variant |
+| "Frozen" must be measured against the clip's own motion | the fixed threshold called 71 of 210 clips frozen (calm fields, static camera) and put stills into the cut; the user took the moving clip back in 31 shots. Relative rule: 17, among them the one clip the user called frozen at its start |
+| Long lyric lines shrink to fit in every style | 70 letters in "caps" ran out of the picture on the left |
+| Check project.json before the night run | a wrong "title" form stopped the cut after 4.5 h of rendering; `jobs.py` runs the check now |
+
 Weak spots that stayed (no model solved them): lips closing on short p/b/m; fast spoken lines with plosives
 (LTX r ~ 0 there; HuMo 1.7B / MiniMax were better but rejected for other reasons).
 

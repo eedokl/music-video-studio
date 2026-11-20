@@ -292,11 +292,14 @@ def draw_lyrics(img, lines, t, st, beats=()):
     words = [(w.upper() if st["upper"] else w, a0, a1) for w, a0, a1 in z["words"]]
     text = " ".join(w for w, _, _ in words)
     tw = d.textlength(text, font=f)
+    if tw > W - 80:                                   # a long line shrinks to fit (Das Warum: 70 letters in "caps"
+        f = font(st["fonts"], int(st["size"] * (W - 80) / tw))   # ran out of the picture on the left)
+        tw = d.textlength(text, font=f)
     x0, y0 = (W - tw) / 2, H + st["y"]
     a = min(1.0, (t - z["t0"]) / 0.2, (z["t1"] - t) / 0.25)
     if st.get("box"):
         r, g, b, alpha = st["box"]
-        d.rounded_rectangle((x0 - 22, y0 - 12, x0 + tw + 22, y0 + st["size"] + 16), radius=18, fill=(r, g, b, int(alpha * a)))
+        d.rounded_rectangle((x0 - 22, y0 - 12, x0 + tw + 22, y0 + f.size + 16), radius=18, fill=(r, g, b, int(alpha * a)))
     x = x0
     for w, wt0, wt1 in words:
         if t >= wt0 - 0.08:                                   # a word appears as it is sung (a hair early)

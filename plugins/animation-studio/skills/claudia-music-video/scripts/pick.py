@@ -6,7 +6,10 @@
 # ///
 """Choose the material by measurement -> selection.json (hand choices in selection.json "manual" always win).
 
-  start  Claudia start images: canon check (ai-video canon.py) - ONE clay streak on the image left (her right),
+  start  shots of other characters (project.json "characters", shot "who"): no measured canon - the first variant is
+         taken (a hand choice wins) and the sheet says "check by eye"; Claudia's streak / microphone check and the mic
+         repair never run on them (Das Warum: the repair painted her headset and streak onto the male lead).
+         Claudia start images: canon check (ai-video canon.py) - ONE clay streak on the image left (her right),
          nothing orange on the other side beyond the clip, ONE headset boom (on the streak side, none on the other
          cheek); best value wins. No variant passes -> v1 + warning (look at sheet_start.jpg).
          Shots seen from behind ("from behind" in the framing): the streak is on the image right.
@@ -117,6 +120,16 @@ def pick_start(P, sel, log, rows, repair_mic=False):
             continue
         cands = done(sorted((P.dir / "ai" / "start").glob(f"{name}_v*.png")))
         if not cands:
+            continue
+        if not claudia.has_canon(s):                 # another character: Claudia's streak / mic canon is not his
+            who = "+".join(c["name"] for c in claudia.cast_of(s))
+            rows += [(c, f"{who}: no measured canon - check face, hair and clothes by eye") for c in cands]
+            if name in man:
+                out[name] = man[name]
+            elif not (out.get(name) and P.path(out[name]).exists()):
+                out[name] = relp(P, cands[0])
+            log.append(f"start {name}: {out[name]}  ({'by hand' if name in man else who + ', no canon check - look at sheet_start.jpg'})")
+            save(P, sel)
             continue
         res = {c: canon.measure(c, claudia.STREAK, side_of(s)) or {} for c in cands}
         for c, m in res.items():
@@ -309,6 +322,7 @@ def main():
                          "Rhubarb alone went negative in loud choruses where the lips were right)")
     a = ap.parse_args()
     P = Project(a.project)
+    claudia.setup(P)
     sel = load(P)
     log, rs, rb, rc = [], [], [], []
     if a.what in ("auto", "start", "all"):
