@@ -25,6 +25,8 @@ LTX_FPS = 24
 LTX_LEAD_IN = 0.25          # s of vocals before the shot (the sluggish start is cut away)
 LTX_DELAY_FRAMES = 1        # LTX picture ~1 frame early -> place it 1 frame later
 LTX_MAX_FRAMES = 121        # ~5 s at 1280x704 peaks near 45 GB RAM - longer shots: shorten the lead-in or split
+LTX_LONG_SIZE = (1024, 576) # at this size (or smaller) one clip may be ...
+LTX_LONG_FRAMES = 217       # ... 9 s long: 7 of 7 renders went through on the reference machine (2026-11)
 S2V_FPS = 16
 S2V_MAX_SECONDS = 4.7       # longer S2V parts drift to profile; split longer shots
 
@@ -35,12 +37,19 @@ def ltx_frames(seconds, lead_in=LTX_LEAD_IN):
     return int(math.ceil((n - 1) / 8)) * 8 + 1
 
 
-def ltx_fit(seconds, lead_in=LTX_LEAD_IN):
-    """(frames, lead_in) within LTX_MAX_FRAMES: the lead-in shrinks first for long shots."""
+def ltx_max_frames(w=1280, h=704):
+    """Longest LTX clip (frames, 8n+1) known to render at this frame size: 121 at 1280x704, 217 at 1024x576 or
+    smaller. Only these two points were tried - nothing is interpolated between them."""
+    return LTX_LONG_FRAMES if w * h <= LTX_LONG_SIZE[0] * LTX_LONG_SIZE[1] else LTX_MAX_FRAMES
+
+
+def ltx_fit(seconds, lead_in=LTX_LEAD_IN, max_frames=LTX_MAX_FRAMES):
+    """(frames, lead_in) within max_frames (default LTX_MAX_FRAMES; a long single shot at 1024x576 passes
+    ltx_max_frames(1024, 576)): the lead-in shrinks first for long shots."""
     li = lead_in
-    while ltx_frames(seconds, li) > LTX_MAX_FRAMES and li > 0.05:
+    while ltx_frames(seconds, li) > max_frames and li > 0.05:
         li = round(li - 0.05, 2)
-    return min(ltx_frames(seconds, li), LTX_MAX_FRAMES), li
+    return min(ltx_frames(seconds, li), max_frames), li
 
 
 def s2v_frames(seconds):

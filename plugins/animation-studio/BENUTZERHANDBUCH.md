@@ -58,7 +58,7 @@ einmal in einem **Baustein** und wird von allen Skills genutzt.
 | `animated-powerpoint` | Figuren aus Folien steigen aus der Folie, landen, gestikulieren und sprechen; Clips, die nahtlos zurück in die Präsentation passen | 8-s-Clip ca. 1,5 min Bauzeit; 25-s-Clip mit vier Figuren ca. 25 min | Optional (Hochskalieren mit Real-ESRGAN nutzt die GPU, sonst Lanczos) |
 | `talking-character` | Dialogszene im Zeichentrickstil: Text oder Aufnahme wird zu Stimmen mit Lippensynchronität, Blicken, Gesten, Untertiteln | Standard 15–20 s | Empfohlen für die Qwen3-TTS-Stimmen; ohne GPU sprechen Piper oder die Windows-Stimme |
 | `animated-short` | Kurze 2D-Szene ohne Song: hüpfender Ball, Mehlsack, Take, Pip findet eine Blume, Fips-Gag, Multiplane-Flug, Comic-Flug | 3–10 s (Standard ca. 6 s) | Nein |
-| `film-tools` | Schnelle Arbeiten an fertigen Videos: Film-Look, kleine Versionen für Upload und E-Mail, Kontaktabzug, Decodier-Prüfung, Clips zu einem Film schneiden | Minuten | Nein |
+| `film-tools` | Schnelle Arbeiten an fertigen Videos: Film-Look, kleine Versionen für Upload und E-Mail, Kontaktabzug, Decodier-Prüfung, Clips zu einem Film schneiden, Titel-Sting auf ein Musikstück | Minuten | Nein |
 | `video-review` | Mehrere Versionen desselben Films Schnitt für Schnitt vergleichen und aus den besten Einstellungen eine neue Version schneiden, ohne neu zu rendern | Minuten | Nein |
 
 ### Wie ein Film entsteht (gemeinsames Muster)
@@ -985,6 +985,7 @@ Für ganze Filme ist der passende Filmart-Skill zuständig; er ruft dieselben We
 | zwei Versionen vergleichen | Größe, Länge, MB, Bildähnlichkeit, ob der Ton identisch ist |
 | eine Decodier-Prüfung | Größe, Länge und „0 decode errors“ pro Datei |
 | mehrere Clips, Standbilder und Titelkarten zu einem Film schneiden | `film.mp4` mit Überblendungen, Musik und Titel, dazu kleine Versionen, Kontaktabzug und `.otio` für Kdenlive |
+| einen Titel-Sting („… will return“) auf ein Musikstück | Schwarz, eine Einstellung, Schwarz, Titelkarte – geschnitten auf Aufbau, Schlag und Abriss der Musik, die Claude vorher ausmisst (Pegel, kein Zuhören); ohne Musik ein stummer Film |
 | einen neuen Look (anderes Papier, weicheres Korn …) | ein eigener Look-Ordner, der danach wie der Standard-Look angewendet wird (braucht Node und headless Chrome/Edge) |
 
 **Regeln:** Die Eingabedatei wird nie überschrieben; das Ergebnis entsteht daneben mit einem Namenszusatz. Eine

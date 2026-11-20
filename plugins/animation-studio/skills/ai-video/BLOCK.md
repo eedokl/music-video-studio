@@ -80,7 +80,21 @@ uv run "<plugin>/skills/ai-video/scripts/preflight.py" --list               # wo
 - **LTX prompts:** never "no text" in the positive prompt (garbled letters) - text/letters/logos only negative; one
   light/look sentence matching the start image in every prompt, or LTX jumps to another scene.
 - **LTX timing:** clips start 0.25 s before the shot (sluggish start is cut away); the LTX picture runs ~1 frame
-  early (`delay_frames = 1`); keep clips <= 121 frames (RAM). The placement rule is `clips.frame_index()`.
+  early (`delay_frames = 1`); keep clips <= 121 frames at 1280x704 (RAM). The placement rule is `clips.frame_index()`.
+- **One long shot:** render it smaller instead of splitting it - at 1024x576 (`ltx.render(..., w=1024, h=576)`)
+  clips of 217 frames (9 s) went through 7 of 7 times; `clips.ltx_max_frames(w, h)` gives the limit, `ltx_fit(...,
+  max_frames=)` takes it. Only these two sizes were tried.
+- **Render a shot at its final length.** A 5 s clip stretched 1.5-1.8x by frame interpolation (ffmpeg
+  `minterpolate`) smeared the fast-moving prop in it; the same shot rendered in real time was clean.
+- **An action on a hit of the music** (one shot on a track, nobody sings): `ltx.render("moving", img, <the music
+  under the shot>, ...)` and name the moment in the prompt: "For the first four seconds she holds her aim
+  perfectly steady ... Then, exactly on the loud orchestral hit in the music, she swings ... and holds that pose
+  completely still." In 6 of 7 takes the move ended 0-1.2 s after the hit, never before it; one take drifted round
+  with no move at all. Not tested: whether the sound or the "four seconds" wording set the time (no take was
+  rendered without the music). So render 3-4 seeds, find the frame where the move ends in each take, and shift the
+  take in the cut (film-finish `sting.py build --clip-start`).
+- **Refining a take the user likes:** the same seed with a slightly changed prompt gives almost the same take
+  (same move, same timing); a new seed gives another performance. Change one or the other, not both.
 - **Seeds vary a lot:** render 2-4 seeds per sung shot, measure (`mouth.py`), reject clips whose mouth stays closed
   (range < 0.1), apply the measured lag: lag > 0 = mouth late -> show the clip dt = +lag/24 s later.
 - **Measurement depends on the vocal curve:** Rhubarb on separated vocals fails in loud choruses (choir, bleed) -

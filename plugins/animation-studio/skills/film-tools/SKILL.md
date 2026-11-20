@@ -1,6 +1,6 @@
 ---
 name: film-tools
-description: "Quick finishing jobs on any existing video, no project needed: the standard film look (paper, grain, vignette), smaller versions for upload or e-mail (< 30 MB, ~12 MB), a contact sheet, a decode check, listening through a film / comparing two versions, or cutting several clips/stills into one film with titles, transitions and music. Use for 'apply the look', 'make it smaller', 'check this video'."
+description: "Quick finishing jobs on any existing video, no project needed: the standard film look (paper, grain, vignette), smaller versions for upload or e-mail (< 30 MB, ~12 MB), a contact sheet, a decode check, listening through a film / comparing two versions, cutting several clips/stills into one film with titles, transitions and music, or a title sting (black, one shot, a title card such as 'X will return') cut to a piece of music. Use for 'apply the look', 'make it smaller', 'check this video'."
 ---
 
 # Film tools
@@ -10,7 +10,7 @@ Small finishing jobs on videos that already exist – from any source, not only 
 
 How the commands run:
 - `uv run` for scripts that need Python packages: each declares exact versions in its header (`dependencies = [...]`).
-  `apply_look.py` needs none; `encode.py` needs numpy, `cut.py` / `shaders_render.py` numpy + pillow (+ opentimelineio).
+  `apply_look.py` needs none; `encode.py` needs numpy, `cut.py` / `sting.py` / `shaders_render.py` numpy + pillow (+ opentimelineio).
   On the very first run uv downloads missing packages once into its cache – ask the user before that first run if
   the cache may be empty; after that it works offline (`uv run --offline ...`).
 - plain `python` for `media.py` and `check_tools.py`: they need no packages beyond the standard library.
@@ -32,7 +32,12 @@ How the commands run:
 | compare two versions (A/B) | `python "${CLAUDE_PLUGIN_ROOT}/skills/studio-core/scripts/media.py" compare a.mp4 b.mp4` (size, length, MB, PSNR / SSIM, sound identical?) + `media.py sheet` of both; a different sound: `ear.py ab a.mp4 b.mp4` | which one for what (upload, mail, archive) and why |
 | a decode check | `python "${CLAUDE_PLUGIN_ROOT}/skills/studio-core/scripts/media.py" check in.mp4 [...]` | size (e.g. 1920x1080, as displayed), length and "0 decode errors" per file, exit code 1 otherwise – no ffprobe needed |
 | several clips / stills / title cards into one film, with dissolves, music, title | write a `cut.json` (shot list) and run `uv run "${CLAUDE_PLUGIN_ROOT}/skills/film-finish/scripts/cut.py" cut.json` | `film.mp4` + small / mail versions, sheet, `.otio` for Kdenlive – the format is in film-finish BLOCK.md (`cut.py` row) |
+| a title sting: black, one shot, a title card ("X WILL RETURN"), cut to a piece of music | first `uv run "${CLAUDE_PLUGIN_ROOT}/skills/film-finish/scripts/sting.py" analyse track.mp3` (hit, drop, tail, end + suggested times), then `uv run "${CLAUDE_PLUGIN_ROOT}/skills/film-finish/scripts/sting.py" build shot.mp4 --title "X WILL RETURN" --audio track.mp3 --shot-at 7.5 --black-at 16.0 --title-at 17.3 --end 24.3 [--clip-start 0.3] [--note "picture and video AI-generated"]` | `shot_sting.mp4`: the shot appears out of black (light sweeps in from the left), hard cut to black on the drop, title card over the tail; without `--audio` a silent film. Say that nobody listened; the track is the user's file (see the reference-video guide below) |
 | a new look (other paper, softer grain …) | `uv run "${CLAUDE_PLUGIN_ROOT}/skills/film-finish/scripts/shaders_render.py" look --preset my_look.json --out <folder>`, then `apply_look.py in.mp4 --look <folder>` | needs node + a headless Chrome/Edge; see film-finish BLOCK.md and its `references/shaders.md` |
+
+Working from a reference video ("same look and feel as this one"): read
+`${CLAUDE_PLUGIN_ROOT}/skills/studio-core/references/reference-video.md` first - frames by seeking, the sound
+track before the first render, what may be taken.
 
 Always check the result: decode check, a contact sheet looked at, the file size. Say what was not checked (e.g.
 nobody listened to the sound).

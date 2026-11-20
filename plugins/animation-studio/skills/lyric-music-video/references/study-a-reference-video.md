@@ -1,5 +1,8 @@
 # Studying a reference video
 
+*The steps that hold for any reference video (frames by seeking, sound first, what may be taken) are in
+`skills/studio-core/references/reference-video.md` of this plugin; this file adds what lyric videos need.*
+
 When the user names a video as a reference ("like this one", "replicate its scenes"), what you take from it depends
 on how closely you look. A frame every 2 seconds shows *what* is on screen. It does not show how the lyric enters,
 what moves with the beat or where text scrolls - on the first video studied this way the user had to send it back

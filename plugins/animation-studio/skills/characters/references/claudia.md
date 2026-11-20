@@ -49,6 +49,9 @@ microphone, microphone on her left cheek, microphone boom on both sides.
   One reference for wide shots. The references are the user's images (claudia.gallery sheets or earlier film stills),
   stored outside the plugin: project `character_refs` or config `claudia_refs`.
 - Mention the streak **once** (in the identity text). Repeating it produces two streaks.
+- A turn from a three-quarter view to the lens inside one clip moves the streak to the middle of the bangs (all
+  4 LTX takes that ended frontal with a sharp face; a prompt line did not prevent it) - start frontal or cut
+  before the turn when the streak matters.
 - Name the microphone's **colour and side** in every prompt - "thin headset microphone" alone gave changing mics
   (count, colour, side). LTX copies the mic from the start image, so check start images first.
 - Pick start images by measurement (ai-video `canon.py`: clay pixels in a vertical band on the image left of the face)

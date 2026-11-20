@@ -70,3 +70,28 @@ Weak spots that stayed (no model solved them): lips closing on short p/b/m; fast
   stay small (8-12 %).
 - **Pace is a choice per song**: the first cut (one picture per beat in the chorus, a cut inside almost every take)
   was "a bit too fast" for the user; `calm` is the default (the user's choice after seeing all three).
+
+## One shot on a music hit (title sting "Moneypenny will return", 2026-11)
+
+A single 8.5 s LTX shot from a three-quarter start image (she aims a pistol off-screen, then swings it to the
+camera on the hit), 8 takes. What drifted, and what the user chose:
+
+- **The streak moves to the middle of the bangs when she turns to the lens.** In all 4 takes that ended
+  frontal with a sharp face; "the single orange streak stays at the side of her bangs" in the prompt did not
+  prevent it. It stayed at the side only in a take where her face was out of focus. If the streak matters,
+  start frontal or cut before the turn.
+- **A dark prop takes the colour of the key light.** The black pistol turned gold under the warm amber key in
+  5 of 8 takes; "matte black" plus "golden gun, gold pistol, brass" in the negative prompt kept it dark in one
+  of the three takes that had both.
+- **"Straight into the camera lens" pulls the focus onto the prop**: the muzzle was sharp and her face soft for
+  the rest of the shot. "Points straight into the camera" kept the face sharp with the gun beside it.
+- **A black background fills up over 9 s** (a warm glow, lamps, once a whole room) in 4 of 8 takes; "black
+  empty background with no lights in it" plus "background lights, bokeh lights, lamps" negative held in one of
+  three.
+- **A second star clip** appeared once in a tight close-up the model pushed into by itself.
+- **The user kept the take with the readable face** (gold pistol, streak in the middle) over the take that had
+  streak, prop colour and background right but the focus on the gun. Offer both kinds; do not sort takes by
+  canon checks alone.
+- Start-image note: Qwen-Edit kept the canon in all three variants for this pose (tuxedo, three-quarter view,
+  pure black background, one amber key from the right); the clip must be left out of the scope bars' reach
+  (film-finish `sting.py --fit`).
