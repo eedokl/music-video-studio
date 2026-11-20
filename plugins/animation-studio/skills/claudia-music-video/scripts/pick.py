@@ -103,6 +103,37 @@ def done(files):
     return [f for f in files if ".part." not in f.name and ".encoding." not in f.name]
 
 
+OTHER_ENGINES = ("s2v", "infinitetalk", "humo", "minimax_h3", "ltx25")       # ai/<folder> of the non-LTX-2.3 takes
+
+
+def multishot_faults(c, meta, q, s):
+    """Picture faults of a clip that is MEANT to cut (clip json "cuts_expected", LTX-2.5 multi-shot): the wanted cuts are
+    not "hidden cuts"; a missing cut (a dissolve, no cut at all) or extra ones are faults; on Claudia's shots a frame
+    quarter, half and three quarters into every shot is checked for the canon - the streak gone (3 of 3 in the 8 s
+    plugin test), a second hair clip (3 of 4 seeds in the trial), a second microphone, no face. Returns the list of reasons (empty = fine)."""
+    want, n = int(meta.get("cuts_expected", 0)), max(int(meta.get("frames", 0)), 1)
+    why = []
+    if q["cut_events"] < want:
+        why.append(f"cut missing ({q['cut_events']} of {want}: a dissolve or no cut)")
+    elif q["cut_events"] > want:
+        why.append(f"{q['cut_events'] - want} unwanted cut(s)")
+    if not claudia.has_canon(s):
+        return why
+    edges = [0] + [f for f in q["cut_frames"] if 0 < f < n] + [n]
+    for i, (a, b) in enumerate(zip(edges, edges[1:]), 1):
+        res = canon.measure_frames(c, [(a + (b - a) * u) / n for u in (0.25, 0.5, 0.75)], claudia.STREAK, side_of(s))
+        seen = [r for r in res if r.get("face")]
+        if not seen:
+            why.append(f"shot {i}: no face found")
+        elif sum(bool(r.get("streak")) for r in seen) * 2 < len(seen):
+            why.append(f"shot {i}: streak missing")
+        elif max(r.get("clips", 0) for r in seen) >= 2:
+            why.append(f"shot {i}: second hair clip")
+        elif sum(bool(r.get("mic_both")) for r in seen) * 2 > len(seen):
+            why.append(f"shot {i}: second microphone")
+    return why
+
+
 def side_of(s):
     return "image_right" if "behind" in (s.get("framing") or "").lower() else "image_left"
 
@@ -267,12 +298,12 @@ def pick_clips(P, sel, log, rows, curve):
                               "or take the still on the takes page" if warn else ""))
             continue
         cands = sorted((P.dir / "ai" / "lipsync").glob(f"{name}_{tag}_s*.mp4")) + \
-            [f for d in ("s2v", "infinitetalk", "humo", "minimax_h3")
+            [f for d in OTHER_ENGINES
              for f in sorted((P.dir / "ai" / d).glob(f"{name}_{tag}.mp4")) + sorted((P.dir / "ai" / d).glob(f"{name}_{tag}_sd*.mp4"))]
         cands = done(cands)
         known = {c.resolve() for c in cands}
         extra = [f for f in done(sorted((P.dir / "ai" / "lipsync").glob(f"{name}_*_s*.mp4"))
-                                 + [g for d in ("s2v", "infinitetalk", "humo", "minimax_h3")
+                                 + [g for d in OTHER_ENGINES
                                     for g in sorted((P.dir / "ai" / d).glob(f"{name}_*.mp4"))])
                  if f.resolve() not in known and clips.meta_path(f).exists()]   # other start images: page only
         if not cands and not extra:
@@ -289,8 +320,12 @@ def pick_clips(P, sel, log, rows, curve):
             score, lag, rl, mouth_shut = mouth.rating(r, "s2v" if meta.get("kind") == "s2v" else "ltx")
             q = mouth.motion_check(c)
             # the reason is logged as it is (user test: "mouth closed" stood for every rejection, also hidden cuts)
-            why = [w for w, bad in (("mouth closed", mouth_shut), (f"{q['cuts']} hidden cut(s)?", q["cuts"]),
-                                    ("frozen picture", q["frozen"])) if bad]
+            if meta.get("cuts_expected"):                 # a clip that is meant to cut (engine ltx25)
+                why = [w for w, bad in (("mouth closed", mouth_shut), ("frozen picture", q["frozen"])) if bad] + \
+                    multishot_faults(c, meta, q, s)
+            else:
+                why = [w for w, bad in (("mouth closed", mouth_shut), (f"{q['cuts']} hidden cut(s)?", q["cuts"]),
+                                        ("frozen picture", q["frozen"])) if bad]
             closed = bool(why)                            # rejected: hidden scene cut / picture stops / mouth shut
             if c not in extra:
                 rated.append((score, c, lag, rl, closed, r))

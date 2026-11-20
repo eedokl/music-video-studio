@@ -7,7 +7,7 @@
 """Night run: compute a whole list of AI jobs unattended - one model at a time, resumable, with milestones.
 
 jobs.json (written by a user skill, e.g. claudia-music-video jobs.py; paths relative to the jobs file):
-  {"phases": ["flux", "qwen_edit", "depth", "ltx", "s2v", "infinitetalk", "humo", "minimax_h3", "wan"],          # order: each phase = ONE model
+  {"phases": ["flux", "qwen_edit", "depth", "ltx", "s2v", "infinitetalk", "humo", "minimax_h3", "ltx25", "wan"],          # order: each phase = ONE model
    "selection": "selection.json",                                          # picks between phases (see "pick")
    "hooks": {"after:qwen_edit": ["uv", "run", "${CLAUDE_PLUGIN_ROOT}/skills/<skill>/scripts/pick.py", "start", "."]},
                                      # commands run after a phase (cwd = jobs dir; ${CLAUDE_PLUGIN_ROOT} = this plugin)
@@ -19,7 +19,8 @@ jobs.json (written by a user skill, e.g. claudia-music-video jobs.py; paths rela
                       "prompt": "...", "frames": 97, "seed": 41, "strength": 1.0,
                       "meta": {"song_start": 9.48, "lead_in": 0.25, "shot": "s02"}}}]}
 Kinds: flux (comfy_image), qwen_edit, depth (estimate_depth, one subprocess for the phase), ltx_lipsync, ltx_moving,
-s2v, infinitetalk, humo, minimax_h3 (local MiniMax H3), wan (comfy_video).  An image argument may be {"pick": group, "key": shot, "candidates": [...]}: the chosen file
+s2v, infinitetalk, humo, minimax_h3 (local MiniMax H3), ltx25_multishot (LTX-2.5: a cut inside one sung clip,
+experimental), wan (comfy_video).  An image argument may be {"pick": group, "key": shot, "candidates": [...]}: the chosen file
 from selection.json["manual"][group][key] (hand choice), else selection.json[group][key], else the first existing
 candidate. "{img}" in "out" becomes the chosen image's
 variant tag (last "_" part of its name), so a new choice makes new clips instead of overwriting the old ones.
@@ -68,15 +69,18 @@ import preflight  # noqa: E402
 PLUGIN_ROOT = Path(__file__).resolve().parents[3]       # <plugin>/skills/ai-video/scripts/night_run.py (at run time)
 MODEL = {"flux": "comfy:flux", "qwen_edit": "comfy:qwen_edit", "depth": "depth:small", "ltx": "comfy:ltx23",
          "s2v": "comfy:wan_s2v", "infinitetalk": "comfy:infinitetalk", "humo": "comfy:humo1.7B", "minimax_h3": "comfy:minimax_h3",
-         "wan": "comfy:wan"}
+         "ltx25": "comfy:ltx25", "wan": "comfy:wan"}
 PHASE_OF = {"flux": "flux", "qwen_edit": "qwen_edit", "depth": "depth", "ltx_lipsync": "ltx", "ltx_moving": "ltx",
-            "s2v": "s2v", "infinitetalk": "infinitetalk", "humo": "humo", "minimax_h3": "minimax_h3", "wan": "wan"}
+            "s2v": "s2v", "infinitetalk": "infinitetalk", "humo": "humo", "minimax_h3": "minimax_h3", "ltx25_multishot": "ltx25",
+            "wan": "wan"}
 LOAD = {"flux": 150, "qwen_edit": 540, "depth": 60, "ltx": 420, "s2v": 360, "infinitetalk": 300, "humo": 300, "minimax_h3": 600,
-        "wan": 600}   # s cold model load (measured)
+        "ltx25": 120, "wan": 600}   # s cold model load (measured)
 
 
 def estimate(job):
     a, k = job.get("args", {}), job["kind"]
+    if k == "ltx25_multishot":
+        return 295 * a.get("frames", 193) / 193          # includes the reload after the flush before every clip
     if k.startswith("ltx"):
         return 150 * a.get("frames", 97) / 97
     if k == "s2v":
@@ -272,12 +276,15 @@ class Run:
             import qwen_edit
             qwen_edit.edit([self.p(r) for r in a["refs"]], a["prompt"], out, a.get("w", 1280), a.get("h", 720),
                            a.get("seed", 1), a.get("neg", qwen_edit.NEG))
-        elif k in ("ltx_lipsync", "ltx_moving", "s2v", "infinitetalk", "humo", "minimax_h3"):
+        elif k in ("ltx_lipsync", "ltx_moving", "s2v", "infinitetalk", "humo", "minimax_h3", "ltx25_multishot"):
             au = dict(a["audio"])
             meta = dict(a.get("meta") or {})
             if au.get("quiet_start"):            # begin the vocal window in a silence (move back <= 0.5 s)
                 q = clips.quiet_start(self.p(au["src"]), au["from"])
-                if k.startswith("ltx"):          # LTX: never beyond LTX_MAX_FRAMES (RAM)
+                if k == "ltx25_multishot":       # LTX-2.5: never beyond its 8 s
+                    import ltx25
+                    q = max(q, au["from"] - (ltx25.MAX_FRAMES - a.get("frames", ltx25.MAX_FRAMES)) // 8 * 8 / 24)
+                elif k.startswith("ltx"):        # LTX: never beyond LTX_MAX_FRAMES (RAM)
                     room = (clips.LTX_MAX_FRAMES - a.get("frames", 97)) // 8 * 8 / 24
                     q = max(q, au["from"] - room)
                 if q < au["from"] - 0.01:
@@ -300,6 +307,10 @@ class Run:
                 import humo
                 humo.render(img, wav, a["prompt"], out, a.get("frames", 97), a.get("seed", 31), a.get("size", "1.7B"),
                             a.get("steps"), a.get("neg", humo.NEG), meta)
+            elif k == "ltx25_multishot":
+                import ltx25
+                ltx25.render(img, wav, a["prompt"], out, a.get("frames", ltx25.MAX_FRAMES), a.get("seed", 7),
+                             a.get("strength", ltx25.STRENGTH), a.get("neg"), meta, cuts=a.get("cuts", 1))
             elif k == "minimax_h3":
                 import minimax
                 minimax.render(img, wav, a["prompt"], out, a.get("frames", minimax.MIN_FRAMES), a.get("seed", 31), meta=meta)

@@ -175,3 +175,19 @@ streak check fails), freckles exaggerated - as in the 2026-11-12 comparison. Res
 **MiniMax wrapper** (`ai-video/minimax.py`): local H3 backend checked by dry run (workflow as in the comparison
 script, >= 124 frames); cloud backend: request building, key redaction and opt-in checked without any API call
 (no `--send`, no key used).
+
+## Engine `ltx25` (a cut inside one sung shot) - 0.12.0, 2026-11-20
+
+Scratch copy of the claudia3 test project with one or two shots (`experiments/plugin-github-test/claudia3_ltx25` on the
+reference machine), built only with the plugin: `jobs.py --no-depth` -> `night_run.py --phases ltx25` -> `pick.py clips`.
+- **s05, 4.4 s** ("Out of the comfort zone, can you survive?"), cut to a frontal medium shot, then to a frontal
+  close-up "from a new camera position at the railing": 6 clips (2 wordings x 3 seeds), ~180 s each. No clip cut;
+  pick.py wrote "cut missing (0 of 1: a dissolve or no cut)" for all six. Lip scores 0.33-0.42 (the LTX-2.3 seed
+  rendered next to them: 0.06, rejected for flicker in the rain).
+- **s08 stretched to 7.7 s** ("Europe twenty thirty one, are we still alive? Hey! Hey! Wake up, Baby, wake up now."),
+  cut to a frontal medium shot further back on the deck: 3 clips, ~292 s each. All three cut at 5.3 s, on "Hey!", and
+  cut again about a second later; after the cut the streak was gone in all three. pick.py: "1 unwanted cut(s)" /
+  "2 unwanted cut(s)" plus a canon reason on each. Lip scores -0.10 / -0.04 / 0.18.
+- A changed prompt re-rendered the three finished clips and kept the old ones in `ai/ltx25/replaced/` (fingerprints).
+- Result: the path works end to end and the picker catches the faults; the engine itself gave no usable take in
+  these 9 clips. Details and the earlier hand trial (1 usable take of 7): ai-video `references/multishot.md`.

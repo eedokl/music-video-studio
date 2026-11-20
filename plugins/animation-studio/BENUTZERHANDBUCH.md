@@ -631,6 +631,7 @@ falschen Seite ergibt falsche Mikrofone in den meisten Startbildern.
 | `s2v` (Wan2.2-S2V) | gehaltene, emotionale Töne in Nahaufnahme (unter 4,7 s); standardmäßig für einige solche Stellen an, immer mit einem LTX-Seed als Sicherheitsnetz |
 | `infinitetalk` | lange gesungene Passagen als ein Take statt mehrerer Schnitte |
 | `humo` / `minimax` | Rettungsversuch für Zeilen mit vielen p/b/m, bei denen LTX scheitert |
+| `ltx25` | Versuch: ein Schnitt innerhalb einer gesungenen Einstellung (6–8 s); nur auf ausdrücklichen Wunsch, braucht zusätzliche Modelldateien, die meisten Takes sind Ausschuss |
 | B-Roll | bewegte Bilder zu den Motiven, Personen nur anonym oder von hinten |
 | `typo` | gezeichnete Typografie ohne KI (Eilmeldung, Stempel, Abfahrtstafel, Titel) |
 | `placed` | ein vorhandener Clip mit singendem Mund ohne eigenen Ton wird auf die Gesangskurve gelegt |

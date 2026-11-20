@@ -8,6 +8,7 @@
 | sung shot (default) | LTX-2.3 22B distilled fp8, ia2v, one stage 1280x704 | ~150 s per 97 frames warm, load ~7 min | sharpest; mouth a bit tame; fast syllables good (r 0.92 in a test), plosives weak |
 | held note / climax | Wan2.2-S2V 14B fp8, 20 steps, 832x480 @16 fps | ~11-18 min per 4 s | most expressive mouth; drifts to profile and misses words on runs > 4 s |
 | long sung passage (12 s) | InfiniteTalk (480p, 4 chained parts) | ~19 min per 12 s | most even lip hits over long takes, holds the face (`infinitetalk.py`, chained passes) |
+| a cut inside one sung passage (6-8 s) | LTX-2.5 distilled GGUF Q4_K_M, one stage 1280x704 (`ltx25.py`) | ~295 s per 8 s, ~39 GB RAM | experimental, set by hand: frontal medium shot or closer after the cut, 3+ seeds (1 of 10 takes usable in the tests); see `multishot.md` |
 | B-roll motion / moving still | LTX-2.3 ia2v with the instrumental | ~110-150 s per clip | real motion instead of Ken Burns; music gives rhythm; crowds: img_compression 42 + "A cinematic scene of" |
 | background motion without sound | Wan 2.2 TI2V 5B | ~400 s per 4 s | do not animate characters with it |
 | rescue: plosive-heavy line where LTX measures ~0 | HuMo 1.7B (`humo.py`) or MiniMax H3 local (`minimax.py`) | ~130 s / ~42 s per second of video | rejected as default (static face / robotic body) but kept as rescue engines next to an LTX seed; H3 renders >= 124 frames |

@@ -95,6 +95,8 @@ def motion_check(video):
     """Picture checks of an AI clip (claudia-live v2_auswahl/v4_messung): per frame the mean absolute grey difference
     at 160x88. cuts = jumps > 6 levels AND > 4x the median (a hidden scene cut); frozen = a run of >= 12 frames in
     which the picture stops; motion = mean difference (moving B-roll below ~3 reads as a still).
+    cut_events / cut_frames = the jumps grouped (a cut spread over 2-3 frames is ONE event; frame = first frame of the
+    new shot) - for clips that are meant to cut (LTX-2.5 multi-shot, clip json "cuts_expected").
     "Stops" is measured against the clip itself: below a quarter of its median difference (at most 0.6, at least 0.08).
     The fixed 0.6 called every calm shot frozen - a static camera on a misty field, a singer in front of a still
     background (Das Warum: 40 of 100 shots, the user took the moving clip back by hand in most of them)."""
@@ -111,15 +113,18 @@ def motion_check(video):
         prev = g
     d = np.array(d)
     if not len(d):
-        return dict(motion=0.0, cuts=0, frozen=0, frozen_run=0)
+        return dict(motion=0.0, cuts=0, frozen=0, frozen_run=0, cut_events=0, cut_frames=[])
     med = float(np.median(d))
-    cuts = int(np.sum((d > 6) & (d > 4 * max(med, 0.5))))
+    jump = (d > 6) & (d > 4 * max(med, 0.5))
+    cuts = int(np.sum(jump))
+    cut_frames = [int(i) + 1 for i in np.nonzero(jump)[0] if i == 0 or not jump[max(i - 3, 0):i].any()]
     still = min(0.6, max(0.08, 0.25 * med))
     run = longest = 0
     for x in d:
         run = run + 1 if x < still else 0
         longest = max(longest, run)
-    return dict(motion=round(float(d.mean()), 2), cuts=cuts, frozen=int(longest >= 12), frozen_run=int(longest))
+    return dict(motion=round(float(d.mean()), 2), cuts=cuts, frozen=int(longest >= 12), frozen_run=int(longest),
+                cut_events=len(cut_frames), cut_frames=cut_frames)
 
 
 def rhubarb_curve(mouth_json, fps=FPS):

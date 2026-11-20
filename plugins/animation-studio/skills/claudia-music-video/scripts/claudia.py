@@ -236,6 +236,38 @@ def broll_still_prompt(subject, look_img):
     return f"{subject.rstrip('.')}, {look_img.rstrip('.')}, {STILL_END}"
 
 
+def multishot_who(s, wardrobe):
+    """The singer's identifiers as they are repeated after a cut (word for word the text of shot 1)."""
+    cast = cast_of(s)
+    if cast is not None:
+        a = cast[0]
+        return f"{a['video']}{_opts(a, s)}, wearing {_wardrobe(a, s, wardrobe)}"
+    return f"{ID_VIDEO}, wearing {wardrobe}"
+
+
+def multishot_prompt(s, wardrobe, look_vid, line):
+    """LTX-2.5 prompt of a sung shot with a cut inside (engine "ltx25", ai-video ltx25.py): the plain lip-sync prompt
+    as shot 1, then one sentence per entry of the shot's "cuts": [{"framing": "frontal medium shot from the waist up",
+    "action": "she shouts the last words and raises her fist", "place": "in the same room"}] with the identifiers
+    repeated, and the look once more for the whole clip."""
+    import ltx25
+    # static camera in every shot: LTX-2.5 pushes in by itself, and a camera move fights the cut
+    opening = lipsync_prompt(dict({k: v for k, v in s.items() if k != "timeline"}, camera="static camera"), wardrobe,
+                             look_vid, line, style="plain")
+    who = multishot_who(s, wardrobe)
+    place = s.get("set_short") or s.get("set", "")
+    cuts = [{"framing": c.get("framing", ""), "who": who, "transition": c.get("transition", ltx25.TRANSITION),
+             "action": c.get("action") or "the singing goes on, the lips clearly form every word",
+             "place": c.get("place") or (f"in the same place, {place}" if place else "in the same place")}
+            for c in (s.get("cuts") or [])]
+    return ltx25.multishot_prompt(opening, cuts, f"The same light in every shot: {look_vid}. Static camera in each shot.")
+
+
+def neg_multishot(s):
+    """The lip-sync negatives without the ban on scene cuts (the cut is wanted here)."""
+    return re.sub(r"\s{2,}", " ", re.sub(r"(sudden scene change|scene cut),?\s*", "", neg_lipsync(s))).strip().rstrip(",")
+
+
 def s2v_prompt(s, look_vid):
     cast = cast_of(s)
     if cast is not None:

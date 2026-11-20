@@ -16,10 +16,14 @@ Microphone (headset boom = a thin bright line across the cheek): white top-hat f
 outline and the mouth corner, nose tip to chin). mic_other >= 0.015 = a boom on the wrong cheek too (two mics, or
 the mic on the wrong side); no boom on the expected cheek = mic missing. Separated cleanly on 12 test images
 (single mic: other 0.000; two mics: 0.021-0.041).
+Hair clip: `clips` counts the accent-coloured spots in the hair beside the face (the streak lies in the bangs,
+nearer the centre); `clip_sides` says where. Canon is ONE - AI video likes to mirror the clip onto the other
+side after a cut (LTX-2.5 multi-shot: 3 of 4 seeds). measure_frames() measures chosen frames, e.g. one per shot.
 Viewed from BEHIND the sides swap (her right is then the image's right) - and no face is found anyway: check those by eye.
 
   uv run canon.py img.png [...]
          [--color "#D97757"] [--side image_left]      (videos: 3 frames at 20/50/80 %)
+         [--at 0.25,0.75]                             (videos: these positions instead, one result per frame)
 Config: face_landmarker (see mouth.py).
 """
 import argparse
@@ -55,6 +59,33 @@ def accent_mask(bgr, color="#D97757", hue_tol=7):
     return ((dh <= hue_tol) & (s >= 120) & (v >= 70)).astype(np.uint8)
 
 
+def accent_spots(bgr, color, x0, x1, y0, y1):
+    """Hair clips = spots of the accent colour in the hair BESIDE the face: [(side "left"/"right", area share)].
+    Measured on Claudia stills and LTX-2.5 clips: a clip sits 0.49-0.57 face widths from the face centre, between a
+    little above the brow line and eye height; the streak stays within 0.30 (the bangs). The colour test is looser
+    than accent_mask (dim, blue-lit renders desaturate the clip); black hair around it keeps that safe."""
+    import cv2
+    fw, fh, cx = x1 - x0, y1 - y0, (x0 + x1) / 2
+    rgb = np.uint8([[[int(color[i:i + 2], 16) for i in (5, 3, 1)]]])
+    hc = int(cv2.cvtColor(rgb, cv2.COLOR_BGR2HSV)[0, 0, 0])
+    hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
+    h, sa, v = (hsv[..., i].astype(int) for i in range(3))
+    dh = np.minimum(np.abs(h - hc), 180 - np.abs(h - hc))
+    m = ((dh <= 14) & (sa >= 50) & (v >= 35)).astype(np.uint8)
+    m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
+    n, _, stats, cent = cv2.connectedComponentsWithStats(m, 8)
+    out = []
+    for i in range(1, n):
+        w, hh, ar = int(stats[i, cv2.CC_STAT_WIDTH]), int(stats[i, cv2.CC_STAT_HEIGHT]), int(stats[i, cv2.CC_STAT_AREA])
+        dx, dy = (float(cent[i][0]) - cx) / fw, (float(cent[i][1]) - y0) / fh
+        if not (0.40 <= abs(dx) <= 0.72 and -0.30 <= dy <= 0.35):
+            continue                                  # the bangs (streak), the face, clothes, background
+        if ar < 0.0015 * fw * fh or w > 0.30 * fw or hh > 0.30 * fh:
+            continue                                  # specks; anything larger than a clip
+        out.append(("left" if dx < 0 else "right", round(ar / (fw * fh), 4)))
+    return out
+
+
 def measure_bgr(bgr, color="#D97757", side="image_left"):
     import cv2
     import mediapipe as mp
@@ -69,6 +100,7 @@ def measure_bgr(bgr, color="#D97757", side="image_left"):
     m = accent_mask(bgr, color)
     hull = cv2.convexHull(np.stack([xs, ys], 1).astype(np.float32))
     cv2.fillConvexPoly(m, ((hull - [cx, cy]) * 1.08 + [cx, cy]).astype(np.int32), 0)
+    spots = accent_spots(bgr, color, x0, x1, y0, y1)
     ya, yb = int(max(0, y0 - 0.9 * fh)), int(min(H, y1 + 0.1 * fh))
     left = m[ya:yb, int(max(0, x0 - 0.7 * fw)):int(cx)]
     right = m[ya:yb, int(cx):int(min(W, x1 + 0.7 * fw))]
@@ -81,7 +113,8 @@ def measure_bgr(bgr, color="#D97757", side="image_left"):
     return dict(face=True, expected=round(fe, 4), other=round(fo, 4), rows=round(rows, 2), value=round(value, 3),
                 streak=bool(fe >= 0.003 and rows >= 0.03), wrong=bool(fo >= 0.04 and fo > fe),
                 mic_expected=round(me, 3), mic_other=round(mo, 3), mic_both=bool(mic_both), mic_missing=bool(me < 0.01),
-                face_height=round(fh / H, 3))
+                face_height=round(fh / H, 3), clips=len(spots),
+                clip_sides=sorted(sd for sd, _ in spots))
 
 
 def mic_lines(bgr, p, W, H, side="image_left"):
@@ -125,14 +158,34 @@ def measure(path, color="#D97757", side="image_left"):
     return measure_bgr(bgr, color, side)
 
 
+def measure_frames(path, positions, color="#D97757", side="image_left"):
+    """A video at the given positions (0..1 of its length) -> one measure_bgr dict per position ({"face": False} when
+    the frame cannot be read)."""
+    import cv2
+    cap = video_capture(path)
+    n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    res = []
+    for u in positions:
+        cap.set(cv2.CAP_PROP_POS_FRAMES, int(min(max(u, 0.0), 1.0) * max(n - 1, 0)))
+        ok, f = cap.read()
+        res.append(dict(measure_bgr(f, color, side), at=round(float(u), 3)) if ok else dict(face=False, at=round(float(u), 3)))
+    return res
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("files", nargs="+")
+    ap.add_argument("--at", default="", help="videos: positions 0..1, comma separated (one result per frame)")
     ap.add_argument("--color", default="#D97757")
     ap.add_argument("--side", default="image_left", choices=["image_left", "image_right"])
     a = ap.parse_args()
+    at = [float(x) for x in a.at.split(",") if x]
     for f in a.files:
-        print(json.dumps(dict(file=f, **(measure(f, a.color, a.side) or {}))))
+        if at and Path(f).suffix.lower() in (".mp4", ".mov", ".mkv", ".webm"):
+            for r in measure_frames(f, at, a.color, a.side):
+                print(json.dumps(dict(file=f, **r)))
+        else:
+            print(json.dumps(dict(file=f, **(measure(f, a.color, a.side) or {}))))
 
 
 if __name__ == "__main__":

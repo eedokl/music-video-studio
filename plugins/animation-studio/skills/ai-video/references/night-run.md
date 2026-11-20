@@ -3,7 +3,7 @@
 A user skill writes `<project>/jobs.json`; `night_run.py` computes it. Paths are relative to the jobs file.
 
 ```json
-{"phases": ["flux", "qwen_edit", "depth", "ltx", "s2v", "infinitetalk", "humo", "minimax_h3", "wan"],
+{"phases": ["flux", "qwen_edit", "depth", "ltx", "s2v", "infinitetalk", "humo", "minimax_h3", "ltx25", "wan"],
  "selection": "selection.json",
  "hooks": {"after:qwen_edit": ["uv", "run", "${CLAUDE_PLUGIN_ROOT}/skills/<skill>/scripts/pick.py", "auto", "."]},
  "jobs": [
@@ -26,6 +26,7 @@ A user skill writes `<project>/jobs.json`; `night_run.py` computes it. Paths are
 | `infinitetalk` | comfy:infinitetalk | image, audio, prompt, frames (4n+1 @25 fps, chained passes beyond 81), seed, meta |
 | `humo` | comfy:humo1.7B | image, audio, prompt, frames (4n+1 @25 fps), seed, size (1.7B; 17B is refused in the night run - does not fit 16 GB VRAM), steps, neg, meta |
 | `minimax_h3` | comfy:minimax_h3 | image, audio, prompt, frames (@24 fps, >= 124: shorter shots are rendered long and cut), seed, meta |
+| `ltx25_multishot` | comfy:ltx25 | image, audio, prompt (cuts written as prose, see `multishot.md`), cuts (how many the prompt asks for), frames (8n+1, <= 193), seed, strength, neg, meta - experimental; ComfyUI is flushed before every clip |
 | `wan` | comfy:wan | image, prompt, seconds, seed, neg, meta |
 
 - **Order:** stills first, then the pick hook (canon check chooses start images), depth, then the videos - each

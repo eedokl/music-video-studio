@@ -12,6 +12,8 @@ Per shot (project.json "sections"):
                   engine "infinitetalk" = one InfiniteTalk clip + 1 LTX seed (the measurement picks)
                   engine "humo" / "minimax" = one HuMo 1.7B / local MiniMax H3 clip + 1 LTX seed (rescue for
                   plosive-heavy lines where LTX measures weak; both rejected as default - static face / robotic body)
+                  engine "ltx25" = LTX-2.5 clips with a CUT inside the shot (experimental, 6-8 s; the shot's "cuts":
+                  [{"framing": "frontal medium shot from the waist up", "action": "..."}], 3 seeds, "ltx25_seeds")
   broll           FLUX stills (variants) -> pick -> LTX-2.3 "moving still" on the instrumental (no singing)
   claudia_moving  Qwen start images -> canon pick -> LTX-2.3 moving on the instrumental (she acts, does not sing)
   typo            no AI job: NEWSFLASH / stamps / departure board / title drawn by render_shots (typo.py)
@@ -266,6 +268,25 @@ def main():
                                "quiet_start": True, "prepare": True},
                         prompt=rp, frames=n, seed=s.get("s2v_seed", base + 270),
                         meta={"song_start": round(s["from"] - li, 3), "lead_in": li, "shot": name})
+                if s.get("engine") == "ltx25":       # experimental: a cut inside one sung clip (never set by plan.py)
+                    import ltx25
+                    li = ltx25.LEAD_IN
+                    n = ltx25.frames_for(dur, li)
+                    if dur < ltx25.MIN_SECONDS or (dur + li) * ltx25.FPS + 2 > ltx25.MAX_FRAMES:
+                        problems.append(f"{name} ltx25: the shot is {dur:.1f} s - a cut inside needs {ltx25.MIN_SECONDS:.0f} to "
+                                        f"{(ltx25.MAX_FRAMES - 2) / ltx25.FPS - li:.1f} s (shorter: engine ltx; longer: split it)")
+                    xp = claudia.multishot_prompt(s, wardrobe, look_vid, line)
+                    pr["ltx25"] = xp
+                    problems += [f"{name} ltx25: {e}" for e in claudia.check(xp, "lipsync", s) + ltx25.check_cuts(s.get("cuts") or [])]
+                    seed0 = s.get("ltx25_seed", base + 400)
+                    for k in range(max(1, min(6, int(s.get("ltx25_seeds", 3))))):
+                        sd = seed0 + 17 * k
+                        add("ltx25_multishot", f"{name}/ltx25" + (f"_sd{sd}" if sd != base + 400 else ""),
+                            f"ai/ltx25/{name}_{{img}}{seed_tag(sd, base + 400, P, 'ltx25', name)}.mp4", image=img,
+                            audio={"src": rel(P, vocals), "from": round(s["from"] - li, 3), "dur": round(n / ltx25.FPS + 0.2, 3),
+                                   "quiet_start": True, "prepare": True},
+                            prompt=xp, neg=claudia.neg_multishot(s), frames=n, seed=sd, cuts=len(s.get("cuts") or []),
+                            meta={"song_start": round(s["from"] - li, 3), "lead_in": li, "shot": name})
                 if s.get("engine") == "s2v":
                     n = clips.s2v_frames(dur)
                     sp2 = claudia.s2v_prompt(s, look_vid)
@@ -340,7 +361,8 @@ def main():
     # no absolute paths in jobs.json: night_run expands ${CLAUDE_PLUGIN_ROOT} at run time and runs hooks in the
     # project folder (the jobs file's folder), so the hook survives plugin updates and moved projects
     hook = MEDIAPIPE + ["${CLAUDE_PLUGIN_ROOT}/skills/claudia-music-video/scripts/pick.py", "auto", "."]
-    d = {"phases": ["flux", "qwen_edit", "depth", "ltx", "s2v", "infinitetalk", "humo", "minimax_h3", "wan"], "selection": "selection.json",
+    d = {"phases": ["flux", "qwen_edit", "depth", "ltx", "s2v", "infinitetalk", "humo", "minimax_h3", "ltx25", "wan"],
+         "selection": "selection.json",
          "hooks": {"after:flux": hook, "after:qwen_edit": hook + ["--repair-mic"]}, "jobs": jobs}
     n_new = len(jobs)
     d = merged(P.dir / "jobs.json", d, only, "jobs")

@@ -41,7 +41,7 @@ from song_project import Project  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 PAGE = HERE.parent / "assets" / "takes.html"
-LIP_DIRS = ("lipsync", "s2v", "infinitetalk", "humo", "minimax_h3")
+LIP_DIRS = ("lipsync", "s2v", "infinitetalk", "humo", "minimax_h3", "ltx25")
 VOCALISE = {"oh", "ooh", "oooh", "ah", "aah", "la", "na", "mm", "mmm", "hm", "uh", "whoa", "wo", "yeah", "ha", "hey"}
 STILL = "still"                                            # the pseudo take "the picked still instead of a clip"
 

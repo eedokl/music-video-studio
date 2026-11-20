@@ -118,7 +118,7 @@ from pathlib import Path
 scripts, out = sys.argv[1], sys.argv[2]
 sys.path.insert(0, scripts)
 import numpy as np
-import comfy, comfy_image, comfy_video, ltx, s2v, infinitetalk, humo, minimax, qwen_edit, mic_repair
+import comfy, comfy_image, comfy_video, ltx, ltx25, s2v, infinitetalk, humo, minimax, qwen_edit, mic_repair
 R = {
  "flux": [comfy_image.workflow("p", 1280, 720, 5)],
  "flux_repaint": [comfy_image.workflow("p", 1280, 720, 5, init="in.png", denoise=0.4)],
@@ -128,6 +128,7 @@ R = {
  "qwen_edit": [qwen_edit.workflow(["a.png"], "p", 1280, 720, 1)],
  "qwen_edit_angles": [qwen_edit.workflow(["a.png", "b.png"], "p", 1280, 720, 1, lora=0.6)],
  "ltx23": [ltx.workflow("i.png", "a.wav", "p", ltx.NEG_LIPSYNC, 97, 31)],
+ "ltx25": [ltx25.workflow("i.png", "a.wav", "p", ltx25.NEG, 193, 7)],
  "ltxv": [comfy_video.wf_ltx("i.png", "p", "n", 1216, 704, 97, 3, 8)],
  "wan": [comfy_video.wf_wan("i.png", "p", "n", 1280, 704, 97, 3, 20)],
  "s2v": [s2v.workflow("i.png", "a.wav", "p", s2v.NEG, 61, 20, 6.0, 31, "x")],
