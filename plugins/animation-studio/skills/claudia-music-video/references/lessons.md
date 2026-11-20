@@ -58,3 +58,15 @@ Weak spots that stayed (no model solved them): lips closing on short p/b/m; fast
   (gesture list, chorus head bob + arms, "Hey" fist + walk); the plain prompt won close-ups, spoken lines, the quiet
   bridge and the run + jump (weak in all takes). Hence: plain by default, `timeline` only for multi-action shots,
   rendered mixed (A on odd, B on even seeds).
+
+## Code cut (Europe 2031 in the Y2Y2R method, 2026-11)
+
+- **Frontal start images for sung shots.** Three-quarter images grew a second microphone when she turned to the lens
+  (both seeds); frontal ones never did in 66 takes.
+- **Check the microphone cheek in every start image**: the second seed often mirrored it.
+- **One sung take in two is usable** (closed mouth, light drifting from red to white, crash zoom in the first second,
+  leaving the scene at the end) - two seeds per line were enough for every line.
+- **LTX turns medium shots into close-ups by itself**, so the film gets more close-ups than planned and code jump-ins
+  stay small (8-12 %).
+- **Pace is a choice per song**: the first cut (one picture per beat in the chorus, a cut inside almost every take)
+  was "a bit too fast" for the user; `medium` is the default.

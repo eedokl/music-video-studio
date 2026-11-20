@@ -28,6 +28,13 @@ screen), typo on the screen.
 - Live versions of a song often differ from the lyrics sheet (extra lines, vocalises): run song-analysis on the live
   audio and correct lyrics.txt before planning.
 
+## Cut in code (any version)
+
+`code_film.py` cuts a studio or live project a second way: cut as data on the beat grid, text and graphics drawn in
+code, B-roll as stills moved in code. Reference: Europe 2031 in this method (3:17, 37 sung takes, 72 plates; 154 parts
+at pace `fast`, 115 at `medium`, 89 at `calm`; about 2.5 h GPU for stills and takes, 3 min to render the film).
+Choose the pace for the song. See film-finish `references/code-cut.md`.
+
 ## Hand-offs
 
 - V1/V2 comparison and review: video-review skill (films + review.json + selection.json + picks.log).

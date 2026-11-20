@@ -163,7 +163,8 @@ the real scripts with `uv run --offline` (no downloads, no network, no AI job on
 (one section through overlays, sounds with `"sounds": true` / `false` / a list, `build.py film`; two sections with
 fractional boundaries: frame count and cut frame against the sound), animated-short, talking-character (Windows
 system voice), animated-powerpoint (scene finishing path with a faked and with the real 2.5D stage render, sound cue
-positions), claudia-music-video (fake LTX clips + meta -> `render_shots.py` -> `make_film.py`), film-finish `cut.py`,
+positions), claudia-music-video (fake LTX clips + meta -> `render_shots.py` -> `make_film.py` -> `code_film.py`), film-finish `cut.py`
+and `code_cut.py` (cut as data, graphics in code, rules enforced),
 video-review (per-frame provenance of the cut), lyric-music-video, bricks-music-video (Blender EEVEE draft, takes the
 GPU lock), the night-run kill-and-resume (`.part` outputs), an interrupted caption pass, the up-front project check
 (a bad project.json - "sounds" as a string, overlapping sections, a talking figure voiced "male" - is rejected with

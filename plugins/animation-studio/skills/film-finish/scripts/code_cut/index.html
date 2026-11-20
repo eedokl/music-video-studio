@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Code cut renderer</title>
+<style>
+  html, body { margin: 0; width: 1280px; height: 720px; overflow: hidden; background: #000; }
+  canvas { display: block; width: 1280px; height: 720px; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1280" height="720"></canvas>
+<script type="module">
+// Code cut: draws any frame k of edit.json deterministically and posts it to the server (toon-2d server.mjs).
+//   ?from=0&to=600   frame range (to exclusive)      ?plate=1   footage only, no code layer
+import { makeDraw } from '/_page/draw.js';
+
+const q = new URLSearchParams(location.search);
+const log = (m) => fetch('/log', { method: 'POST', body: String(m) }).catch(() => {});
+window.addEventListener('error', (e) => log('ERROR: ' + e.message));
+window.addEventListener('unhandledrejection', (e) => log('ERROR: ' + (e.reason && e.reason.stack || e.reason)));
+
+const j = (u) => fetch(u).then((r) => { if (!r.ok) throw new Error(u + ' ' + r.status); return r.json(); });
+const [edit, song, clips] = await Promise.all([j('/edit.json'), j('/song.json'), j('/clips.json')]);
+const facts = edit.ticker ? await j('/' + edit.ticker) : [];
+const canvas = document.getElementById('c');
+const [cw, ch] = edit.size || [1280, 720];
+canvas.width = cw; canvas.height = ch;
+for (const el of [document.documentElement, document.body, canvas]) { el.style.width = cw + 'px'; el.style.height = ch + 'px'; }
+const ctx = canvas.getContext('2d');
+const draw = makeDraw({ edit, song, facts, clips, plate: q.get('plate') === '1' });
+await document.fonts.ready;
+
+const from = Number(q.get('from') ?? 0), to = Number(q.get('to') ?? edit.frames);
+const prefix = q.get('plate') === '1' ? 'p_' : 'f_';
+for (let k = from; k < to; k++) {
+  await draw(ctx, k);
+  const blob = await new Promise((r) => canvas.toBlob(r, 'image/png'));
+  await fetch(`/save/${prefix}${String(k).padStart(5, '0')}.png`, { method: 'POST', body: blob });
+  if (k % 60 === 0) log('frame ' + k);
+}
+await fetch('/done');
+</script>
+</body>
+</html>

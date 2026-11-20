@@ -196,6 +196,23 @@ sets `"look": "none"` because the photographic finish (grain + vignette) is alre
 adds the paper texture on top.
 **Checkpoint:** the user watches V1.
 
+### Cut in code (option)
+
+`uv run "$S/code_film.py" <proj> [--pace calm|medium|fast] [--plan-only] [--from K --to K]` cuts the same picked
+material a second way: the cut is data on the beat grid (jump-ins on word onsets, stills moved in code and reframed on
+the beat), and lyrics, labels, ticker and cards are drawn in code frame by frame -> `film_code_v01.mp4` (next free
+number, `film.mp4` is untouched) + sheet. Offer it when the user wants a graphic layer that follows words and beats, a
+faster or data-driven cut, or names the film Y2Y2R / "You're Too Young to Remember" as the model.
+- **Ask for the pace** (project.json `"pace"`, default `medium`): `calm` holds every take for its whole line, `fast`
+  cuts stills every beat in a chorus. The first film in this method was judged "a bit too fast" at `fast`.
+- B-roll needs only its picked image here (no B-roll clips): for a film made only this way, skip the moving B-roll jobs.
+- Start images for sung shots should be frontal for this cut (the face is framed into the upper half and tracked).
+- The graphic layer is project.json `"code_layer"` (worlds per look with grade and accent colour, accents per line,
+  meter, clock, ticker of dated facts with sources, overlays anchored to words) and per shot `"code"` (pattern, beats,
+  tag, cam). Schema, overlay types and findings: `${CLAUDE_PLUGIN_ROOT}/skills/film-finish/references/code-cut.md`.
+- Review on the frame numbers burned into the scene slug; change project.json and re-render a range with `--from/--to`
+  (seconds, no GPU). Needs config `node` and `browser`.
+
 ## 7. Review and V2
 
 Hand `film.mp4`, `review.json`, `selection.json` and `picks.log` to the **video-review** skill for the review and,

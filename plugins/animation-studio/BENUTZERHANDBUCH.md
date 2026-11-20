@@ -621,6 +621,12 @@ falschen Seite ergibt falsche Mikrofone in den meisten Startbildern.
    der Seite. Claude wählt hier nicht für Sie vor: In Tests bevorzugte das Auge oft natürliche Bewegung vor dem
    höchsten Messwert.
 8. *Schnitt*: Liedtext-Overlay, KI-Kennzeichnung in den letzten 3 Sekunden, Ausgabeversionen.
+   **Schnitt in Code (Option):** Dasselbe Material lässt sich ein zweites Mal schneiden: Der Schnitt liegt als Daten
+   auf dem Taktraster, und Liedtext, Beschriftungen, Laufband und Karten werden Bild für Bild in Code gezeichnet
+   (Vorbild: der Film „You're Too Young to Remember“). Sagen Sie zum Beispiel: „Schneide das Video zusätzlich in
+   Code, Tempo ruhig.“ Es gibt drei Tempi: `calm` (ruhig), `medium` (Standard) und `fast` (ein Bild pro Schlag im
+   Refrain). Das Ergebnis heißt `film_code_v01.mp4`; `film.mp4` bleibt unverändert. Änderungen sind in Sekunden neu
+   gerendert und brauchen keine Grafikkarte.
 9. **Prüfpunkt V1**: Sie schauen die erste Fassung. Danach hilft `video-review` beim Vergleich mit einer V2.
 
 **Techniken pro Einstellung** (Claude schlägt sie vor, Sie können sie verlangen):

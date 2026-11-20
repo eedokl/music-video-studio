@@ -1,7 +1,7 @@
 """claudia-music-video: synthetic AI clips (ffmpeg test pictures with sound) + their <clip>.json meta as night_run /
 ltx.py write them + selection.json -> render_shots.py -> make_film.py (lyrics, film, sheets, review.json)."""
-from common import (FPS, Test, full, expect, expect_film, need, read_json, script, song_sheet, tone, video_frames,
-                    write_json)
+from common import (FPS, Test, full, expect, expect_film, need, read_json, script, song_sheet, tone, tool,
+                    video_frames, write_json)
 
 NEW = script("song-analysis", "new_project.py")
 RENDER = script("claudia-music-video", "render_shots.py")
@@ -9,6 +9,7 @@ FILM = script("claudia-music-video", "make_film.py")
 TAKES = script("claudia-music-video", "takes.py")
 PICK = script("claudia-music-video", "pick.py")
 JOBS = script("claudia-music-video", "jobs.py")
+CODE = script("claudia-music-video", "code_film.py")
 
 SONG = 3.30
 WORDS = [("Light", 0.20, 0.60, 0), ("the", 0.60, 0.75, 0), ("city", 0.80, 1.40, 0),
@@ -165,7 +166,19 @@ def run_claudia(ctx):
         expect((d / f).exists(), f"{f} missing")
     rv = read_json(d / "review.json")
     expect([s["name"] for s in rv["shots"]] == ["s01", "s02"], f"review.json shots {rv['shots']}")
-    ctx.note(f"{total} frames = round({SONG}*24) (song length), both clips placed, lyrics overlay, review.json")
+    code = "code cut skipped (needs node, browser, face_landmarker)"
+    if all(tool(k) for k in ("node", "browser", "face_landmarker")):       # the same project cut in code (code_film.py)
+        ctx.uv(CODE, d, "--pace", "fast", timeout=900)
+        expect_film(ctx, d / "film_code_v01.mp4", total)
+        ed = read_json(d / "code_cut" / "edit.json")
+        expect(ed["pace"] == "fast" and [s["id"] for s in ed["shots"]] == ["s01", "s02"]
+               and all(p.get("why") for s in ed["shots"] for p in s["parts"]), f"code cut edit.json: {ed['shots']}")
+        ctx.uv(CODE, d, "--pace", "calm", "--plan-only", timeout=300)
+        calm = read_json(d / "code_cut" / "edit.json")
+        expect(sum(len(s["parts"]) for s in calm["shots"]) <= sum(len(s["parts"]) for s in ed["shots"]),
+               "pace calm has more parts than pace fast")
+        code = "code cut film_code_v01.mp4 (pace fast), calm plan has no more parts"
+    ctx.note(f"{total} frames = round({SONG}*24) (song length), both clips placed, lyrics overlay, review.json; {code}")
 
 
-TESTS = [Test("claudia-music-video", run_claudia, about="fake LTX clips + meta -> takes.py (compare/choose) -> render_shots.py -> make_film.py")]
+TESTS = [Test("claudia-music-video", run_claudia, about="fake LTX clips + meta -> takes.py (compare/choose) -> render_shots.py -> make_film.py -> code_film.py")]
