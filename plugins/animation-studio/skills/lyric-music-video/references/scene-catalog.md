@@ -27,6 +27,7 @@ when you want to see exactly how something was built.
 | `industrial-riff` | Industrial rock, German/English, slow institutions vs. a fast world (song A) | Industrial: concrete/steel, signal red + steel blue/gold, film grain, Anton + Playfair italic (elegance vs. steel), letters stamped like a press, white flashes + shake on riff hits, 3D storm with a ring of stars |
 | `content-cards` | Stadium electro-rock presenting a team's roles page (song C) | Look taken from the source page (its colours, flat white cards, 8 px grid) on a dark navy stadium; one scene per sung role with a stage-chain bar, profile card (recoloured icon, quote, tasks, illustration) and an animated metaphor |
 | `stadium-broadcast` | Second recording of song A, as a live-concert version | TV broadcast of a stadium concert (concert.ts): LIVE badge + camera labels, the song's story as LED-wall graphics (wall.ts, canvas texture), side screens with a live close-up (render target), 25 moving heads with shader beams in haze, follow spot, flames on big hits, CO2, spark curtain on held notes, confetti, fireworks, ~5,000 instanced fans jumping on the beat, phone lights forming a ring of stars from the sky camera, matte black band silhouettes (bright/metallic figures looked like mannequins), bloom; scenes are declarative (shot + light look + wall visual + lyric style) |
+| (scenes/bl, not in examples) | German folk-pop storytelling song about Sutton's "bitter lesson" (song F, "Die bittere Lektion") | School exercise book + blackboard: verses on cream ruled paper with red margin line in royal-blue fountain-pen ink, wobbly pen drawings that draw themselves on the sung words (sketch.ts: stroke-dash reveal, hash-wobbled lines), a handwritten date top right that tells the years (1997, 2017, 2012-16, heute, nächstes Jahr); choruses on a green slate board in chalk (Caveat Brush) with a sponge wiping the memorised stuff away; bridge as pencil on a blank sheet. Caveat handwriting = human, Courier Prime typed = machine; the "better model" is the only un-wobbled, filled shape. Letters flow in like ink (no stamp), cut = a turned page (sheet sweeping across), ending = teacher's red pen "Richtig. Leider.", homework "loslassen.", the book closes on a beat and a stamp seals the label |
 
 ## 2. Lyric presentation techniques
 
@@ -39,6 +40,8 @@ when you want to see exactly how something was built.
 - **Full-screen word slams** for chants ("HEY! RISE UP, PEOPLE") – one word at a time, huge, rotated, flash (industrial-riff `heyScene`).
 - **Beat bump**: lyric block scales 1 + 0.065–0.085 × pulse while singing.
 - **Replace mode** (only current line) for choruses; **stacked mode** for two-line verses.
+- **Self-drawing sketches** (scenes/bl `sketch.ts`/`draw.ts`): SVG paths with `pathLength=1` + dash offset from song time, lines wobbled with `hash()`, handwriting revealed letter by letter, erase by per-item `out` time (sponge sweep = out time from x position). A lone dash word rides inside the previous word's box so it never starts a row.
+- **Timing check on Suno songs**: both choruses are the same audio a fixed offset apart - compare their word times against each other and against loudness islands of the lead stem; Whisper glues line-first words to the previous line's tail or into silence.
 
 ## 3. Scene archetypes (with examples)
 
