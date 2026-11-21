@@ -26,7 +26,7 @@ tracker, dust), accents per line, chrome (meter, clock, label, bars, frames), ti
 "dust", "iris".
 
 Overlays (in "code_layer" or in a shot's "code") are written with anchors instead of frame numbers:
-  "at" / "until": {"line": i, "word": j} | {"line": i, "end": true} | {"t": s} | {"shot": "s05"[, "end": true]} | {"k": n},
+  "at" / "until": {"line": i, "word": j | "text"} | {"line": i, "end": true} | {"t": s} | {"shot": "s05"[, "end": true]} | {"k": n},
   or "len": frames. In a shot's "code" the shot's start and end are the defaults.
   Without "until" and "len" a text piece stands as long as it takes to read it (stamp 2 s, quote 5 s, title 1.5 s,
   lower third 2 s) - also across the cut when the shot is shorter.
@@ -128,7 +128,9 @@ def card(path, s, size):
 
 
 def anchor(a, K, lines, shots, default=None):
-    """{"line": i, "word": j} | {"line": i, "end": true} | {"t": seconds} | {"shot": "s05"[, "end": true]} | {"k": frame}"""
+    """{"line": i, "word": j | "text"} | {"line": i, "end": true} | {"t": seconds} | {"shot": "s05"[, "end": true]} |
+    {"k": frame}. A word as text is the first word of the line that starts with it (letters only, any case;
+    "nth": 1 = the second such word) - safer than an index, which depends on how the recogniser split the line."""
     if a is None:
         return default
     if "k" in a:
@@ -138,16 +140,44 @@ def anchor(a, K, lines, shots, default=None):
     if "shot" in a:
         s = next(x for x in shots if x["id"] == a["shot"])
         return s["k1"] if a.get("end") else s["k0"]
-    ln = next(x for x in lines if x["i"] == a["line"])
+    ln = next((x for x in lines if x["i"] == a["line"]), None)
+    if ln is None:
+        raise SystemExit(f"anchor {a}: the film has no line {a['line']} (lines {lines[0]['i']}-{lines[-1]['i']})")
     if a.get("end"):
         return ln["k1"]
-    w = ln["words"][a.get("word", 0)]
+    j = a.get("word", 0)
+    if isinstance(j, str):
+        clean = lambda s: "".join(ch for ch in s.lower() if ch.isalnum())     # noqa: E731
+        hits = [w for w in ln["words"] if clean(w["w"]).startswith(clean(j))]
+        if len(hits) <= a.get("nth", 0):
+            raise SystemExit(f"anchor {a}: no word starting with {j!r} in line {a['line']}: "
+                             + " ".join(w["w"] for w in ln["words"]))
+        w = hits[a.get("nth", 0)]
+    elif not -len(ln["words"]) <= j < len(ln["words"]):
+        raise SystemExit(f"anchor {a}: line {a['line']} has {len(ln['words'])} words: "
+                         + " ".join(f"{n}:{w['w']}" for n, w in enumerate(ln["words"])))
+    else:
+        w = ln["words"][j]
     return w["k1"] if a.get("word_end") else w["k0"]
 
 
 READ_S = code_cut.READ_S                                     # shortest time a text piece can be read in
-RIGHT_X = {"stamp": 800, "flip": 1040, "list": 812, "counter": 972, "check": 880, "typer": 612, "board": 672}
+WIDTH = {"flip": 186, "list": 420, "counter": 260, "typer": 620, "board": 560}     # the page's default widths (1280 layout)
 LEFT_X = {"stamp": 60, "flip": 60, "list": 48, "counter": 48, "check": 96, "typer": 48, "board": 48}
+
+
+def side_x(ov, side):
+    """x of a piece beside the face: at the left margin, or right-aligned to the right margin by its width."""
+    t = ov["type"]
+    if side != "right":
+        return LEFT_X[t]
+    if t == "stamp":                                         # width estimated from the text; the page clamps it as well
+        w = len(ov.get("text", "")) * ov.get("size", 54) * 0.5 + 36
+    elif t == "check":
+        w = 50 + sum(len(x.get("text", "")) + 1 for x in ov.get("words", [])) * 23 * ov.get("scale", 1)
+    else:
+        w = ov.get("w", WIDTH[t])
+    return int(max(640, 1232 - w))
 
 
 def resolve_overlay(ov, K, lines, shots, frames, fps, shot=None):
@@ -172,8 +202,8 @@ def resolve_overlay(ov, K, lines, shots, frames, fps, shot=None):
     if ov.get("type") == "flip" and ("flip_at" in ov or "k" not in ov):
         ov["k"] = anchor(ov.pop("flip_at", None), K, lines, shots, (ov["k0"] + ov["k1"]) // 2)
     side = ov.pop("side", None)
-    if side and "x" not in ov and ov.get("type") in RIGHT_X:
-        ov["x"] = (RIGHT_X if side == "right" else LEFT_X)[ov["type"]]
+    if side and "x" not in ov and ov.get("type") in LEFT_X:
+        ov["x"] = side_x(ov, side)
     return ov
 
 
@@ -318,6 +348,8 @@ def main():
     for i, s in enumerate(shots):
         nxt = shots[i + 1]["k0"] if i + 1 < len(shots) else frames
         if s["k1"] != nxt:
+            if nxt > s["k1"] and s["parts"][-1]["kind"] == "take":
+                s["parts"][-1]["hold"] = True                 # a gap in the shot plan: the take's last frame is held over it
             s["k1"] = s["parts"][-1]["k1"] = nxt
     if shots[0]["k0"] != 0:
         shots[0]["k0"] = shots[0]["parts"][0]["k0"] = 0
@@ -361,6 +393,9 @@ def main():
                 fade_in=round(fps * 0.4), fade_out=round(fps * 1.5), free_cuts=sorted(free), overlays=overlays, shots=shots)
     if layer.get("dust"):
         edit["dust"] = layer["dust"]
+    loc = layer.get("locale") or {"de": "de-DE", "en": "en-US", "fr": "fr-FR", "es": "es-ES"}.get(P.get("language") or "")
+    if loc:
+        edit["locale"] = loc                                  # how counters write numbers (44.000.000 or 44,000,000)
     if layer.get("iris"):                                     # iris out, by default over the last 1.5 s of the film
         ir = dict(layer["iris"])
         ir["k1"] = anchor(ir.pop("until", None), K, lines, shots, frames)

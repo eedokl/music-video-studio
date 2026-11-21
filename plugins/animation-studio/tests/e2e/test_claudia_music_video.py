@@ -175,23 +175,57 @@ def run_claudia(ctx):
                and all(p.get("why") for s in ed["shots"] for p in s["parts"]), f"code cut edit.json: {ed['shots']}")
         pj = read_json(d / "project.json")                     # small pieces written with anchors at their shot
         pj["sections"][0].setdefault("code", {})["overlays"] = [
-            {"type": "stamp", "text": "E2E", "side": "right"},
-            {"type": "check", "side": "left", "words": [{"text": "OK"}], "len": 12},
-            {"type": "list", "title": "L", "items": [{"text": "a", "strike_at": {"shot": "s01", "end": True}}], "len": 20}]
+            {"type": "stamp", "text": "A LONG STAMP TEXT E2E", "side": "right"},
+            {"type": "board", "side": "right", "w": 440, "rows": [["09:00", "A", "OK"]], "len": 10},
+            {"type": "check", "side": "left", "words": [{"text": "OK"}], "len": 12, "at": {"line": 0,
+             "word": read_json(d / "code_cut" / "song.json")["lines"][0]["words"][0]["w"]}},
+            {"type": "list", "title": "L", "items": [{"text": "a", "strike_at": {"shot": "s01", "end": True}}], "len": 20},
+            {"type": "rings", "point": [640, 500], "at": {"shot": "s01"}, "len": 10}]   # "at" = when, "point" = where
         pj["code_layer"] = dict(pj.get("code_layer") or {}, iris={"c": [0.5, 0.4], "r": 150})
         write_json(d / "project.json", pj)
         ctx.uv(CODE, d, "--pace", "calm", "--plan-only", timeout=300)
         calm = read_json(d / "code_cut" / "edit.json")
         s1 = calm["shots"][0]
         st, ck, li = (next(o for o in calm["overlays"] if o["type"] == t) for t in ("stamp", "check", "list"))
-        expect(st["k0"] == s1["k0"] and st["k1"] >= st["k0"] + 2 * FPS and st["x"] == 800,
-               f"stamp at its shot, at least 2 s, on the right: {st}")
-        expect(ck["x"] == 96 and ck["k1"] == ck["k0"] + 12 and ck["words"][0]["k"] == ck["k0"], f"check: {ck}")
+        expect(st["k0"] == s1["k0"] and st["k1"] >= st["k0"] + 2 * FPS and st["x"] == 640,
+               f"stamp at its shot, at least 2 s; a long text on the right starts at the middle at the earliest: {st}")
+        bd = next(o for o in calm["overlays"] if o["type"] == "board")
+        expect(bd["x"] == 1232 - 440, f"a piece on the right is right-aligned by its width: {bd}")
+        expect(calm.get("locale") == {"de": "de-DE", "en": "en-US"}.get(pj.get("language") or "", calm.get("locale")),
+               f"locale from the project's language: {calm.get('locale')} / {pj.get('language')}")
+        w0 = read_json(d / "code_cut" / "song.json")["lines"][0]["words"][0]
+        expect(ck["x"] == 96 and ck["k1"] == ck["k0"] + 12 and ck["words"][0]["k"] == ck["k0"] == w0["k0"], f"check: {ck}")
         expect(li["items"][0]["strike"] == s1["k1"], f"list strike anchor: {li}")
         expect(calm["iris"]["k1"] == calm["frames"] and calm["fade_out"] == 0, f"iris: {calm.get('iris')}")
+        rg = next(o for o in calm["overlays"] if o["type"] == "rings")
+        expect(rg["point"] == [640, 500] and "at" not in rg and rg["k1"] == rg["k0"] + 10, f"rings keep their place: {rg}")
+        # found on the first real film: a word index past the line's words crashed, a gap in the shot plan was refused
+        good = read_json(d / "project.json")
+        bad = read_json(d / "project.json")
+        bad["sections"][0]["code"]["overlays"].append({"type": "stamp", "text": "X", "at": {"line": 0, "word": 99}})
+        write_json(d / "project.json", bad)
+        r = ctx.uv(CODE, d, "--plan-only", check=False, timeout=300)
+        out = (r.stdout or "") + (r.stderr or "")
+        expect(r.returncode != 0 and "words:" in out and "Traceback" not in out,
+               f"a word index past the line must be refused with the line's words: exit {r.returncode}, {out[-300:]}")
+        bad["sections"][0]["code"]["overlays"][-1]["at"] = {"line": 0, "word": "zzz"}
+        write_json(d / "project.json", bad)
+        r = ctx.uv(CODE, d, "--plan-only", check=False, timeout=300)
+        out = (r.stdout or "") + (r.stderr or "")
+        expect(r.returncode != 0 and "no word starting with 'zzz'" in out, f"unknown word text: exit {r.returncode}, {out[-300:]}")
+        gap = read_json(d / "project.json")
+        gap["sections"][0]["code"]["overlays"].pop()
+        gap["sections"][0]["to"] = round(gap["sections"][1]["from"] - 0.4, 3)     # 0.4 s between the two shots
+        write_json(d / "project.json", gap)
+        ctx.uv(CODE, d, "--pace", "calm", "--plan-only", timeout=300)
+        g = read_json(d / "code_cut" / "edit.json")["shots"]
+        expect(g[0]["k1"] == g[1]["k0"] and g[0]["parts"][-1].get("hold") is True,
+               f"a gap in the shot plan: the take is held over it: {g[0]['parts'][-1]}")
+        write_json(d / "project.json", good)
         expect(sum(len(s["parts"]) for s in calm["shots"]) <= sum(len(s["parts"]) for s in ed["shots"]),
                "pace calm has more parts than pace fast")
-        code = "code cut film_code_v01.mp4 (pace fast), calm plan has no more parts"
+        code = ("code cut film_code_v01.mp4 (pace fast), calm plan has no more parts; pieces anchored at their shot "
+                "(word as text, minimum standing time, side, rings point, iris), bad anchors refused, gap held")
     ctx.note(f"{total} frames = round({SONG}*24) (song length), both clips placed, lyrics overlay, review.json; {code}")
 
 

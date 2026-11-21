@@ -13,12 +13,14 @@ def edit(parts):
             "accents": {"0": "beat"}, "chrome": {"label": "E2E", "meter": {"title": "METER", "k0": 0, "k1": 72}},
             "iris": {"k0": 60, "k1": 72, "c": [0.5, 0.4], "r": 150},
             "overlays": [{"type": "shout", "k0": 24, "k1": 36, "text": "HEY!"},
-                         {"type": "stamp", "k0": 2, "k1": 14, "text": "TOO SHORT", "x": 700, "y": 200},
+                         {"type": "stamp", "k0": 2, "k1": 14, "text": "TOO SHORT AND MUCH TOO LONG FOR ITS PLACE", "x": 1100, "y": 200},
+                         {"type": "counter", "k0": 0, "k1": 24, "x": 60, "y": 400, "from": 1234567, "to": 1234567,
+                          "locale": "de-DE"},
                          {"type": "list", "k0": 0, "k1": 24, "x": 60, "y": 120, "title": "LIST", "numbers": False,
                           "items": [{"text": "one", "k": 2, "strike": 10}, {"text": "two", "k": 6}]},
                          {"type": "cards", "k0": 24, "k1": 48, "from": [200, 400], "n": 8, "behind": True},
                          {"type": "sight", "k0": 26, "k1": 46, "from": [640, 250], "to": [200, 230]},
-                         {"type": "rings", "k0": 30, "k1": 46, "at": [900, 500]},
+                         {"type": "rings", "k0": 30, "k1": 46, "point": [900, 500]},
                          {"type": "check", "k0": 32, "k1": 48, "x": 820, "y": 200,
                           "words": [{"text": "ALL", "k": 34}, {"text": "FINE.", "k": 38, "accent": True}], "sub": "1 STEP"},
                          {"type": "flip", "k0": 48, "k1": 60, "k": 54, "from": {"label": "TODAY", "text": "2026"},
@@ -64,6 +66,15 @@ def run_code_cut(ctx):
     ctx.uv(CODE_CUT, "sheet", d, d / "sheet.jpg", "10", "30", "40", "52", "56", "66", "--grid")
     expect((d / "sheet.jpg").exists(), "sheet.jpg missing")
     expect((d / "last_render.json").exists(), "last_render.json (the current film) missing")
+    edge = ctx.py("""
+import sys
+from PIL import Image
+im = Image.open(sys.argv[1]).convert("RGB").crop((1272, 100, 1280, 360))       # the last 8 px at the right edge
+b = im.tobytes()
+print('RED', sum(1 for i in range(0, len(b), 3) if b[i] > 200 and b[i + 1] < 110 and b[i + 2] < 80))
+""", deps_from=[CODE_CUT], name="edge.py", args=[d / "png" / "f_00008.png"])
+    expect("RED 0" in (edge.stdout or ""),
+           f"a stamp that is too long for its place must stay inside the frame: {edge.stdout!r}")
     cut = ctx.py("""
 import sys
 from PIL import Image

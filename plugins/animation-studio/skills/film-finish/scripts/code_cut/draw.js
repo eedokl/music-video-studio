@@ -407,7 +407,7 @@ export function makeDraw({ edit, song, facts, clips, plate }) {
       const v = o.from + (o.to - o.from) * Math.pow(u, o.power || 1);
       ctx.font = MONO(34, 700);
       ctx.fillStyle = o.accent ? acc : '#fff';
-      ctx.fillText((o.prefix || '') + Math.round(v).toLocaleString('en-US') + (o.suffix || ''), x + 12, y + 66);
+      ctx.fillText((o.prefix || '') + Math.round(v).toLocaleString(o.locale || edit.locale || 'en-US') + (o.suffix || ''), x + 12, y + 66);
     },
     lower(ctx, o, k, acc) {                // news lower third
       const a = clamp((k - o.k0) / 5, 0, 1);
@@ -433,7 +433,8 @@ export function makeDraw({ edit, song, facts, clips, plate }) {
       ctx.save();
       ctx.font = HEAD(size);
       const w = ctx.measureText(o.text).width + 36, h = size * 1.25;
-      ctx.translate((o.x ?? 760) + w / 2, (o.y ?? 230) + h / 2);
+      const x = clamp(o.x ?? 760, 24, Math.max(24, W - 24 - w));          // a long text never leaves the frame
+      ctx.translate(x + w / 2, (o.y ?? 230) + h / 2);
       ctx.rotate(((o.rot ?? -6) * Math.PI) / 180);
       ctx.scale(sc, sc);
       ctx.globalAlpha = clamp((o.k1 - k) / 6, 0, 1) * 0.95;
@@ -505,7 +506,7 @@ export function makeDraw({ edit, song, facts, clips, plate }) {
       ctx.restore();
     },
     rings(ctx, o, k, acc) {                // a key press, a touch: rings spread from a point
-      const [x, y] = o.at;
+      const [x, y] = o.point;              // `point`, not `at`: code_film.py reads "at" as the time anchor
       ctx.save();
       ctx.strokeStyle = o.color || '#62D6F5';
       ctx.lineWidth = 3;

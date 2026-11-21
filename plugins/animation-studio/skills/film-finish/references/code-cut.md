@@ -58,6 +58,8 @@ Europe 2031 for comparison: fast = 154 parts, median 0.93 s; medium = 115 parts,
     "why": "drums enter on this beat: one-beat cutaway"}]}]}
 ```
 
+- `"locale": "de-DE"` writes counter numbers the film's way (44.000.000); code_film.py sets it from the project's
+  `language`.
 - `k` = frame from the film start. `world` picks grade, accent colour, beat pulse and the tracker label.
 - `cam`: `z` zoom from-to, `c` / `c1` centre from-to (0..1 of the picture), `ease` smooth | linear | out. A take without
   `c` is framed by its face boxes: the face sits in the upper half (`fx`, `fy` move it, `"face": false` turns it off).
@@ -81,7 +83,7 @@ overlays"). Coordinates are in the 1280x720 layout.
 | `stamp` | a red stamp slams in and is held | `text`, `x`, `y`, `size`, `rot`, `color` |
 | `check` | a check mark pops, words appear on their frames | `x`, `y`, `scale`, `words: [{text, k, accent}]`, `sub` |
 | `sight` | a look: dots travel from eyes to a target | `from: [x, y]`, `to: [x, y]`, `rise`, `travel` |
-| `rings` | a key press or touch: rings spread from a point | `at: [x, y]`, `n`, `r`, `flat` |
+| `rings` | a key press or touch: rings spread from a point | `point: [x, y]`, `n`, `r`, `flat` |
 | `cards` | notes or cards fly off from a point | `from: [x, y]`, `n`, `size`, `side`, `fan`, `color`, `life` |
 | `flip` | a calendar sheet turns over on frame `k` | `x`, `y`, `from: {label, text}`, `to: {label, text}`, `k` |
 | `quote` | a quotation card with one marked phrase and the source | `lines`, `mark`, `source`, `size`, `dim` |
@@ -89,11 +91,13 @@ overlays"). Coordinates are in the 1280x720 layout.
 - **From a Claudia project write them with anchors, not frame numbers** (claudia-music-video `code_film.py`): in
   project.json `"code_layer": {"overlays": [...]}` or, better, at the shot - `sections[].code.overlays` - so that a
   piece moves with its shot:
-  `{"type": "stamp", "text": "SCHALL UND RAUCH", "at": {"line": 17, "word": 7}, "side": "right", "y": 220}`.
-  `at` / `until` take `{"line", "word"}`, `{"line", "end": true}`, `{"t": s}`, `{"shot": "s05"}` or `{"k": n}`; inside a
+  `{"type": "stamp", "text": "SCHALL UND RAUCH", "at": {"line": 17, "word": "Schall"}, "side": "right", "y": 220}`.
+  `at` / `until` take `{"line", "word"}` (the word as text - the first word of the line that starts with it - or as
+  an index; text is safer, the recogniser splits lines differently from the lyric sheet), `{"line", "end": true}`, `{"t": s}`, `{"shot": "s05"}` or `{"k": n}`; inside a
   piece: list items `at` and `strike_at`, check words `at`, flip `flip_at`. Without `until` / `len` a text piece
   stands as long as reading takes, across the cut if the shot is shorter. `"side": "left" | "right"` puts a piece
-  beside the face (sung takes are framed with the face in the middle); `x` / `y` override it. `"dust"` and
+  beside the face (sung takes are framed with the face in the middle; right = right-aligned by the piece's width,
+  never less than x 640 - a board of 560 still reaches the face, give it `"w": 440`); `x` / `y` override it. `"dust"` and
   `"iris": {"at": ..., "until": ..., "c": [x, y], "r": 180}` go into `code_layer`; the masks are made on the way.
   Which piece belongs to which line is decided when the film is planned (propose one per shot or none, the user
   picks) - the script never chooses pieces by itself.
