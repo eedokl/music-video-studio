@@ -9,7 +9,8 @@ Use it when the film should carry a graphic layer that follows single words and 
 wanted (jump-ins, one-beat reframes), or when the cut will be changed often: a change re-renders in seconds and needs
 no GPU. Use `cut.py` / `build.py` for films with transitions, paper look, sounds and credits rolls.
 
-Script: `<plugin>/skills/film-finish/scripts/code_cut.py` (`check`, `render`, `frames`, `sheet`); page: `scripts/code_cut/`.
+Script: `<plugin>/skills/film-finish/scripts/code_cut.py` (`check`, `render`, `frames`, `sheet`); page: `scripts/code_cut/`;
+masks for pieces behind people: `<plugin>/skills/ai-video/scripts/near_masks.py`.
 Needs config `node` and `browser`. From a Claudia project: claudia-music-video `code_film.py` writes the work folder.
 
 ## Rules (checked by `code_cut.py check`, exit code 2)
@@ -18,7 +19,12 @@ Needs config `node` and `browser`. From a Claudia project: claudia-music-video `
 2. Every cut sits on a measured beat or a word onset; exceptions are listed in `"free_cuts"`.
 3. A take covers the song time of its part (`"hold": true` on a part = its last frame is held on purpose).
 4. Every part has a `why` - one sentence on why this picture is here.
-5. Never overwrite a render: `render` refuses an existing file.
+5. Never overwrite a render: `render` refuses an existing file. A variant (more overlays, another ending) is a new
+   file next to the film; `<work>/last_render.json` names the current film - read it before building on "the film"
+   (a first overlay version was once built on an older cut of the same song in another folder).
+
+`check` also prints notes that are no errors: a stamp, title, lower third or quote that stands too short to read,
+and takes that need masks.
 
 ## Pace
 
@@ -60,8 +66,67 @@ Europe 2031 for comparison: fast = 154 parts, median 0.93 s; medium = 115 parts,
 - `chrome`: top and bottom bar (`"bars": false` removes all of it), meter, clock, label, scene slug with the frame
   number (the handle for review notes), ticker of dated facts `[{"date", "text", "source"}]` - only real, sourced facts.
 - Overlay types: `title` (lines, one accent), `shout` (outline word over the frame), `flash`, `list` (items appear on
-  their frame `k`), `counter` (from-to), `board` (departure-board rows), `typer` (text that writes itself), `lower`
-  (lower third), `credits`.
+  their frame `k`; `"strike": k` strikes an item through, `"numbers": false`), `counter` (from-to), `board`
+  (departure-board rows), `typer` (text that writes itself), `lower` (lower third), `credits`, and the small pieces
+  below.
+
+## Small pieces on words and beats
+
+Few, small, each on a word onset or a beat, none over a face. They make a live film feel directed without
+changing the cut (user request on "Die bittere Lektion - Ein Haus, eine Nacht": "keep everything, only add a few
+overlays"). Coordinates are in the 1280x720 layout.
+
+| type | what | keys |
+|---|---|---|
+| `stamp` | a red stamp slams in and is held | `text`, `x`, `y`, `size`, `rot`, `color` |
+| `check` | a check mark pops, words appear on their frames | `x`, `y`, `scale`, `words: [{text, k, accent}]`, `sub` |
+| `sight` | a look: dots travel from eyes to a target | `from: [x, y]`, `to: [x, y]`, `rise`, `travel` |
+| `rings` | a key press or touch: rings spread from a point | `at: [x, y]`, `n`, `r`, `flat` |
+| `cards` | notes or cards fly off from a point | `from: [x, y]`, `n`, `size`, `side`, `fan`, `color`, `life` |
+| `flip` | a calendar sheet turns over on frame `k` | `x`, `y`, `from: {label, text}`, `to: {label, text}`, `k` |
+| `quote` | a quotation card with one marked phrase and the source | `lines`, `mark`, `source`, `size`, `dim` |
+
+- **From a Claudia project write them with anchors, not frame numbers** (claudia-music-video `code_film.py`): in
+  project.json `"code_layer": {"overlays": [...]}` or, better, at the shot - `sections[].code.overlays` - so that a
+  piece moves with its shot:
+  `{"type": "stamp", "text": "SCHALL UND RAUCH", "at": {"line": 17, "word": 7}, "side": "right", "y": 220}`.
+  `at` / `until` take `{"line", "word"}`, `{"line", "end": true}`, `{"t": s}`, `{"shot": "s05"}` or `{"k": n}`; inside a
+  piece: list items `at` and `strike_at`, check words `at`, flip `flip_at`. Without `until` / `len` a text piece
+  stands as long as reading takes, across the cut if the shot is shorter. `"side": "left" | "right"` puts a piece
+  beside the face (sung takes are framed with the face in the middle); `x` / `y` override it. `"dust"` and
+  `"iris": {"at": ..., "until": ..., "c": [x, y], "r": 180}` go into `code_layer`; the masks are made on the way.
+  Which piece belongs to which line is decided when the film is planned (propose one per shot or none, the user
+  picks) - the script never chooses pieces by itself.
+- **Read off the positions, do not guess them**: `code_cut.py sheet <work> out.jpg K K ... --grid` draws quarter and
+  third lines and the frame number on every picture.
+- **Text must stand long enough**: a stamp 2 s, a quote 5 s. Where the shot is shorter, let the overlay run on over
+  the cut (its `k1` lies in the next part). A stamp that showed for half a second was reported as "not visible".
+- **A motif beats a collection**: one piece that returns (every time she reads something: the same small check)
+  reads as direction; ten different gadgets read as decoration.
+- **The punchline gets the biggest piece** (key press: `rings` + `check` on the sung words), the chorus none - its
+  type is already the picture.
+- **Do not invent facts in a piece** (a chess move, a percentage): label them as illustration or take real ones.
+
+### Behind people: masks
+
+`"behind": true` on an overlay and `"dust": true` (or `{"n": 70, "color": "#FFD6A0", "a": 1}`) on a world or on the
+edit are drawn behind whatever is near in the take. That needs masks: `<gpu_python> <plugin>/skills/ai-video/scripts/near_masks.py <work>` writes
+`masks/<take>/NNNN.png` (alpha = near) for every take that needs one and sets `clips.json[take]["masks"]`.
+
+- `--kind depth` (default; Depth Anything V2 Small): a whole film in about a minute on the GPU, soft edges - right
+  for dust, haze, glow. Furniture in front counts as near too.
+- `--kind matte --takes t1` (an ONNX matting model, config `matte_model`; CPU, about 8 s per frame): clean edges for
+  the single shot where notes fly behind a person.
+- Without masks dust is left out and "behind" overlays lie in front (`check` says so). Dust over a face was the
+  first thing the user asked to remove.
+
+### Ending
+
+- `"iris": {"k0": 4068, "k1": 4104, "c": [0.49, 0.31], "r": 180, "k_small": 4090, "k_hold": 4098}` - an iris out:
+  the circle closes to radius `r` around `c` (0..1 of the picture), holds, then shuts. Black follows until the film
+  ends or the next card starts.
+- A quote the film ends on belongs on a card that stands (`quote`, 5 s or more), not in a two-second flash between
+  two other pictures.
 
 ## Findings from the first film (keep them)
 

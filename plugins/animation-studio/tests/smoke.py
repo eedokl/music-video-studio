@@ -33,7 +33,7 @@ SKILLS = ROOT / "skills"
 PLUGIN_ROOT_OK = {"skills/ai-video/references/night-run.md"}   # jobs.json hooks, expanded by night_run.py
 # plugin modules imported only to call a launcher that starts their own interpreter (gpu_python / uv) - their
 # third-party imports never run in the importing process, so they are not followed for the PEP 723 check
-SUBPROCESS_ONLY = {"estimate_depth"}                # night_run.py -> estimate_depth.run() starts gpu_python
+SUBPROCESS_ONLY = {"estimate_depth", "near_masks"}  # night_run.py / code_film.py -> their run() starts gpu_python
 KNOWN_DUPLICATES = {"mouth", "scene", "figures", "blender_run", "sets", "plan", "render"}
 TEXT = {".py", ".md", ".json", ".ts", ".mjs", ".js", ".html", ".css", ".txt", ".toml", ".yaml", ".yml"}
 fails, notes = [], []

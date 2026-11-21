@@ -627,6 +627,11 @@ falschen Seite ergibt falsche Mikrofone in den meisten Startbildern.
    Code, Tempo ruhig.“ Es gibt drei Tempi: `calm` (ruhig, Standard), `medium` und `fast` (ein Bild pro Schlag im
    Refrain). Das Ergebnis heißt `film_code_v01.mp4`; `film.mp4` bleibt unverändert. Änderungen sind in Sekunden neu
    gerendert und brauchen keine Grafikkarte.
+   **Kleine Einblendungen auf Wort und Takt:** Im Code-Schnitt können kleine Teile an einzelnen Worten hängen –
+   Stempel, Haken, Zähler, durchgestrichene Liste, Blicklinie, fliegende Zettel, Kalenderblatt, Zitatkarte, am
+   Schluss eine Kreisblende. Claude schlägt je Einstellung höchstens eines vor, Sie wählen aus. Sagen Sie zum
+   Beispiel: „Setze auf ‚Schall und Rauch' einen Stempel“ oder „Der Staub soll hinter den Personen liegen“. Text
+   bleibt von selbst lange genug stehen; für Teile hinter Personen rechnet das Plugin Masken (Grafikkarte).
 9. **Prüfpunkt V1**: Sie schauen die erste Fassung. Danach hilft `video-review` beim Vergleich mit einer V2.
 
 **Techniken pro Einstellung** (Claude schlägt sie vor, Sie können sie verlangen):

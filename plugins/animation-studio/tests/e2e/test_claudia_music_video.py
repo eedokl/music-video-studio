@@ -173,8 +173,22 @@ def run_claudia(ctx):
         ed = read_json(d / "code_cut" / "edit.json")
         expect(ed["pace"] == "fast" and [s["id"] for s in ed["shots"]] == ["s01", "s02"]
                and all(p.get("why") for s in ed["shots"] for p in s["parts"]), f"code cut edit.json: {ed['shots']}")
+        pj = read_json(d / "project.json")                     # small pieces written with anchors at their shot
+        pj["sections"][0].setdefault("code", {})["overlays"] = [
+            {"type": "stamp", "text": "E2E", "side": "right"},
+            {"type": "check", "side": "left", "words": [{"text": "OK"}], "len": 12},
+            {"type": "list", "title": "L", "items": [{"text": "a", "strike_at": {"shot": "s01", "end": True}}], "len": 20}]
+        pj["code_layer"] = dict(pj.get("code_layer") or {}, iris={"c": [0.5, 0.4], "r": 150})
+        write_json(d / "project.json", pj)
         ctx.uv(CODE, d, "--pace", "calm", "--plan-only", timeout=300)
         calm = read_json(d / "code_cut" / "edit.json")
+        s1 = calm["shots"][0]
+        st, ck, li = (next(o for o in calm["overlays"] if o["type"] == t) for t in ("stamp", "check", "list"))
+        expect(st["k0"] == s1["k0"] and st["k1"] >= st["k0"] + 2 * FPS and st["x"] == 800,
+               f"stamp at its shot, at least 2 s, on the right: {st}")
+        expect(ck["x"] == 96 and ck["k1"] == ck["k0"] + 12 and ck["words"][0]["k"] == ck["k0"], f"check: {ck}")
+        expect(li["items"][0]["strike"] == s1["k1"], f"list strike anchor: {li}")
+        expect(calm["iris"]["k1"] == calm["frames"] and calm["fade_out"] == 0, f"iris: {calm.get('iris')}")
         expect(sum(len(s["parts"]) for s in calm["shots"]) <= sum(len(s["parts"]) for s in ed["shots"]),
                "pace calm has more parts than pace fast")
         code = "code cut film_code_v01.mp4 (pace fast), calm plan has no more parts"

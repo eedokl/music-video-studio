@@ -17,12 +17,15 @@ Usage (uv run code_cut.py ...):
   code_cut.py check  <work>                         validation only (exit code 2 on errors)
   code_cut.py render <work> --song song.wav --out film.mp4 [--from K --to K] [--plate] [--keep-png]
   code_cut.py frames <work> --from K --to K         frames into <work>/png only (preview, no validation)
-  code_cut.py sheet  <work> out.jpg K K K ...       contact sheet of rendered frames
+  code_cut.py sheet  <work> out.jpg K K K ...       contact sheet of rendered frames [--grid: thirds/quarters + frame number]
+
+Masks so that dust and "behind" overlays pass behind people come from ai-video near_masks.py (gpu_python).
 
 Rules checked: shots tile the film; parts tile their shot; every cut sits on a measured beat or a word onset
 (edit.json "free_cuts": [k, ...] lists the exceptions); a take covers the song time of its part; every part has a
-`why`; files exist. `render` never overwrites an existing film. A frame range re-renders only those frames and
-rebuilds the film from all frames on disk.
+`why`; files exist; overlay types are known. Notes (no error): text that stands too short to read, "behind" overlays
+and dust on takes without masks. `render` never overwrites an existing film and writes <work>/last_render.json (which
+file is the current film). A frame range re-renders only those frames and rebuilds the film from all frames on disk.
 """
 import argparse
 import json
@@ -42,6 +45,35 @@ from media import ffmpeg  # noqa: E402
 HERE = Path(__file__).resolve().parent
 PAGE = HERE / "code_cut"
 SERVER = _studio.skill_dir("toon-2d") / "scripts" / "multiplane" / "server.mjs"
+
+
+OVERLAYS = {"title", "shout", "flash", "list", "counter", "board", "typer", "lower", "credits",
+            "stamp", "check", "sight", "rings", "cards", "flip", "quote"}
+READ_S = {"stamp": 2.0, "quote": 5.0, "title": 1.5, "lower": 2.0}     # shortest time such a text can be read in
+
+
+def notes(work):
+    """-> list of hints that are no errors: unreadably short text, 'behind' pieces without masks."""
+    edit, _, clips = load(work)
+    fps, out = edit["fps"], []
+    for o in edit.get("overlays", []):
+        need = READ_S.get(o.get("type"))
+        if need and (o["k1"] - o["k0"]) / fps < need:
+            out.append(f"{o['type']} at {o['k0']} stands {(o['k1'] - o['k0']) / fps:.1f} s - under {need:g} s nobody reads it "
+                       f"(hold it over the cut if the shot is short)")
+    behind = [o for o in edit.get("overlays", []) if o.get("behind")]
+    for s in edit["shots"]:
+        dust = (edit.get("worlds", {}).get(s.get("world"), {}) or {}).get("dust", edit.get("dust"))
+        for p in s["parts"]:
+            if p["kind"] != "take" or clips.get(p["src"], {}).get("masks"):
+                continue
+            hit = [o for o in behind if o["k0"] < p["k1"] and o["k1"] > p["k0"]]
+            if hit or dust:
+                what = " and ".join(x for x in ("dust (left out)" if dust else "",
+                                                 f"{len(hit)} 'behind' overlay(s) (drawn in front)" if hit else "") if x)
+                out.append(f"{s['id']}: take {p['src']} has no masks - {what}; run ai-video near_masks.py")
+    seen = set()
+    return [n for n in out if not (n in seen or seen.add(n))]
 
 
 def load(work):
@@ -93,6 +125,12 @@ def validate(work):
         k = s["k1"]
     if k != edit["frames"]:
         errs.append(f"shots end at {k}, film has {edit['frames']} frames")
+    for o in edit.get("overlays", []):
+        if o.get("type") not in OVERLAYS:
+            errs.append(f"overlay at {o.get('k0')}: unknown type {o.get('type')!r} (known: {', '.join(sorted(OVERLAYS))})")
+    ir = edit.get("iris")
+    if ir and not (0 <= ir["k0"] < ir["k1"] <= edit["frames"]):
+        errs.append(f"iris {ir['k0']}-{ir['k1']} lies outside the film")
     if edit.get("ticker") and not (work / edit["ticker"]).exists():
         errs.append(f"ticker file {edit['ticker']} missing")
     w, h = edit.get("size", [1280, 720])
@@ -108,6 +146,8 @@ def report(work):
     lens = sorted(p["k1"] - p["k0"] for p in parts)
     for e in errs:
         print("EDIT ERROR:", e)
+    for n in notes(work):
+        print("NOTE:", n)
     print(f"edit.json: {len(edit['shots'])} shots, {len(parts)} parts, median part "
           f"{lens[len(lens) // 2] / edit['fps']:.2f} s, {'OK' if not errs else str(len(errs)) + ' errors'}")
     return not errs
@@ -170,17 +210,31 @@ def build(work, song_wav, out, plate=False):
                     "-ss", f"{song.get('t0', 0):.3f}", "-t", f"{dur:.3f}", "-i", str(song_wav),
                     "-af", f"afade=t=out:st={dur - 0.4:.2f}:d=0.4", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "16",
                     "-c:a", "aac", "-b:a", "256k", "-shortest", str(out)], check=True)
+    # which file is the current film of this work folder - later steps (overlays, versions) read it instead of guessing
+    (work / "last_render.json").write_text(json.dumps({"film": str(out.resolve()), "frames": edit["frames"], "plate": plate,
+                                                       "at": time.strftime("%Y-%m-%d %H:%M:%S")}, indent=1), encoding="utf-8")
     print("->", out)
 
 
-def sheet(work, out, ks, cols=3, tw=640):
-    from PIL import Image
+def sheet(work, out, ks, cols=3, tw=640, grid=False):
+    """Contact sheet of rendered frames. grid: quarter / third lines and the frame number on every picture - for
+    reading off where an overlay has room (x = column / 4 * 1280, y = row / 3 * 720)."""
+    from PIL import Image, ImageDraw
     work = Path(work)
     ims = [Image.open(work / "png" / f"f_{k:05d}.png") for k in ks]
     th = round(tw * ims[0].height / ims[0].width)
     img = Image.new("RGB", (cols * tw, ((len(ims) + cols - 1) // cols) * th))
     for i, im in enumerate(ims):
-        img.paste(im.convert("RGB").resize((tw, th)), ((i % cols) * tw, (i // cols) * th))
+        im = im.convert("RGB").resize((tw, th))
+        if grid:
+            d = ImageDraw.Draw(im)
+            for x in range(1, 4):
+                d.line([x * tw / 4, 0, x * tw / 4, th], fill=(120, 120, 120))
+            for y in range(1, 3):
+                d.line([0, y * th / 3, tw, y * th / 3], fill=(120, 120, 120))
+            d.rectangle([0, 0, 92, 20], fill=(0, 0, 0))
+            d.text((5, 4), f"F {ks[i]:05d}", fill=(255, 255, 0))
+        img.paste(im, ((i % cols) * tw, (i // cols) * th))
     img.save(out, quality=88)
     print("->", out)
 
@@ -195,10 +249,11 @@ def main():
     ap.add_argument("--from", dest="k0", type=int)
     ap.add_argument("--to", dest="k1", type=int)
     ap.add_argument("--plate", action="store_true", help="footage only, no code layer")
+    ap.add_argument("--grid", action="store_true", help="sheet: quarter/third lines and frame numbers (placing overlays)")
     ap.add_argument("--keep-png", action="store_true", help=argparse.SUPPRESS)      # frames are always kept (range re-render)
     a = ap.parse_args()
     if a.job == "sheet":
-        return sheet(a.work, a.rest[0], [int(k) for k in a.rest[1:]])
+        return sheet(a.work, a.rest[0], [int(k) for k in a.rest[1:]], grid=a.grid)
     if a.job == "frames":
         sys.exit(0 if render_frames(a.work, a.k0 or 0, a.k1 or (a.k0 or 0) + 1) else 1)
     ok = report(a.work)

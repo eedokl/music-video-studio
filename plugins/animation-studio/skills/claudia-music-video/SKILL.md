@@ -208,8 +208,9 @@ faster or data-driven cut, or names the film Y2Y2R / "You're Too Young to Rememb
 - B-roll needs only its picked image here (no B-roll clips): for a film made only this way, skip the moving B-roll jobs.
 - Start images for sung shots should be frontal for this cut (the face is framed into the upper half and tracked).
 - The graphic layer is project.json `"code_layer"` (worlds per look with grade and accent colour, accents per line,
-  meter, clock, ticker of dated facts with sources, overlays anchored to words) and per shot `"code"` (pattern, beats,
-  tag, cam). Schema, overlay types and findings: `${CLAUDE_PLUGIN_ROOT}/skills/film-finish/references/code-cut.md`.
+  meter, clock, ticker of dated facts with sources, overlays anchored to words, dust, iris out) and per shot `"code"`
+  (pattern, beats, tag, cam, `overlays`: small pieces on a word of that shot - stamp, check, sight, rings, cards,
+  flip, quote; propose one per shot or none and let the user pick, never fill them in unasked). Schema, overlay types and findings: `${CLAUDE_PLUGIN_ROOT}/skills/film-finish/references/code-cut.md`.
 - Review on the frame numbers burned into the scene slug; change project.json and re-render a range with `--from/--to`
   (seconds, no GPU). Needs config `node` and `browser`.
 

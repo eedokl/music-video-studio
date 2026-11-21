@@ -25,7 +25,7 @@ From another skill: `import _studio; _studio.use("ai-video")`, then `import comf
 | `comfy_models` | JSON file that overrides model file names of `assets/models.json` (only the entries that differ) - optional | every workflow builder, preflight |
 | `face_landmarker` | MediaPipe `face_landmarker.task` | mouth.py, canon.py |
 | `realesrgan` | realesrgan-ncnn-vulkan executable | upscale.py (Lanczos fallback) |
-| `gpu_python` | CUDA venv with torch + transformers | estimate_depth.py (falls back to uv/CPU) |
+| `gpu_python` | CUDA venv with torch + transformers | estimate_depth.py, near_masks.py (fall back to uv/CPU) |
 | `hf_home` | model cache | estimate_depth.py |
 | `gpu_lock_dir` | shared GPU lock folder | every AI run |
 

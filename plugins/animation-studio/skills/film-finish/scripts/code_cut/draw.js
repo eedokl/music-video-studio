@@ -33,6 +33,8 @@ export function makeDraw({ edit, song, facts, clips, plate }) {
   }
   const off = new OffscreenCanvas(Math.round(W * S), Math.round(H * S));
   const octx = off.getContext('2d');
+  const back = new OffscreenCanvas(Math.round(W * S), Math.round(H * S));   // pieces that pass behind people (masks/)
+  const bctx = back.getContext('2d');
   const measure = new OffscreenCanvas(8, 8).getContext('2d');
   const parts = edit.shots.flatMap((s) => s.parts.map((p) => ({ ...p, shot: s })));
   const world = (name) => ({ ...NEUTRAL, ...((edit.worlds || {})[name] || {}) });
@@ -353,7 +355,14 @@ export function makeDraw({ edit, song, facts, clips, plate }) {
         const fresh = k - it.k < 6;
         ctx.font = MONO(24, 700);
         ctx.fillStyle = fresh || it.accent ? acc : '#fff';
-        ctx.fillText(`${i + 1}  ${it.text}`, x + 14, y + 58 + i * 40);
+        const txt = o.numbers === false ? it.text : `${i + 1}  ${it.text}`;
+        const su = it.strike === undefined ? 0 : clamp((k - it.strike) / 5, 0, 1);   // struck through from frame `strike`
+        if (su > 0 && !fresh) ctx.fillStyle = 'rgba(255,255,255,0.55)';
+        ctx.fillText(txt, x + 14, y + 58 + i * 40);
+        if (su > 0) {
+          ctx.fillStyle = acc;
+          ctx.fillRect(x + 14, y + 49 + i * 40, ctx.measureText(txt).width * su, 3);
+        }
       });
     },
     board(ctx, o, k, acc) {                // departure board, rows flip in one after another
@@ -418,6 +427,172 @@ export function makeDraw({ edit, song, facts, clips, plate }) {
       ctx.fillText(o.text, 252, y + 18);
       ctx.textBaseline = 'alphabetic';
     },
+    stamp(ctx, o, k, acc) {                // a stamp slammed onto the picture and held (hold it long enough to read)
+      const u = ease.out(clamp((k - o.k0) / 4, 0, 1)), sc = 2.3 - 1.3 * u;
+      const size = o.size || 54;
+      ctx.save();
+      ctx.font = HEAD(size);
+      const w = ctx.measureText(o.text).width + 36, h = size * 1.25;
+      ctx.translate((o.x ?? 760) + w / 2, (o.y ?? 230) + h / 2);
+      ctx.rotate(((o.rot ?? -6) * Math.PI) / 180);
+      ctx.scale(sc, sc);
+      ctx.globalAlpha = clamp((o.k1 - k) / 6, 0, 1) * 0.95;
+      const col = o.color || '#F04A2C';
+      ctx.fillStyle = 'rgba(30,8,5,0.55)';
+      ctx.fillRect(-w / 2, -h / 2, w, h);
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 4;
+      ctx.strokeRect(-w / 2, -h / 2, w, h);
+      ctx.fillStyle = col;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(o.text, 0, 3);
+      ctx.restore();
+    },
+    check(ctx, o, k, acc) {                // a check mark pops, then words appear on their frames
+      const x = o.x ?? 120, y = o.y ?? 200, s = o.scale || 1, col = o.color || '#5FE08A';
+      const u = clamp((k - o.k0) / 6, 0, 1), pop = u < 1 ? 0.6 + 0.55 * ease.out(u) - 0.15 * u : 1;
+      const r = 34 * s * pop;
+      ctx.save();
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 5 * s;
+      ctx.lineJoin = ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.stroke();
+      ctx.lineWidth = 7 * s;
+      ctx.beginPath();
+      ctx.moveTo(x - 0.46 * r, y + 0.03 * r); ctx.lineTo(x - 0.13 * r, y + 0.36 * r); ctx.lineTo(x + 0.49 * r, y - 0.36 * r);
+      ctx.stroke();
+      ctx.font = HEAD(44 * s);
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = 'rgba(0,0,0,0.8)';
+      ctx.shadowBlur = 10;
+      let tx = x + 50 * s;
+      for (const w of o.words || []) {
+        const a = clamp((k - w.k) / 4, 0, 1);
+        if (a > 0) {
+          ctx.globalAlpha = a;
+          ctx.fillStyle = w.accent ? col : '#fff';
+          ctx.fillText(w.text, tx, y + 2 + (1 - a) * 10);
+        }
+        tx += ctx.measureText(w.text + ' ').width;
+      }
+      if (o.sub && k >= o.k0 + 6) {
+        ctx.globalAlpha = 1;
+        ctx.font = MONO(15 * s, 700);
+        ctx.fillStyle = acc;
+        ctx.fillText(o.sub, x + 52 * s, y + 38 * s);
+      }
+      ctx.restore();
+    },
+    sight(ctx, o, k, acc) {                // a look: dots travel from `from` to `to`, then fade
+      const [x0, y0] = o.from, [x1, y1] = o.to;
+      const u = ease.out(clamp((k - o.k0) / (o.travel || 13), 0, 1));
+      const fade = clamp((o.k1 - k) / 8, 0, 1), len = Math.hypot(x1 - x0, y1 - y0);
+      ctx.save();
+      ctx.fillStyle = o.color || '#62D6F5';
+      for (let i = 0; i < 26; i++) {
+        const v = i / 25;
+        if (v > u) break;
+        const r = 4 - 2 * v;
+        ctx.globalAlpha = 0.9 * fade;
+        ctx.beginPath();
+        ctx.arc(x0 + (x1 - x0) * v, y0 + (y1 - y0) * v - (o.rise ?? 0.11) * len * Math.sin(v * Math.PI), r, 0, 7);
+        ctx.fill();
+      }
+      ctx.restore();
+    },
+    rings(ctx, o, k, acc) {                // a key press, a touch: rings spread from a point
+      const [x, y] = o.at;
+      ctx.save();
+      ctx.strokeStyle = o.color || '#62D6F5';
+      ctx.lineWidth = 3;
+      for (let j = 0; j < (o.n || 3); j++) {
+        const u = (k - o.k0 - j * 2) / 14;
+        if (u <= 0 || u >= 1) continue;
+        const r = 14 + (o.r || 170) * ease.out(u);
+        ctx.globalAlpha = (1 - u) * 0.9;
+        ctx.beginPath(); ctx.ellipse(x, y, r, r * (o.flat ?? 0.45), 0, 0, 7); ctx.stroke();
+      }
+      ctx.restore();
+    },
+    cards(ctx, o, k, acc) {                // notes or cards fly off from a point (use "behind": true to pass behind people)
+      const [x0, y0] = o.from, n = o.n || 10, size = o.size || 72, life = o.life || 28;
+      ctx.save();
+      for (let i = 0; i < n; i++) {
+        const u = (k - o.k0 - i * (o.step || 2.5)) / life;
+        if (u <= 0 || u >= 1) continue;
+        const e = ease.out(u), side = (o.side ?? 1) * (o.fan ? (i % 2 ? 1 : -1) : 1);
+        const x = x0 + 40 * (i % 4) + side * (330 + 60 * (i % 5)) * e;
+        const y = y0 + 70 * (i % 3) - (170 + 26 * (i % 4)) * e + 105 * u * u;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate((0.4 + 2.5 * u) * (i % 2 ? 1 : -1) + i);
+        ctx.globalAlpha = Math.pow(1 - u, 0.7);
+        ctx.fillStyle = o.color || '#FAE896';
+        ctx.fillRect(-size / 2, -size * (o.ratio || 1) / 2, size, size * (o.ratio || 1));
+        ctx.strokeStyle = 'rgba(90,80,60,0.6)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-size / 2, -size * (o.ratio || 1) / 2, size, size * (o.ratio || 1));
+        ctx.restore();
+      }
+      ctx.restore();
+    },
+    flip(ctx, o, k, acc) {                 // a calendar sheet that turns over on frame `k`: from {label, text} to {label, text}
+      const x = o.x ?? 990, y = o.y ?? 84, w = o.w ?? 186, h = o.h ?? 194;
+      const f = clamp((k - o.k) / 6, 0, 1), sq = Math.max(Math.abs(Math.cos(f * Math.PI)), 0.04), side = f > 0.5 ? o.to : o.from;
+      const hh = h * sq, top = y + (h - hh) / 2;
+      ctx.save();
+      ctx.globalAlpha = clamp((k - o.k0) / 6, 0, 1);
+      ctx.fillStyle = '#F0EADC';
+      ctx.fillRect(x, top, w, hh);
+      ctx.fillStyle = f > 0.5 ? (o.color || '#62D6F5') : acc;
+      ctx.fillRect(x, top, w, 42 * sq);
+      if (sq > 0.5) {
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#141418';
+        ctx.font = MONO(16, 700);
+        ctx.fillText(side.label || '', x + w / 2, top + 22);
+        ctx.font = HEAD(76);
+        ctx.fillStyle = '#1e1c1a';
+        ctx.fillText(side.text, x + w / 2, y + h / 2 + 24);
+      }
+      ctx.restore();
+    },
+    quote(ctx, o, k, acc) {                // a quotation card: lines, one marked phrase, the source (hold it >= 5 s)
+      const a = clamp((k - o.k0) / 12, 0, 1) * clamp((o.k1 - k) / 12, 0, 1);
+      const size = o.size || 42, lh = size * 1.45;
+      ctx.save();
+      ctx.fillStyle = `rgba(0,0,0,${(o.dim ?? 0.8) * a})`;
+      ctx.fillRect(0, TOP, W, H - TOP - BOT);
+      ctx.globalAlpha = a;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+      ctx.font = `italic 400 ${size}px Georgia, "Times New Roman", serif`;
+      const y0 = (o.y ?? H / 2) - ((o.lines.length - 1) * lh) / 2;
+      o.lines.forEach((ln, i) => {
+        const tw = ctx.measureText(ln).width, x = (W - tw) / 2, y = y0 + i * lh;
+        const at = o.mark ? ln.indexOf(o.mark) : -1;
+        if (at >= 0) {
+          ctx.fillStyle = acc;
+          ctx.globalAlpha = 0.55 * a;
+          ctx.fillRect(x + ctx.measureText(ln.slice(0, at)).width - 4, y - size * 0.86, ctx.measureText(o.mark).width + 8, size * 1.16);
+          ctx.globalAlpha = a;
+        }
+        ctx.fillStyle = '#E6E1D6';
+        ctx.fillText(ln, x, y);
+      });
+      if (o.source) {
+        ctx.font = MONO(17, 700);
+        ctx.fillStyle = acc;
+        ctx.textAlign = 'center';
+        ctx.fillText(o.source, W / 2, y0 + o.lines.length * lh + 6);
+      }
+      ctx.restore();
+    },
     credits(ctx, o, k, acc) {
       ctx.fillStyle = `rgba(0,0,0,${0.74 * clamp((k - o.k0) / 20, 0, 1)})`;
       ctx.fillRect(0, TOP, W, H - TOP - BOT);
@@ -434,6 +609,37 @@ export function makeDraw({ edit, song, facts, clips, plate }) {
       ctx.globalAlpha = 1;
     },
   };
+
+  function dust(ctx, k, d, kick) {         // dust in the light: slow, a little brighter on the beat; only drawn behind people
+    const n = d.n || 70, t = k / edit.fps;
+    ctx.save();
+    ctx.fillStyle = d.color || '#FFD6A0';
+    for (let i = 0; i < n; i++) {
+      const ph = rnd(i * 3 + 1) * 6.28, sp = 6 + rnd(i * 3 + 2) * 16, r = 1.3 + rnd(i * 3 + 3) * 2.7;
+      const x = (rnd(i * 7 + 5) * W + sp * t + 9 * Math.sin(ph + t * 0.7)) % W;
+      const y = rnd(i * 11 + 9) * H * 0.8 + 7 * Math.sin(ph * 2 + t * 0.5);
+      ctx.globalAlpha = Math.min(1, (0.12 + 0.12 * Math.sin(ph + t * 1.3) ** 2) * (1 + 1.2 * kick) * (d.a || 1));
+      ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function iris(ctx, k, o) {               // iris out: the circle closes to radius r, holds until k_hold, then shuts at k1
+    const cx = (o.c?.[0] ?? 0.5) * W, cy = (o.c?.[1] ?? 0.5) * H, big = Math.hypot(W, H);
+    const ks = o.k_small ?? o.k0 + Math.round((o.k1 - o.k0) * 0.55), kh = o.k_hold ?? ks + Math.round((o.k1 - o.k0) * 0.2);
+    const r0 = o.r ?? 180;
+    let r = 0;
+    if (k < ks) r = big + (r0 - big) * ease.out(clamp((k - o.k0) / Math.max(1, ks - o.k0), 0, 1));
+    else if (k < kh) r = r0;
+    else if (k < o.k1) r = r0 * (1 - ((k - kh) / Math.max(1, o.k1 - kh)) ** 2);
+    ctx.save();
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.rect(0, 0, W, H);
+    if (r > 0.5) ctx.arc(cx, cy, r, 0, 7, true);
+    ctx.fill();
+    ctx.restore();
+  }
 
   // ---- frame -------------------------------------------------------------------------------------------------
   return async function drawFrame(ctx, k) {
@@ -478,6 +684,27 @@ export function makeDraw({ edit, song, facts, clips, plate }) {
       ctx.restore();
     }
     const live = (edit.overlays || []).filter((o) => k >= o.k0 && k < o.k1);
+    // pieces behind people: dust and overlays with "behind": true are cut out by the take's mask (masks/<take>/NNNN.png,
+    // alpha = near; made by ai-video near_masks.py). Without a mask dust is left out and "behind" overlays lie in front.
+    const masked = part.kind === 'take' && clips[part.src]?.masks;
+    const dst = wd.dust ?? edit.dust;
+    const behind = live.filter((o) => o.behind && masked);
+    if (!plate && ((dst && masked) || behind.length)) {
+      bctx.setTransform(S, 0, 0, S, 0, 0);
+      bctx.globalCompositeOperation = 'source-over';
+      bctx.clearRect(0, 0, W, H);
+      if (dst) dust(bctx, k, dst === true ? {} : dst, kick);
+      for (const o of behind) overlay[o.type](bctx, o, k, acc);
+      const mk = await image(`/masks/${part.src}/${pad(srcIdx + 1, 4)}.png`);
+      bctx.globalCompositeOperation = 'destination-out';
+      bctx.drawImage(mk, geo.x, geo.y, geo.dw, geo.dh);
+      bctx.globalCompositeOperation = 'source-over';
+      ctx.save();
+      ctx.translate(W / 2, H / 2);
+      ctx.scale(pz, pz);
+      ctx.drawImage(back, -W / 2, -H / 2, W, H);
+      ctx.restore();
+    }
     for (const o of live) if (o.type === 'flash') overlay.flash(ctx, o, k);
     const fi = edit.fade_in || 0, fo = edit.fade_out || 0;
     const dark = k < fi ? 1 - k / fi : k >= edit.frames - fo ? (k - (edit.frames - fo)) / fo : 0;
@@ -495,9 +722,11 @@ export function makeDraw({ edit, song, facts, clips, plate }) {
       if (part.lyric_top !== undefined) top = part.lyric_top;
       if (part.track !== false && (part.label || wd.tracker)) tracker(ctx, part, geo, srcIdx, part.label || wd.tracker);
     } else tag(ctx, part, k);
-    for (const o of live) if (o.type !== 'flash' && o.type !== 'credits') overlay[o.type](ctx, o, k, acc);
-    if (!live.some((o) => o.type === 'credits')) lyrics(ctx, k, acc, top);
-    for (const o of live) if (o.type === 'credits') overlay.credits(ctx, o, k, acc);
+    const late = (o) => o.type === 'credits' || o.type === 'quote';
+    for (const o of live) if (o.type !== 'flash' && !late(o) && !behind.includes(o)) overlay[o.type](ctx, o, k, acc);
+    if (!live.some(late)) lyrics(ctx, k, acc, top);
+    for (const o of live) if (late(o)) overlay[o.type](ctx, o, k, acc);
+    if (edit.iris && k >= edit.iris.k0) iris(ctx, k, edit.iris);
     chrome(ctx, k, shot, acc);
   };
 }

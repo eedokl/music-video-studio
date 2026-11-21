@@ -13,16 +13,27 @@ Reads project.json (sections = shots, "pace", "code_layer"), selection.json and 
   <work>/edit.json song.json clips.json frames/ stills/     (work = <project>/code_cut)
   <project>/film_code_v01.mp4, film_code_v02.mp4 ...           (never overwritten) + film_code_vNN_sheet.jpg
 
-Usage: uv run code_film.py [<project>] [--pace calm|medium|fast] [--plan-only] [--from K --to K] [--work DIR]
+Usage: uv run code_film.py [<project>] [--pace calm|medium|fast] [--plan-only] [--from K --to K] [--work DIR] [--no-masks]
 
 Pace (project.json "pace" or --pace, default calm): how long a picture holds.
   calm    a sung take runs through its whole shot; stills hold up to 8 beats; beat pulse halved
   medium  takes get one jump-in on a word onset (shots of 4 beats and more); stills change every 3 beats
   fast    jump-ins from 3 beats, a one-beat reframe in long takes; stills every 2 beats, every beat in a chorus
 Per shot, project.json sections[]."code" overrides: {"pattern": "push|jump|cut", "beats": 2, "tag": "TEXT",
-"tag_at": [x, y], "cam": {...}, "label": "tracker text", "lyric_top": true}.
+"tag_at": [x, y], "cam": {...}, "label": "tracker text", "lyric_top": true, "overlays": [...]}.
 "code_layer" (all optional) is described in film-finish references/code-cut.md: worlds per look (grade, accent,
-tracker), accents per line, chrome (meter, clock, label, bars, frames), ticker file, overlays anchored to words.
+tracker, dust), accents per line, chrome (meter, clock, label, bars, frames), ticker file, overlays anchored to words,
+"dust", "iris".
+
+Overlays (in "code_layer" or in a shot's "code") are written with anchors instead of frame numbers:
+  "at" / "until": {"line": i, "word": j} | {"line": i, "end": true} | {"t": s} | {"shot": "s05"[, "end": true]} | {"k": n},
+  or "len": frames. In a shot's "code" the shot's start and end are the defaults.
+  Without "until" and "len" a text piece stands as long as it takes to read it (stamp 2 s, quote 5 s, title 1.5 s,
+  lower third 2 s) - also across the cut when the shot is shorter.
+  Inside a piece: list items "at" and "strike_at", check words "at", flip "flip_at".
+  "side": "left" | "right" instead of x: beside the face (sung takes are framed with the face in the middle).
+Takes that carry dust or an overlay with "behind": true get their masks from ai-video near_masks.py (GPU; --no-masks
+skips it, then dust is left out and those overlays lie in front).
 """
 import argparse
 import json
@@ -94,6 +105,7 @@ def prepare_clip(P, work, name, c):
         if old.get("key") == key and fd.is_dir():
             return old["clip"]
     shutil.rmtree(fd, ignore_errors=True)
+    shutil.rmtree(work / "masks" / name, ignore_errors=True)   # masks belong to these frames
     fd.mkdir(parents=True)
     subprocess.run([ffmpeg(), "-y", "-v", "error", "-i", str(src), "-q:v", "2", str(fd / "%04d.jpg")], check=True)
     n = len(list(fd.glob("*.jpg")))
@@ -133,6 +145,38 @@ def anchor(a, K, lines, shots, default=None):
     return w["k1"] if a.get("word_end") else w["k0"]
 
 
+READ_S = code_cut.READ_S                                     # shortest time a text piece can be read in
+RIGHT_X = {"stamp": 800, "flip": 1040, "list": 812, "counter": 972, "check": 880, "typer": 612, "board": 672}
+LEFT_X = {"stamp": 60, "flip": 60, "list": 48, "counter": 48, "check": 96, "typer": 48, "board": 48}
+
+
+def resolve_overlay(ov, K, lines, shots, frames, fps, shot=None):
+    """One overlay written with anchors -> the edit.json form with frame numbers (see the module doc)."""
+    ov = dict(ov)
+    d0, d1 = (shot["k0"], shot["k1"]) if shot else (0, frames)
+    ov["k0"] = anchor(ov.pop("at", None), K, lines, shots, d0)
+    if "len" in ov:
+        ov["k1"] = ov["k0"] + ov.pop("len")
+    elif "until" in ov:
+        ov["k1"] = anchor(ov.pop("until"), K, lines, shots, d1)
+    else:
+        need = READ_S.get(ov.get("type"))
+        stand = ov["k0"] + int(round(need * fps)) if need else d1
+        ov["k1"] = max(d1, stand) if shot else stand
+    ov["k1"] = min(max(ov["k1"], ov["k0"] + 1), frames)
+    for it in ov.get("items", []) + ov.get("words", []) + [x for x in ov.get("lines", []) if isinstance(x, dict)]:
+        if "at" in it or "k" not in it:
+            it["k"] = anchor(it.pop("at", None), K, lines, shots, ov["k0"])
+        if "strike_at" in it:
+            it["strike"] = anchor(it.pop("strike_at"), K, lines, shots, ov["k0"])
+    if ov.get("type") == "flip" and ("flip_at" in ov or "k" not in ov):
+        ov["k"] = anchor(ov.pop("flip_at", None), K, lines, shots, (ov["k0"] + ov["k1"]) // 2)
+    side = ov.pop("side", None)
+    if side and "x" not in ov and ov.get("type") in RIGHT_X:
+        ov["x"] = (RIGHT_X if side == "right" else LEFT_X)[ov["type"]]
+    return ov
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("project", nargs="?", default=".")
@@ -142,6 +186,7 @@ def main():
     ap.add_argument("--to", dest="k1", type=int)
     ap.add_argument("--work", help="work folder (default <project>/code_cut)")
     ap.add_argument("--out", help="film file (default <project>/film_code_vNN.mp4, next free number)")
+    ap.add_argument("--no-masks", action="store_true", help="do not make near masks (dust is left out, 'behind' pieces lie in front)")
     a = ap.parse_args()
     P = Project(a.project)
     P.check("claudia-music-video")
@@ -276,6 +321,10 @@ def main():
             s["k1"] = s["parts"][-1]["k1"] = nxt
     if shots[0]["k0"] != 0:
         shots[0]["k0"] = shots[0]["parts"][0]["k0"] = 0
+    for name, c in cl.items():                                # masks made earlier (near_masks.py) stay valid with their frames
+        c = cl[name] = dict(c)
+        if len(list((work / "masks" / name).glob("*.png"))) == c["frames"]:
+            c["masks"] = True
     (work / "clips.json").write_text(json.dumps(cl), encoding="utf-8")
 
     # ---- the code layer
@@ -301,20 +350,34 @@ def main():
                 m["k0"], m["k1"] = anchor(m.pop("from", None), K, lines, shots, 0), anchor(m.pop("until", None), K, lines, shots, frames)
             else:
                 m["k_end"] = anchor(m.pop("until", None), K, lines, shots, frames)
-    overlays = []
-    for ov in layer.get("overlays") or []:
-        ov = dict(ov)
-        ov["k0"] = anchor(ov.pop("at", None), K, lines, shots, 0)
-        ov["k1"] = ov["k0"] + ov.pop("len") if "len" in ov else anchor(ov.pop("until", None), K, lines, shots, frames)
-        for it in ov.get("items", []) + [x for x in ov.get("lines", []) if isinstance(x, dict) and "at" in x]:
-            it["k"] = anchor(it.pop("at", None), K, lines, shots, ov["k0"])
-        overlays.append(ov)
+    overlays = [resolve_overlay(json.loads(json.dumps(ov)), K, lines, shots, frames, fps) for ov in layer.get("overlays") or []]
+    by_id = {s["id"]: s for s in shots}
+    for s in secs:                                            # overlays written at their shot: they move with the shot
+        if s["name"] in by_id:
+            overlays += [resolve_overlay(json.loads(json.dumps(ov)), K, lines, shots, frames, fps, by_id[s["name"]])
+                         for ov in (s.get("code") or {}).get("overlays") or []]
+    overlays.sort(key=lambda o: o["k0"])
     edit = dict(fps=fps, frames=frames, size=list(P.size), pace=pace_name, worlds=worlds, accents=accents, chrome=chrome,
                 fade_in=round(fps * 0.4), fade_out=round(fps * 1.5), free_cuts=sorted(free), overlays=overlays, shots=shots)
+    if layer.get("dust"):
+        edit["dust"] = layer["dust"]
+    if layer.get("iris"):                                     # iris out, by default over the last 1.5 s of the film
+        ir = dict(layer["iris"])
+        ir["k1"] = anchor(ir.pop("until", None), K, lines, shots, frames)
+        ir["k0"] = anchor(ir.pop("at", None), K, lines, shots, max(0, ir["k1"] - round(fps * 1.5)))
+        edit["iris"] = ir
+        if ir["k1"] >= frames - 1:
+            edit["fade_out"] = 0                              # the iris ends in black already
     if layer.get("ticker"):
         shutil.copy(P.path(layer["ticker"]), work / "ticker.json")
         edit["ticker"] = "ticker.json"
     (work / "edit.json").write_text(json.dumps(edit, indent=1, ensure_ascii=False), encoding="utf-8")
+    if not a.plan_only and not a.no_masks:                    # pieces behind people need the takes' near masks
+        import near_masks
+        todo = [t for t in near_masks.needed(edit) if not cl.get(t, {}).get("masks")]
+        if todo:
+            print(f"near masks for {len(todo)} take(s): {', '.join(todo)}", flush=True)
+            near_masks.run(work, takes=todo)
     if not code_cut.report(work):
         sys.exit(2)
     if a.plan_only:

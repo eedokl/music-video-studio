@@ -71,6 +71,26 @@ Weak spots that stayed (no model solved them): lips closing on short p/b/m; fast
 - **Pace is a choice per song**: the first cut (one picture per beat in the chorus, a cut inside almost every take)
   was "a bit too fast" for the user; `calm` is the default (the user's choice after seeing all three).
 
+## Overlays on a finished live film ("Die bittere Lektion - Ein Haus, eine Nacht", 2026-11)
+
+A film of 53 live shots got a second version with small code pieces only (counters, a struck list, stamps, a check
+on the key press, notes flying off a wall, a calendar sheet, an iris out). What the user said, in order:
+
+- **"Keep everything, only add overlays."** The first attempt was built on an older cut of the same song in another
+  project folder (graphics and live in turns), so it looked as if scenes had been swapped. Find the current film
+  first (`last_render.json`, the newest file the user names), and build a variant as a new file with its own
+  work folder - never over the running cut.
+- **Dust over the faces had to go** - behind people or not at all (ai-video `near_masks.py`, depth masks).
+- **Show the word that is sung**: a sentence being translated on "Uebersetzen", a picture with a detection box on
+  "Sehen-Lernen". Pieces that illustrate the lyric were asked for; decoration was not.
+- **Notes fly behind the singer**, not in front (matte mask for that one shot).
+- **A stamp that stands half a second is not seen**; it was held over the cut for about 2.8 s.
+- **A quote belongs on the closing card** (5 s); its two-second flash earlier in the film was removed.
+- **Iris out on the last picture**, like the wink ending of an earlier film - the user asked for the known ending
+  by pointing at that film.
+- Takes are shot with a static camera (the video model does not hold camera moves); the slow push-in and the beat
+  pulse come from the cut (`cam`, world `pulse`), and the lyrics are drawn after them so that they stand still.
+
 ## One shot on a music hit (title sting "Moneypenny will return", 2026-11)
 
 A single 8.5 s LTX shot from a three-quarter start image (she aims a pistol off-screen, then swings it to the
