@@ -13,7 +13,8 @@
   stage_run.py film <project> [--q draft|film] [--clips c01,c02] [--overwrite]  every missing frame of every clip
   stage_run.py film <project> --changed [--clips c03]   also the frames that look different now (after a plugin
                                                        update or a change outside scenes/ the source key misses)
-  stage_run.py status <project> [--q film]            frames rendered / missing per clip
+  stage_run.py status <project> [--q film]            frames rendered / missing per clip + how long the missing
+                                                       ones take (from the seconds per frame measured in this project)
 
 --engine eevee (clip / film / status) renders with EEVEE instead of Cycles - experimental, several times faster,
 frames in out/<clip>/<q>_eevee/ (stage-3d BLOCK.md says what differs).
@@ -141,6 +142,9 @@ def source_key(F, clip, q, engine):
     scenes = F.dir / "scenes"
     names = {c for c, _, _ in F.clips}
     mods = [scenes / f"{clip}.py"] + sorted(p for p in scenes.glob("*.py") if p.stem not in names and p.stem != "__init__")
+    timing = F.dir / "timing.json"                          # a film on a song (film3d.py song): its times are in
+    if timing.exists() and derived.recorded(timing):        # every frame. Only when made there: older frames keep their key
+        mods.append(timing)
     b, lj, lines = F.out(clip) / "build.json", F.dir / "speech" / "lines.json", {}
     said = [s["id"] for s in json.loads(b.read_text(encoding="utf-8")).get("said", [])] if b.exists() else []
     if said and lj.exists():
@@ -160,6 +164,45 @@ def same_source(old, new):
     if old.get("key") != new["key"]:
         return False
     return old.get("lines") is None or new["lines"] is None or old["lines"] == new["lines"]
+
+
+ROUGH = {"draft": 0.7, "film": 3.7}                         # s/frame at 1920x1080 on an RTX 5060 Ti (render-speed.md)
+
+
+def speeds(F, fq):
+    """{clip: seconds per frame} measured by earlier `film` runs of this project (out/<clip>/<q>/speed.json)"""
+    out = {}
+    for c, _, _ in F.clips:
+        try:
+            s = json.loads((F.out(c, fq) / "speed.json").read_text(encoding="utf-8"))
+            if s.get("frames", 0) >= 3:
+                out[c] = s["seconds"] / s["frames"]
+        except (OSError, ValueError, KeyError, TypeError):
+            pass
+    return out
+
+
+def estimate(F, q, engine, todo):
+    """(seconds, how it is known) for {clip: frames to render}: the clip's own measured speed, else the mean of the
+    measured clips, else a rough figure scaled to the frame size - None when nothing is known"""
+    sp = speeds(F, folder(q, engine))
+    n = sum(todo.values())
+    if not n:
+        return 0.0, ""
+    if sp:
+        mean = sum(sp.values()) / len(sp)
+        known = sum(m for c, m in todo.items() if c in sp)
+        return (sum(m * sp.get(c, mean) for c, m in todo.items()),
+                f"measured on {len(sp)} clip(s) of this film" + ("" if known == n else
+                                                                 f", {n - known} frames of clips not rendered yet at their mean"))
+    if q in ROUGH and engine == "cycles":
+        w, h = F.size
+        return n * ROUGH[q] * w * h / (1920 * 1080), "rough: nothing measured in this project yet, light shows in haze cost more"
+    return None, ""
+
+
+def clock(s):
+    return f"{s / 3600:.1f} h" if s >= 5400 else f"{max(1, round(s / 60))} min"
 
 
 def cmd_film(a):
@@ -208,10 +251,14 @@ def cmd_film(a):
     checks = sum(1 for t in todo if t[4])
     print(f"{F.dir.name}: {total} of {sum(t[1] for t in todo)} frames to render in quality '{a.q}'"
           + (f" + the changed frames of {checks} clip(s)" if checks else ""), flush=True)
+    est, how = estimate(F, a.q, a.engine, {t[0]: t[2] for t in todo})
+    if est:
+        print(f"about {clock(est)} ({how})", flush=True)
     t0, done = time.time(), 0
     for c, n, m, over, check in todo:
         if not m and not check:
             continue
+        tc = time.time()
         said = blender(F.dir, c, "--q", a.q, "--engine", a.engine, "--range", 1, n, "--fingerprint",
                        *(["--changed"] if check else []), *(["--overwrite"] if over else []))
         if check:                                      # the frames the check deleted were rendered as well
@@ -220,6 +267,8 @@ def cmd_film(a):
             m += extra
         # again after the build: build.json now names the lines this clip says (the first run had none)
         derived.write_text(F.out(c, fq) / "source.json", json.dumps(source_key(F, c, a.q, a.engine)))
+        if m >= 3 and not check:                       # a full stretch of frames: the clip's speed for the estimates
+            derived.write_text(F.out(c, fq) / "speed.json", json.dumps({"frames": m, "seconds": round(time.time() - tc, 1)}))
         done += m
         left = (time.time() - t0) / done * (total - done) if done else 0.0
         print(f"FILM {c} done - {done}/{total} frames, about {left / 60:.0f} min left", flush=True)
@@ -233,11 +282,15 @@ def cmd_film(a):
 def cmd_status(a):
     F = Film(a.project)
     tot = miss = 0
+    todo = {}
     for c, n, _ in F.clips:
         m = len(F.missing(c, folder(a.q, a.engine)))
         tot, miss = tot + n, miss + m
+        todo[c] = m
         print(f"{c:24s} {n - m:5d} / {n:5d}" + ("" if not m else f"   missing {m}"))
-    print(f"{'total':24s} {tot - miss:5d} / {tot:5d}   ({a.q})")
+    est, how = estimate(F, a.q, a.engine, todo)
+    print(f"{'total':24s} {tot - miss:5d} / {tot:5d}   ({a.q})"
+          + (f"   the missing frames take about {clock(est)} ({how})" if est else ""))
     return 0
 
 

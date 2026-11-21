@@ -11,7 +11,7 @@ rendered again. It is reviewed on contact sheets, then as a **fast preview of th
 rendered in film quality (that is the long step: hours).
 
 Scripts here: `${CLAUDE_PLUGIN_ROOT}/skills/animated-3d-film/scripts/` – `film3d.py` (new / clip / idea / line /
-speak / sound / preview / render / status). Run it with
+speak / song / sound / preview / render / status / credits). Run it with
 `uv run "${CLAUDE_PLUGIN_ROOT}/skills/animated-3d-film/scripts/film3d.py" ...` (it declares its packages).
 
 **Building blocks** (shared code + docs of this plugin, not skills - read the one you need):
@@ -81,6 +81,18 @@ Needs Blender 4.2+ (config key `blender`), ffmpeg, Rhubarb; a graphics card make
   `say()` frame or a clip length changed; a track you set by hand in `"audio"` is never mixed over. Music without a song: film-finish `score.py`; sound effects: its `sounds.py`
   ideas apply, or mix own effects into the music bed.
 
+## 3b. A film on a song (a music video with 3D figures)
+
+The figures sing a finished song with lip sync and move on its beat; every clip is a stretch of the song.
+Read [references/song-film.md](references/song-film.md) first (the way, the plan, writing 20 clips with several
+agents, continuity). In short: analyse the song into `<folder>/song` (song-analysis BLOCK.md: `new_project.py`,
+`analyze.py`), `film3d.py song <folder> --draft` → `song_plan.json` + `song_lines.txt`; write the plan (the clips
+on song seconds, `"who"` sings which line – from the section markers of the lyrics –, `"show"` for texts written
+differently than sung); `film3d.py song <folder>` → `timing.json`, a vocal slice per line, project.json clips /
+lines / audio and a scene module per clip. It reports lines the recognition placed in silence - check them and
+set `"fix"`. Scenes take every frame from the song (`import stage_song as SG`: `SG.sing`, `SG.groove`, `SG.word`,
+`SG.beats`, `SG.f`); no `line` / `speak` / `sound` steps – the song is the sound.
+
 ## 4. Build the scenes
 
 - One module per clip (`scenes/<clip>.py`: `FRAMES`, `build(S)`), following `stage-3d/references/guide.md`.
@@ -103,7 +115,8 @@ still of an advertisement. Fix and render again until it does; finish each clip 
 ## 6. Fast preview of the whole film, then the decision
 
 `film3d.py preview <folder>` renders every clip in draft quality (resumable), mixes the lines if no sound track is
-set, and cuts `preview/film_draft.mp4` with sound and look. Watch for what stills cannot show: timing, acting in
+set, and cuts `preview/film_draft.mp4` with sound and look (`--mail`: also `preview/film_draft_mail.mp4`, ~12 MB,
+to send it). Watch for what stills cannot show: timing, acting in
 motion, lip sync, cuts, the sound against the picture. Send it to the user and ask: changes first, or render in
 detail? Changed clips are found by themselves: a clip whose scene module, project settings (size, palette, lips,
 seed, cast) or spoken lines changed is rendered again by the next `preview` / `render` (key in
@@ -133,6 +146,9 @@ film goes wrong, the actors break up laughing, look into the lens, a stagehand w
 
 ## 7. Film render and finish
 
+Before starting it: `film3d.py status <folder>` says how long the missing frames take, from the seconds per frame
+this project measured (after the first rendered clip; before that a rough figure) - tell the user the hours, the
+graphics card is busy that long.
 `film3d.py render <folder>` – film quality for every clip (resumable: stop and start again any time; after a fix
 only the frames that look different are rendered again; after a plugin update `stage_run.py film <folder> --q film
 --changed` finds the frames it changes; the computer stays awake meanwhile), then the cut:

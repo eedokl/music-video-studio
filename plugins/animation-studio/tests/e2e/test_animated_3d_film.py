@@ -3,6 +3,7 @@ rendered in draft quality with Blender -> sound mix -> clip_film cut (dissolve, 
 import os
 import re
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -338,7 +339,100 @@ def run_credits(ctx):
              f"film with credits {nb}")
 
 
-TESTS = [Test("animated-3d-film-credits", run_credits, about="credit clips (outtake template, extra scene) rendered "
+def song_film(ctx):
+    """a film folder on a synthetic song, up to the written plan: (folder, plan, sheet, output of the plan draft)"""
+    d = ctx.dir / "film"
+    ctx.uv(FILM3D, "new", d, "--title", "E2E song", "--seed", "7", "--cast", "mo:bear,kit:cat", "--size", "640x360")
+    song = d / "song"
+    (song / "analysis").mkdir(parents=True)
+    # the voice: 1.0-2.0 s (line 0), 5.8-6.4 s (line 1), 7.6-8.6 s (line 2, which the "recognition" starts at 7.0)
+    voiced = "between(t\\,1\\,2)+between(t\\,5.8\\,6.4)+between(t\\,7.6\\,8.6)"
+    for f in (song / "song.wav", song / "analysis" / "vocals_lead.wav"):
+        ctx.ff("-f", "lavfi", "-i", f"aevalsrc=0.5*sin(2*PI*220*t)*({voiced}):s=16000:d=10", "-ac", "1", str(f))
+    words = [("Hello", 1.0, 1.3, 0), ("there", 1.3, 1.6, 0), ("friend", 1.6, 2.0, 0),
+             ("El-Ge-Te-Em", 2.1, 2.3, 1), ("again", 6.0, 6.4, 1),        # first word glued to the line before
+             ("Quiet", 7.0, 7.9, 2), ("start", 7.9, 8.2, 2), ("here", 8.2, 8.6, 2)]
+    sheet = {"fps": 24, "duration": 10.0, "tempo_bpm": 120.0,
+             "beats": [{"t": i * 0.5, "downbeat": i % 4 == 0} for i in range(20)], "accents": [{"t": 1.0}],
+             "words": [{"word": w, "t": t, "end": e, "line": n} for w, t, e, n in words],
+             "lines": [{"line": 0, "text": "Hello there friend", "t": 1.0, "end": 2.0},
+                       {"line": 1, "text": "El-Ge-Te-Em again", "t": 2.1, "end": 6.4},
+                       {"line": 2, "text": "Quiet start here", "t": 7.0, "end": 8.6}]}
+    write_json(song / "analysis" / "song_sheet.json", sheet)
+    out = ctx.uv(FILM3D, "song", d, "--draft", "--target", "4")
+    return d, read_json(d / "song_plan.json"), sheet, out
+
+
+def song_plan(d, plan):
+    plan.update(clips=[["c01_a", 0.0, "the first line"], ["c02_b", 5.0, "the chant"]], who={"mo": [0], "all": ["1-2"]},
+                groups={"all": ["mo", "kit"]}, show={"El-Ge-Te-Em": "LGTM"})
+    write_json(d / "song_plan.json", plan)
+
+
+def run_song(ctx):
+    """a film on a song (no Blender): plan draft -> timing.json / vocal slices / project.json, the two timing
+    repairs, the stage_song time helpers, the render estimate of `status`"""
+    need("ffmpeg", "rhubarb")
+    d, plan, sheet, out = song_film(ctx)
+    expect(plan["song"] == "song" and plan["clips"][0][1] == 0.0 and len(plan["clips"]) >= 2
+           and (d / "song_lines.txt").read_text(encoding="utf-8").count("\n") == 3, f"plan draft wrong: {plan}")
+    expect("line 1" in out.stdout and "moved" in out.stdout, f"the draft did not report the glued word:\n{out.stdout}")
+    song_plan(d, plan)
+    out = ctx.uv(FILM3D, "song", d)
+    T = read_json(d / "timing.json")
+    P = read_json(d / "project.json")
+    l1 = T["lines"][1]
+    expect([(c["name"], c["frames"]) for c in T["clips"]] == [("c01_a", 120), ("c02_b", 120)], f"clips: {T['clips']}")
+    expect(l1["who"] == "all" and l1["text"] == "LGTM again" and l1["sung"] == "El-Ge-Te-Em again"
+           and l1["words"][0] == {"word": "LGTM", "t": 5.8, "sung": "El-Ge-Te-Em"}, f"line 1 in timing.json: {l1}")
+    expect("line 2 starts at 7.00 s while the voice is silent" in out.stdout and '"2:0": 7.6' in out.stdout,
+           f"no note for the line placed in silence:\n{out.stdout}")
+    expect(P["audio"] == "song/song.wav" and [c["name"] for c in P["clips"]] == ["c01_a", "c02_b"]
+           and [x["text"] for x in P["lines"]] == [x["text"] for x in sheet["lines"]], f"project.json: {P}")
+    expect("stage_song" in (d / "scenes" / "c02_b.py").read_text(encoding="utf-8"), "no song scene template")
+    L = {x["id"]: x for x in read_json(d / "speech" / "lines.json")["lines"]}
+    expect(abs(L["l01"]["duration"] - 0.74) < 0.03, f"vocal slice of line 1: {L['l01']['duration']} s, expected 0.74")
+    # the fix of the plan silences the note; unchanged slices are kept
+    m0 = (d / "speech" / "l00.wav").stat().st_mtime
+    plan["fix"] = {"2:0": 7.6}
+    write_json(d / "song_plan.json", plan)
+    out = ctx.uv(FILM3D, "song", d)
+    expect("while the voice is silent" not in out.stdout and (d / "speech" / "l00.wav").stat().st_mtime == m0
+           and read_json(d / "timing.json")["lines"][2]["words"][0]["t"] == 7.6, f"after the fix:\n{out.stdout}")
+    # the time helpers (no Blender)
+    code = ("import sys; sys.path.insert(0, sys.argv[1]); import stage_song as SG; SG.use(sys.argv[2]); "
+            "print(SG.f('c02_b', 6.0), SG.word('c02_b', 'LGTM'), SG.word('c02_b', 'Ge-Te'), SG.word('c01_a', 'LGTM'), "
+            "SG.singers('all'), [x['n'] for x in SG.lines('c02_b')], SG.bars('c02_b'))")
+    out = ctx.run([sys.executable, "-c", code, Path(script("stage-3d", "stage_song.py")).parent, d])
+    expect(out.stdout.strip() == "25 20 20 None ('mo', 'kit') [1, 2] [25, 73]", f"stage_song helpers: {out.stdout}")
+    # the estimate: 240 missing frames at the 2 s/frame measured on one clip
+    (d / "out" / "c01_a" / "film").mkdir(parents=True)
+    write_json(d / "out" / "c01_a" / "film" / "speed.json", {"frames": 10, "seconds": 20.0})
+    out = ctx.uv(RUN, "status", d, "--q", "film")
+    expect("about 8 min" in out.stdout and "measured on 1 clip" in out.stdout, f"status estimate:\n{out.stdout}")
+    ctx.note("plan draft, glued first word moved (2.1 -> 5.8 s), line in silence reported and fixed, sung -> written "
+             "text, slices kept on a re-run, stage_song helpers, render estimate")
+
+
+def run_song_stage(ctx):
+    """the song scene template in Blender: SG.sing puts a group's line on both figures, SG.groove builds"""
+    need("ffmpeg", "blender", "rhubarb")
+    d, plan, _, _ = song_film(ctx)
+    song_plan(d, plan)
+    ctx.uv(FILM3D, "song", d)
+    ctx.uv(RUN, "clip", d, "c02_b", "--stills", "30", timeout=600)
+    B = read_json(d / "out" / "c02_b" / "build.json")
+    expect(sorted(s["id"] for s in B["said"]) == ["l01", "l01", "l02", "l02"] and B["said"][0]["start"] == 20,
+           f"build.json said: {B['said']}")
+    expect((d / "out" / "c02_b" / "stills_draft" / "f_0030.png").exists(), "no still of the song scene")
+    ctx.note("the song template scene renders; both figures of the group sing lines 1 and 2")
+
+
+TESTS = [Test("animated-3d-film-song", run_song, about="film3d.py song: plan -> timing.json / vocal slices / "
+                                                       "project.json, timing repairs, stage_song, render estimate"),
+         Test("animated-3d-film-stage-song", run_song_stage, about="the song scene template in Blender: group lip "
+                                                                   "sync (SG.sing), groove"),
+         Test("animated-3d-film-credits", run_credits, about="credit clips (outtake template, extra scene) rendered "
                                                               "apart from the film; draft + preview -> credits"),
          Test("animated-3d-film-theatre", run_theatre, about="stage_theatre: set change in view (office -> show "
                                                               "stage), curtain, light show in haze"),

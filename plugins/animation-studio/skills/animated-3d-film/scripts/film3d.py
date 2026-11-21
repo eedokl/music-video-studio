@@ -26,11 +26,21 @@ Usage (uv run film3d.py ...):
       -> sound/film.wav: every spoken line on the frame its scene says it (out/<clip>/build.json) or on its "at"
          frame + optional music; sets project.json "audio". preview / render mix it again by themselves when a
          line, a say() frame or a clip length changed (a finished track set by hand in "audio" stays as it is).
-  film3d.py preview <folder> [--clips c01,c02]     FAST: every clip in draft quality + the cut -> preview/film_draft.mp4
+  film3d.py song <folder> --draft [--from song] [--target 9]
+      a film on a song: first song_plan.json from the analysed song (song-analysis project, default <folder>/song):
+      clips that start on a downbeat between two lyric lines, + song_lines.txt (every line with number and time)
+  film3d.py song <folder>
+      -> song_plan.json (clips on song seconds, who sings which line, sung -> written text, word fixes) becomes
+         timing.json (stage-3d stage_song.py), one vocal slice per lyric line (lip sync), project.json clips / lines /
+         audio and a scene module for every new clip; warns of lines the recognition placed in silence. Run it
+         again after every change of the plan.
+  film3d.py preview <folder> [--clips c01,c02] [--mail]
+      FAST: every clip in draft quality + the cut -> preview/film_draft.mp4 (--mail: + film_draft_mail.mp4, ~12 MB)
   film3d.py render <folder> [--clips c01,c02]      DETAIL: film quality + the cut -> film.mp4 (+ small / mail versions)
       Frames are resumable; a clip whose scene, project settings (size, palette, lips, seed, cast) or spoken lines
       changed since its frames is rendered again (out/<clip>/<q>/source.json).
-  film3d.py status <folder>                        rendered frames per clip, in both qualities
+  film3d.py status <folder>                        rendered frames per clip, in both qualities, and how long the
+      missing ones take (measured on the frames this project rendered already)
   film3d.py credits <folder> --draft [--force]     first end credits into project.json "credits": the text from
       the cast / actors and the tools, the extra scenes as gags between the text blocks, the outtakes and seeded
       excerpts of the film clips in windows beside the text, the film's sound as the music bed
@@ -58,6 +68,7 @@ STAGE = _studio.skill_dir("stage-3d") / "scripts"
 FINISH = _studio.skill_dir("film-finish") / "scripts"
 TEMPLATE = HERE.parent / "assets" / "template" / "scene.py"
 OUTTAKE = HERE.parent / "assets" / "template" / "outtake.py"
+SONG_SCENE = HERE.parent / "assets" / "template" / "song_scene.py"
 SOUND = "sound/film.wav"                                  # the mix film3d.py makes (a hand-set "audio" is kept)
 LOOKS = ("bear", "cat", "bunny")                          # the bundled toys (stage-3d stage_actor.LOOKS, Blender only)
 
@@ -155,6 +166,27 @@ def cmd_clip(a):
     F.p.setdefault("clips", []).append(c)
     F.save()
     print(scene_file(F, a.name, a.frames, a.about, cast_of(F), OUTTAKE if a.credits == "outtake" else None))
+
+
+def cmd_song(a):
+    import song_film
+    F = Film(a.folder)
+    if a.draft:
+        f = F.dir / song_film.PLAN
+        if f.exists() and not a.force:
+            sys.exit(f"{f} exists already - --force writes a new draft over it")
+        plan, lines, notes = song_film.draft(F, a.song, a.target)
+        f.write_text(json.dumps(plan, ensure_ascii=False, indent=1), encoding="utf-8")
+        (F.dir / "song_lines.txt").write_text(song_film.lines_text(lines, plan["clips"]), encoding="utf-8")
+        for n in notes:
+            print("NOTE", n)
+        print(f"{f}: {len(plan['clips'])} clips, {len(lines)} lyric lines (song_lines.txt) - set the clips to the "
+              f"film's scenes, give every line its performer (\"who\"), then: film3d.py song {a.folder}")
+        return
+    notes = song_film.apply(F, lambda name, frames, about: scene_file(F, name, frames, about, cast_of(F), SONG_SCENE))
+    for n in notes:
+        print("NOTE", n)
+    run(STAGE / "stage_speech.py", "prepare", F.dir)
 
 
 def cmd_idea(a):
@@ -347,6 +379,8 @@ def build(a, q):
     run(STAGE / "stage_run.py", "film", F.dir, "--q", q, *clips)
     refresh_sound(a.folder)
     run(FINISH / "clip_film.py", F.dir, "--q", q, *clips)
+    if getattr(a, "mail", False) and not a.clips:        # the preview for an e-mail (the film render makes its own)
+        run(FINISH / "encode.py", F.dir / "preview" / f"film_{q}.mp4", "--mail")
     if F.get("credits") and not a.clips:
         credits_build(F, q)
 
@@ -498,10 +532,18 @@ def main():
     so.add_argument("folder")
     so.add_argument("--music")
     so.add_argument("--music-level", type=float, default=-18.0)
+    sg = sub.add_parser("song")
+    sg.add_argument("folder")
+    sg.add_argument("--draft", action="store_true", help="write a first song_plan.json from the analysed song")
+    sg.add_argument("--from", dest="song", default="song", help="the song-analysis project folder (default: song)")
+    sg.add_argument("--target", type=float, default=9.0, help="--draft: clip length in seconds to aim for")
+    sg.add_argument("--force", action="store_true", help="--draft: write over an existing plan")
     for name in ("preview", "render"):
         b = sub.add_parser(name)
         b.add_argument("folder")
         b.add_argument("--clips")
+        if name == "preview":
+            b.add_argument("--mail", action="store_true", help="also preview/film_draft_mail.mp4 (~12 MB)")
     st = sub.add_parser("status")
     st.add_argument("folder")
     cr = sub.add_parser("credits")
@@ -516,7 +558,7 @@ def main():
     if a.cmd == "render":
         return build(a, "film")
     return {"new": cmd_new, "clip": cmd_clip, "idea": cmd_idea, "line": cmd_line, "speak": cmd_speak,
-            "sound": cmd_sound, "status": cmd_status, "credits": cmd_credits}[a.cmd](a)
+            "sound": cmd_sound, "status": cmd_status, "credits": cmd_credits, "song": cmd_song}[a.cmd](a)
 
 
 if __name__ == "__main__":

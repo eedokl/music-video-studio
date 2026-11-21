@@ -188,6 +188,25 @@ T.light_show(S, 110, beats, ["#FF2E7E", "#2EC5FF", "#FFD12E"])   # finale: movin
 - Played straight, the change itself is a gag (a wall falls away in the middle of a serious line); see
   `animated-3d-film/references/gags.md` for the deadpan spoof style.
 
+## A film on a song (stage_song)
+
+For films whose sound is a finished song (animated-3d-film `film3d.py song` writes `timing.json`: clips on song
+seconds, beats, lyric lines with their performers and word times). `import stage_song as SG`:
+- **Time**: `SG.f(clip, t)` clip frame of a song second, `SG.t(clip, frame)` back, `SG.beats(clip)` /
+  `SG.bars(clip)` / `SG.accents(clip)` frames of beats / downbeats / accents, `SG.word(clip, "Pipeline", after=t,
+  nth=0)` the frame a sung word starts on (`None` when it is not in the clip: `SG.word(...) or f0 + 30`),
+  `SG.lines(clip)`, `SG.line(n)` (`"text"` as shown on screen, `"sung"` when it is sung differently).
+- **Singing**: `said = {ln["n"]: (f0, end) for ln, f0, end in SG.sing(cast, CLIP)}` keys the lip sync of every line
+  of the clip on its performer(s) (`only=` / `skip=` line numbers; a group like "all" = several figures).
+- **Beat**: `SG.groove(figure, 1, FRAMES, CLIP, amp, half=False)` adds a head nod and a bounce per beat - on top of
+  everything else the figure does. Different `amp` / `half` per figure. `SG.rap(figure, CLIP, n)` changes the
+  gesture pose on every second word of line n.
+- **Never type a frame number in a song film.** Place actions on words, cuts on downbeats or words, props that
+  land "on the beat" on `SG.beats`. A corrected word time then moves the acting, and `film` re-renders only the
+  frames that changed.
+- A line Rhubarb cannot read (scratches, stutters, a vocoder): leave it out of `sing` (`skip=(n,)`) and key the
+  mouth by hand on the hits.
+
 ## Props and sets (stage_props, stage_sets)
 
 `P.palette()` creates the shared materials (the office calls it). Props: `room, window, desk, shelf, plant, lamp,
@@ -233,7 +252,13 @@ at the table (`sets.PLACES`, `sets.TABLE_Z` = table top). Palettes and light moo
 5. Finish with 4–6 `--q film` stills of your best moments and check the s/frame it prints.
 6. Never render whole ranges while authoring; the film render is one central step (`stage_run.py film`).
    Several people (or agents) can write clips in parallel when each owns its scene files and nobody edits the
-   shared library – helpers a clip needs live in its own module.
+   shared library – helpers a clip needs live in its own module. Parallel clips agree on the figures and
+   disagree on the world (a window broken in one clip and whole in the next, a door on another wall): give the
+   authors a continuity table - the state of everything that changes, per clip, and the place of everything that
+   has one - or build that state in the shared set function from the clip name; then compare the last tile of
+   each clip with the first of the next.
+7. Shared modules of a film (cast, set) live in `scenes/` - they are part of every clip's source key; a module in
+   the project root is not, a change there re-renders nothing by itself.
 
 ## The long render and fixing a rendered film
 
@@ -254,6 +279,10 @@ Lessons of a 5,960-frame film (12 clips, Rigify actors, theatre set changes, 108
   The size (like the samples, the engine and the image files) is part of every frame: a change renders all frames.
 - **Keep the old frames when the look changes** (a redesigned actor): copy `out/<clip>/film` to `film_v1` before
   the new render if the old cut may be wanted back.
+- **Say the hours before you start.** `stage_run.py status <project> --q film` estimates the missing frames from
+  the seconds per frame this project measured (per clip, `speed.json`); `film` prints it when it starts. A 5,542
+  frame film at 1280x720 ran 1.4 s/frame in the office clips and 3.6 s in the haze clips - 2 to 5 hours, a spread
+  only the measurement narrows. The graphics card is taken for that time: ask whether it is free.
 - **Expensive light only where it pays**: the light show with haze costs several times as much per frame (volume scattering: ~5-6 s at 720p) – the
   finale, not the whole film.
 - **The computer stays awake** while Blender holds the GPU lock (studio-core `awake.py`; the screen may switch off);

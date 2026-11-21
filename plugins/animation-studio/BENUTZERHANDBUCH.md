@@ -471,6 +471,18 @@ Mach aus unserem 2D-Film ein 3D-Remake. Die Tonspur film_ton.wav soll bleiben, j
 Stück der Tonspur.
 ```
 
+```
+Mach zu diesem Song (song.wav, lyrics.txt) ein 3D-Musikvideo: drei Knetfiguren rappen die Strophen, den Refrain
+singen alle. Wo „El-Ge-Te-Em" gesungen wird, steht im Bild immer „LGTM".
+```
+
+**Film zu einem Song:** Die Figuren singen einen fertigen Song lippensynchron und bewegen sich im Takt. Claude
+analysiert den Song, schreibt einen Plan (`song_plan.json`: welcher Clip beginnt auf welcher Songsekunde, wer
+singt welche Zeile, was anders geschrieben als gesungen wird) und baut daraus Zeiten, Lippenbewegungen und die
+Szenen. Sagen Sie dazu, wer welche Strophe singt – bei erzeugten Stimmen lässt sich das nicht heraushören.
+`film3d.py status` nennt vor dem langen Render die voraussichtliche Dauer; `film3d.py preview --mail` legt die
+Vorschau zusätzlich als kleine Mail-Fassung ab.
+
 ---
 
 ### 3.4 Lyric-Video (`lyric-music-video`)
