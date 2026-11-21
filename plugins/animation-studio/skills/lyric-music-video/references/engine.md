@@ -109,6 +109,37 @@ kin(c.t, c.pulse);                                           // kinetic(): bump 
 A piece that moves for 0.3 s starts early enough to *arrive* on the beat. Counters and continuous draws (a curve, a
 scrolling list) stay continuous; give them a small `c.pulse` bump instead.
 
+## One continuous world instead of scenes
+A video may be ONE scene (`start: 0`) that drives its own three.js world: a camera ride whose position is a pure
+function of song time (distance = integral of a piecewise-linear speed, so it can stop in a breakdown and double in
+a fast part), stations placed where the camera is at their bar (`z = -S(time) - ahead`), lyrics laid over it as
+HTML. What worked (a wire-frame factory, 4:33):
+- **Own renderer, built once**: a singleton with its own `WebGLRenderer` whose canvas is appended again in `build()`
+  (the scene manager rebuilds scenes on a seek); `preserveDrawingBuffer: true` in render mode (`?render`), so that
+  the screenshot and the afterglow copy read a finished picture.
+- **Fat lines**: `LineSegments2` + `LineMaterial` (three/examples/jsm/lines), `fog: true`, `linewidth` in px - plain
+  `LineBasicMaterial` is 1 px on every machine. Set `material.resolution` in `resize()`.
+- **Things draw themselves** while the camera approaches: `geometry.instanceCount = ceil(k * segments)` with k from
+  the distance - no extra geometry, exact per frame.
+- **Afterglow without a bloom pass**: copy the WebGL canvas every frame into a small 2D canvas (960 x 540) over a
+  translucent black fill (alpha 0.4 = short trail, 0.13 = long streaks at speed), show that canvas on top with
+  `filter: blur(7px) brightness(1.6); mix-blend-mode: screen`. `EffectComposer` + `UnrealBloomPass` turned the whole
+  black picture grey (thin lines, threshold useless) and was removed. The trail depends on the frames before: a
+  seek shows it after a few frames - render clips from a second earlier than the moment you judge.
+- **Picture tube**: render into a `WebGLRenderTarget` (`samples: 4`, otherwise the lines lose their antialiasing),
+  then one full-screen `ShaderMaterial` quad: barrel bulge, colour fringe, shifted bands for a glitch; end the
+  fragment shader with `#include <colorspace_fragment>` or the picture comes out too dark. Scan lines and vignette
+  are a CSS gradient on a div above everything (free, but they change every pixel: file size).
+- **Glitches are events**: two or three in a song, on a word that means failure, strength from `hit(t, t0, 0.4)`;
+  band offsets from `hash(floor(t * 15))` so every render is the same.
+- A piece that travels with the camera (a counter on the horizon) will stand in front of whatever comes next on
+  the road: keep it to one side or hide it while a gate or a title is in the picture.
+
+## Effect levels - stages of the build as a page parameter
+`export const FX = Number(new URLSearchParams(location.search).get('fx') ?? 4)` and `if (FX >= 3) ...` around each
+batch of effects: `/?fx=2&t=95` shows an earlier stage live, `render.py ... --query fx=2` renders it. The user
+compares stages without a render per stage, and "less of it" is one number instead of a revert.
+
 ## Variants - another cut of the same song
 Same song and timing, other scenes (a second look, a homage, a short version): put the scenes into their own file,
 register them in `VARIANTS` (scenes.ts) and render with `--variant NAME`. The page gets `?v=NAME`, the body the class

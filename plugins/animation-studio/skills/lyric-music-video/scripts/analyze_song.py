@@ -17,7 +17,8 @@ Uses the building blocks of the plugin, nothing of its own:
   5b   words that still start in silence (a line's first word glued to the line before) move to the next vocal
        onset; repeated sections that are the same recording (choruses of generated songs) get the same word times
        (refine_timing.py silence_fix / repeat_fix; both print what they changed; --no-repair skips them)
-  6    song-analysis hits.py: riff hits + constant beat grid -> analysis/hits.json ({"hits","big","bpm","offset"})
+  6    song-analysis hits.py: riff hits + constant beat grid -> analysis/hits.json ({"hits","big","bpm","offset"});
+       a machine-steady bass drum gives the grid itself ("grid": "kicks" - electro, synth pop; --no-kicks: flux grid)
   6b   held notes shown as performed: song-analysis held_notes.py finds words held clearly longer than the song's
        normal word as one sustained note (also mid-line words whose end Whisper cut short, e.g. "Fifteeeen"),
        picks the ones that matter (one per ~16 lines, 2..4), moves their ends to where the voice stops and measures
@@ -165,6 +166,7 @@ def main():
     ap.add_argument("--passes", default="mix,vocals,vocals-vad")
     ap.add_argument("--no-refine", action="store_true")
     ap.add_argument("--no-repair", action="store_true", help="skip silence_fix / repeat_fix after the refinement")
+    ap.add_argument("--no-kicks", action="store_true", help="beat grid from the flux only, never from the bass drum")
     ap.add_argument("--redo", action="store_true")
     a = ap.parse_args()
     P = Project(a.project)
@@ -199,7 +201,7 @@ def main():
     (P.analysis / "timing.json").write_text(json.dumps(timing, indent=0), encoding="utf-8")
     hf = P.analysis / "hits.json"
     if a.redo or not hf.exists():
-        hf.write_text(json.dumps(hits_mod.analyse(P.song)), encoding="utf-8")
+        hf.write_text(json.dumps(hits_mod.analyse(P.song, kicks=not a.no_kicks)), encoding="utf-8")
     h = json.loads(hf.read_text(encoding="utf-8"))
     P.p["tempo"] = {"bpm": h["bpm"], "offset": h["offset"], "librosa_bpm": sheet.get("tempo_bpm")}
     P.p["word_passes"] = sheet.get("word_passes", ["track_read"])
@@ -226,7 +228,9 @@ def main():
     if late:
         print(f"{late} line(s) after the song end ({song_end:.2f} s) - an excerpt often stops before the last lyric "
               "line: delete such lines from lyrics.txt and run analyze_song.py --redo")
-    print(f"tempo {h['bpm']} BPM (first beat {h['offset']} s; librosa {sheet.get('tempo_bpm')}), "
+    grid = (f"grid fitted to {h['kicks']} bass drum attacks" if h.get("grid") == "kicks" else
+            "grid from the flux - a long song with a steady drum machine: check the last chorus in a clip for drift")
+    print(f"tempo {h['bpm']} BPM (first beat {h['offset']} s; librosa {sheet.get('tempo_bpm')}; {grid}), "
           f"{len(h['hits'])} hits, {len(h['big'])} big")
     words = [{"word": w, "t": s, "end": e, "line": li} for li, (L, text) in enumerate(zip(timing, lines))
              for w, s, e in zip(text.split(" "), L["words"], L["ends"]) if norm(w)]

@@ -54,6 +54,12 @@ Read `references/scene-catalog.md` (all past scenes, techniques, identities, lik
    Choruses may share a motif that evolves; instrumental parts get their own scenes; plan a special **ending** that
    fits the last line.
 4. Show the plan (identity + one line per scene) and let the user react if they want a say; otherwise proceed.
+5. **Not a known video in disguise.** Before building, ask yourself which existing video (a famous lyric video, a
+   meme format, the band's own clips) the concept would remind a viewer of, and say so in the plan. A first concept
+   was built completely and then rejected as "too close to one that exists on the internet" - the look of a genre
+   or a band's era may be quoted ("may remind of the band"), a single known video may not. When the song has an
+   obvious standard picture (a review song -> a review UI with green ticks), offer two or three concepts that
+   avoid it and let the user pick.
 
 ## 3. Build
 
@@ -83,6 +89,14 @@ Read `references/scene-catalog.md` (all past scenes, techniques, identities, lik
      edit `analysis/timing.json` by hand ("words" = start of each display word in s, "ends" its end; keep a copy) -
      `render.py` uses it as it is, `analyze_song.py --redo` overwrites it. What Whisper actually
      heard is in `cache/rec_<pass>.json`; the aligned words in `analysis/song_sheet.json` ("source").
+   - **Vocoder, robot and speech-synthesis voices** (electro, synth pop): Whisper does not hear them or pads the
+     word starts, and the automatic repairs have nothing to hold on to. Then the timing is written by hand - see
+     `references/hand-timing.md` (word starts read off the envelope of `analysis/vocals_lead.wav`, repeated hooks
+     placed by the bar pattern, a small `timing_hand.py` in the project that writes `analysis/timing.json`).
+   - **Beat grid**: `hits.py` fits the grid to the bass drum when it is machine-steady (the tempo line then says
+     "grid fitted to N bass drum attacks"). Otherwise the grid comes from the flux and can be a few tenths of a BPM
+     off - on a long song that is a beat of drift at the end: look at an on-beat event in the last chorus
+     (`render.py PROJECT clip --sheet`), and set `bpm` / `offset` in `analysis/hits.json` by hand if it drifts.
    - Optional check: `uv run "$SA/sync_check.py" PROJECT/analysis/vocals_lead.wav
      PROJECT/analysis/timing.json --lead 0.08` (share of words shown while the voice is still silent should be ~0).
 3. **Held notes** (a held note shown as performed: "aaaall", "riiiight"): `analyze_song.py` already finds the
@@ -101,7 +115,12 @@ Read `references/scene-catalog.md` (all past scenes, techniques, identities, lik
    SungLine/held-note options, 3D modes, the beat grid, `kit.ts`, variants and recipes). Set the fonts in `video/index.html` (Google Fonts link) AND in
    the `document.fonts.load(...)` list of `main.ts`. Recolour/extend `world3d.ts` if you use 3D. Mark ideas done:
    `brief.py PROJECT --status N done`.
-6. **Preview**: `render.py PROJECT preview` (type check, 1-fps render of the whole song, contact sheets every 6 s in
+6. **Watch it live while building** (no render): start the page with Vite (`npx vite <project>/video --port N`; in
+   Claude Code a `.claude/launch.json` entry started with the browser preview) and open `/?t=<seconds>` to start
+   anywhere in the song, with sound. Changes show after a reload - the user can follow along and react before
+   anything is rendered. A stage of the build that the user may want to compare later gets a page parameter
+   instead of a render (engine.md "Effect levels"). Render only for the frame-exact check and the delivery.
+   **Preview**: `render.py PROJECT preview` (type check, 1-fps render of the whole song, contact sheets every 6 s in
    `out/`; `--times` for one time per scene). Look at every sheet: overlaps, unreadable text, empty frames, leaks from
    earlier scenes, anything that looks copied. Timing-critical moments: `render.py PROJECT clip --from 88 --to 98`
    (10 fps); with `--sheet` every frame of the clip lands on contact sheets - the only way to judge entrances,
@@ -110,7 +129,9 @@ Read `references/scene-catalog.md` (all past scenes, techniques, identities, lik
 7. **Render**: `render.py PROJECT final --title "Song Title"` -> `out/<title>.mp4` (CRF 20, 1080p30, ~6-10 min for
    3-4 min of song on a GPU - run in the background), then `_compressed` (CRF 28), `_small` (< 30 MB, 720p two-pass)
    and `_mail` (~12 MB, 540p, AAC 64k) via film-finish's encoder; every file is decoded, its duration and audio
-   checked. `versions out/<title>.mp4` remakes only the copies.
+   checked. `versions out/<title>.mp4` remakes only the copies. **A finished film is never replaced**: when
+   `out/<title>.mp4` exists, the new render is named `<title> v2` (v3, ...) with its own copies, so the user can
+   compare (`--replace` overwrites - only when the user says the old one may go).
 8. **Deliver**: the outputs + the project without node_modules. Tell the user what each scene shows (by section),
    the files and sizes, and caveats (you cannot hear the result - sync was verified by measurement and frames; `LEAD`
    in `lyric.ts` shifts all text).
@@ -168,7 +189,10 @@ Read `references/scene-catalog.md` (all past scenes, techniques, identities, lik
   voice, check that the stems and the mix are the same version and length.
 - **File size**: grain that changes every frame multiplies the size (992 MB vs 82 MB) - the template's grain stands
   still (`--query movinggrain` moves it); `final` warns above ~25 MB per minute. Keep the full file at CRF 20-22
-  unless the user wants a master.
+  unless the user wants a master. The same holds for a picture that is new in every frame by design: a continuous
+  camera ride through thin bright lines came to 32 MB per minute, with afterglow, scan lines and a lens pass to
+  56 MB per minute (257 MB for 4:33) - the `_small` and `_mail` copies keep their size and pay with sharpness. Tell
+  the user before the render, not after.
 - **Import cycles**: a scene file (or kit.ts) imports `W`/`T0`/`timeAtBeat` from scenes.ts and scenes.ts imports the
   scene file - use those imports only inside functions, never at module top level (`const B = timeAtBeat(1)` there
   = "Cannot access 'timeAtBeat' before initialization"; render.py stops with exit 3 and the page error).
@@ -185,6 +209,7 @@ Read `references/scene-catalog.md` (all past scenes, techniques, identities, lik
 - `references/engine.md` - engine architecture, scene API, SungLine/held-note options, 3D modes, recipes.
 - `references/study-a-reference-video.md` - how to look at a reference video so that entrances, beat pulses and
   scrolling are not missed (fine time steps, measuring instead of guessing).
+- `references/hand-timing.md` - word times by hand when Whisper cannot hear the voice (vocoder, speech synthesis).
 - `references/reference-tests.md` - how this skill was checked against the seven reference videos, with numbers.
 - `assets/engine-template/` - the starter project (new_video.py copies it); `src/kit.ts` = optional motion-graphics kit.
 - `assets/examples/<technique>/` - complete `src/` + `index.html` of the past videos as technique demos with placeholder

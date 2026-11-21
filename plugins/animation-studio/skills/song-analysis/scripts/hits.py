@@ -17,7 +17,13 @@ grid   one constant tempo + phase (BPM, offset of the first beat) for engines th
        +-0.6 BPM wins - Azure 113.1 -> 113.47, Rock 128.6 -> 129.06, the other test songs unchanged; --coarse
        gives the old result); --sheet also prints track_read's librosa tempo for comparison (half/double tempo
        happens).
-Output: {"hits": [s, ...], "big": [s, ...], "bpm": 97.4, "offset": 0.312, "duration": 249.6}
+kicks  a song with a machine-steady bass drum (electro, synth pop, techno) gets its grid from the drum itself:
+       the attacks of the 40-160 Hz band are fitted with one straight line (kick_grid). A 4.5-minute electro
+       song: flux grid 119.7 BPM = more than a beat of drift by the end, 409 bass drum attacks -> 119.40 BPM,
+       no drift. Taken only when the drum sits on at least half of all beats of the song; "grid" in the output says which one
+       was used ("kicks" or "flux"); --no-kicks keeps the flux grid.
+Output: {"hits": [s, ...], "big": [s, ...], "bpm": 97.4, "offset": 0.312, "duration": 249.6, "grid": "flux"}
+        (+ "kicks": number of bass drum attacks on the grid, "kick_spread": their median distance from it in s)
 In Python:  from hits import analyse;  res = analyse("song.wav")
 """
 import argparse
@@ -96,8 +102,77 @@ def refine_tempo(f, fps, bpm0, span=0.6, step=0.01, gain=1.25):
     return float(bpms[ig]), res[ig][1]
 
 
-def tempo(x, sr, refine=True):
-    """-> (bpm, offset of the first beat in s); refine=False: the coarse autocorrelation tempo only (old result)"""
+def kick_onsets(x, sr, lo=40.0, hi=160.0, sr2=1500):
+    """Attacks of the bass drum -> (times in s, strengths). The 40-160 Hz band as an analytic signal at 1.5 kHz
+    (one FFT of the whole song, only the band's bins transformed back): its envelope rises within a few ms on a
+    kick; an attack is the steepest point of such a rise."""
+    n = len(x)
+    X = np.fft.rfft(x)
+    m = int(n * sr2 / sr)
+    Z = np.zeros(m, dtype=complex)
+    k0, k1 = int(lo * n / sr), int(hi * n / sr)
+    Z[k0:k1] = 2 * X[k0:k1]
+    env = np.abs(np.fft.ifft(Z)) * (m / n)
+    w = np.hanning(int(sr2 * 0.012) | 1)
+    d = np.maximum(0, np.diff(np.convolve(env, w / w.sum(), mode="same")))
+    r = int(sr2 * 0.12)                                  # one attack per 0.12 s at most
+    idx = [i for i in range(r, len(d) - r) if d[i] > 0 and d[i] == d[i - r:i + r + 1].max()]
+    if not idx:
+        return np.array([]), np.array([])
+    st = d[idx]
+    keep = st > 0.2 * np.percentile(st, 90)              # drop the small ripples between the drum hits
+    return (np.array(idx)[keep] + 1) / sr2, st[keep]
+
+
+def kick_grid(x, sr, bpm0, span=1.5, tol=0.03, verbose=False):
+    """One constant grid through the bass drum attacks -> (bpm, offset, attacks on the grid, median distance in s)
+    or None. Every tempo within +-span BPM of `bpm0` is tried in steps of 0.01 (score: how well the attacks agree
+    on one phase), then the attacks within `tol` s of that grid are fitted with a straight line (beat number ->
+    time), twice. Taken only when the drum really carries the song: an attack on at least half of ALL beats of the
+    song (at least 64) and a median distance below 12 ms. The band also holds bass notes, so the share of attacks
+    on the grid says little (electro song: 44 %, but 61 % of the beats covered; four songs with a played drum kit:
+    18-35 % of the beats = what scattered bass notes reach by chance)."""
+    t, st = kick_onsets(x, sr)
+    if len(t) < 64:
+        return None
+    best = (-1.0, 0.0, 0.0)
+    for bpm in np.arange(bpm0 - span, bpm0 + span + 1e-9, 0.01):
+        z = (st * np.exp(2j * np.pi * t * bpm / 60)).sum() / st.sum()
+        if abs(z) > best[0]:
+            best = (abs(z), 60 / bpm, np.angle(z) / (2 * np.pi) * 60 / bpm)
+    _, period, off = best
+    for _ in range(2):
+        nb = np.round((t - off) / period)
+        ok = np.abs(t - off - nb * period) < tol
+        if ok.sum() < 64:
+            return None
+        period, off = np.polyfit(nb[ok], t[ok], 1)
+    nb = np.round((t - off) / period)
+    dist = np.abs(t - off - nb * period)
+    ok = dist < tol
+    beats = len(x) / sr / period
+    spread = float(np.median(dist[ok]))
+    if verbose:
+        print(f"   kicks: {len(t)} attacks, {int(ok.sum())} on the grid, "
+              f"{len(set(nb[ok]))}/{beats:.0f} beats covered, median distance {1000 * spread:.1f} ms, {60 / period:.3f} BPM")
+    if len(set(nb[ok])) < max(64, 0.5 * beats) or spread > 0.012:
+        return None
+    return round(float(60 / period), 3), round(float(off % period), 3), int(ok.sum()), round(spread, 4)
+
+
+def tempo(x, sr, refine=True, kicks=True, info=None):
+    """-> (bpm, offset of the first beat in s); refine=False: the coarse autocorrelation tempo only (old result);
+    kicks=False: never the bass drum grid; `info` (a dict) receives "grid" and the kick numbers"""
+    bpm, off = _flux_tempo(x, sr, refine)
+    k = kick_grid(x, sr, bpm) if kicks and refine else None
+    if info is not None:
+        info["grid"] = "kicks" if k else "flux"
+        if k:
+            info["kicks"], info["kick_spread"] = k[2], k[3]
+    return (k[0], k[1]) if k else (bpm, off)
+
+
+def _flux_tempo(x, sr, refine=True):
     flux, fps = _flux(x, sr)
     ac = np.correlate(flux, flux, mode="full")[len(flux) - 1:]
     best, best_bpm = -1, 0
@@ -135,11 +210,12 @@ def hits(x, sr):
     return [t for t, _ in out], [t for t, j in out if j >= thr]
 
 
-def analyse(song, refine=True):
+def analyse(song, refine=True, kicks=True):
     x = decode(song, SR)
-    bpm, off = tempo(x, SR, refine)
+    info = {}
+    bpm, off = tempo(x, SR, refine, kicks, info)
     h, big = hits(x, SR)
-    return {"hits": h, "big": big, "bpm": bpm, "offset": off, "duration": round(len(x) / SR, 2)}
+    return {"hits": h, "big": big, "bpm": bpm, "offset": off, "duration": round(len(x) / SR, 2), **info}
 
 
 def main():
@@ -148,11 +224,14 @@ def main():
     ap.add_argument("-o", "--out", help="hits.json (default: next to the song)")
     ap.add_argument("--sheet", help="song_sheet.json of track_read.py, to compare the tempo")
     ap.add_argument("--coarse", action="store_true", help="autocorrelation tempo only (no whole-song refinement)")
+    ap.add_argument("--no-kicks", action="store_true", help="keep the flux grid even when the bass drum is steady")
     a = ap.parse_args()
-    res = analyse(a.song, not a.coarse)
+    res = analyse(a.song, not a.coarse, not a.no_kicks)
     out = Path(a.out) if a.out else Path(a.song).with_name("hits.json")
     out.write_text(json.dumps(res), encoding="utf-8")
-    print(f"tempo {res['bpm']} BPM, first beat {res['offset']} s, {res['duration']} s")
+    print(f"tempo {res['bpm']} BPM, first beat {res['offset']} s, {res['duration']} s"
+          + (f" (grid from {res['kicks']} bass drum attacks, median distance {1000 * res['kick_spread']:.0f} ms)"
+             if res.get("grid") == "kicks" else ""))
     if a.sheet:
         sh = json.loads(Path(a.sheet).read_text(encoding="utf-8"))
         print(f"track_read (librosa) tempo: {sh.get('tempo_bpm')} BPM")

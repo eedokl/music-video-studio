@@ -11,7 +11,7 @@
   ... render.py PROJECT clip --from 88 --to 98 [--fps 10] [--sheet]       timing check around tight cuts / held notes;
                                                                           --sheet: every frame on contact sheets (motion,
                                                                           text entrances, on-beat events)
-  ... render.py PROJECT final [--crf 20] [--title "Song Title"] [--look none|standard] [--from S --to S]
+  ... render.py PROJECT final [--crf 20] [--title "Song Title"] [--look none|standard] [--from S --to S] [--replace]
   ... render.py PROJECT versions out/<title>.mp4                           only (re)make the smaller copies
   ... render.py PROJECT sheet VIDEO [--times 4,12,20 | --every 6]          contact sheet of any video
   --variant NAME   another cut of the same song (page parameter v=NAME, see engine.md "variants"): files get " (NAME)"
@@ -19,6 +19,8 @@
   sheet --times are seconds of THAT file: for a clip made with --from 88, 2.5 = song time 90.5. preview --times are
   song times, snapped to the preview's frames (at --fps 1: whole seconds) and labelled with the time shown.
 
+final never replaces a finished film: when out/<title>.mp4 exists, the new render is named "<title> v2" (v3, ...)
+with its own copies, so the user can compare the versions; --replace overwrites the old file instead.
 final writes to <project>/out/:
   <title>.mp4             full quality (CRF 20, 1080p30)
   <title>_compressed.mp4  CRF 28 -preset slow, same size, looks the same (~1/5)
@@ -230,6 +232,8 @@ def main():
     ap.add_argument("--from", dest="t0", type=float)
     ap.add_argument("--to", dest="t1", type=float)
     ap.add_argument("--title")
+    ap.add_argument("--replace", action="store_true",
+                    help="final: overwrite out/<title>.mp4 (default: an existing film is kept, the new one is '<title> v2')")
     ap.add_argument("--look", default="none")
     ap.add_argument("--query", help="extra page parameters, e.g. movinggrain")
     ap.add_argument("--variant", help="another cut of the same song: page parameter v=NAME, file names get ' (NAME)'")
@@ -305,6 +309,13 @@ def main():
         title = (a.title or P.get("name", "music-video")) + (f" ({a.variant})" if a.variant and a.what == "final" else "")
         t0, t1 = a.t0 or 0.0, min(a.t1 or song, song)
         if a.what == "final":
+            if not a.replace and (outdir / f"{title}.mp4").exists():   # an earlier version stays (user rule)
+                base = re.sub(r" v\d+$", "", title)
+                n = 2
+                while (outdir / f"{base} v{n}.mp4").exists():
+                    n += 1
+                print(f"out/{title}.mp4 exists and is kept - this render is '{base} v{n}' (--replace overwrites)")
+                title = f"{base} v{n}"
             tsc(video_dir(P))
             full = run_render(P, outdir / f"{title}.mp4", fps=a.fps or 30, crf=a.crf, t0=a.t0, t1=a.t1, query=a.query,
                               online_fonts=a.online_fonts)
