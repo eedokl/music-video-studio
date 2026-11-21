@@ -33,7 +33,8 @@
 selection.json: {"start": {"s02": "ai/start/s02_v2.png"}, "broll": {...}, "clip": {"s02": {"file": ..., "lag": 0,
   "score": 0.59, "r": 0.59, "range": 0.21}}, "manual": {"start": {"s05": "ai/start/s05_v1.png"}, "clip": {"s07": {"file":
   "ai/lipsync/s07_v2_s1.mp4", "lag": 2}}}}
-Usage: uv run pick.py auto|start|broll|clips|all [<project>] [--curve rhubarb|level|mix] [--repair-mic]
+Usage: uv run pick.py auto|start|broll|clips|all [<project>] [--curve rhubarb|level|mix] [--repair-mic] [--only s02,s05]
+--only: pick these shots only (after a re-shoot); every other entry of selection.json stays as it is.
 """
 import argparse
 import json
@@ -138,10 +139,17 @@ def side_of(s):
     return "image_right" if "behind" in (s.get("framing") or "").lower() else "image_left"
 
 
+ONLY = None                                           # --only: the shots to pick (the others keep their entry)
+
+
+def _sections(P):
+    return [s for s in P.sections() if not ONLY or s["name"] in ONLY]
+
+
 def pick_start(P, sel, log, rows, repair_mic=False):
     man = (sel.get("manual") or {}).get("start") or {}
     out = sel.setdefault("start", {})
-    for s in P.sections():
+    for s in _sections(P):
         if s["technique"] not in ("lipsync", "claudia_moving"):
             continue
         name = s["name"]
@@ -220,7 +228,7 @@ def letterbox(path):
 def pick_broll(P, sel, log, rows):
     man = (sel.get("manual") or {}).get("broll") or {}
     out = sel.setdefault("broll", {})
-    for s in P.sections():
+    for s in _sections(P):
         if s["technique"] != "broll":
             continue
         if s.get("start_image"):
@@ -242,7 +250,7 @@ def pick_clips(P, sel, log, rows, curve):
     man = (sel.get("manual") or {}).get("clip") or {}
     out = sel.setdefault("clip", {})
     curves = None
-    for s in P.sections():
+    for s in _sections(P):
         name, tech = s["name"], s["technique"]
         if name in man:                               # still rated: the takes page needs every take's lag / score
             log.append(f"clip {name}: by hand {man[name]} (the takes are rated anyway)")
@@ -355,9 +363,15 @@ def main():
     ap.add_argument("--curve", choices=["rhubarb", "level", "mix", "both"],
                     help="vocal curve (default project lip_curve or mix = Rhubarb + vocal level, as the live film used: "
                          "Rhubarb alone went negative in loud choruses where the lips were right)")
+    ap.add_argument("--only", help="shots, e.g. s02,s05 - the other shots keep their entry")
     a = ap.parse_args()
     P = Project(a.project)
     claudia.setup(P)
+    global ONLY
+    ONLY = {n.strip() for n in a.only.split(",") if n.strip()} if a.only else None
+    unknown = sorted((ONLY or set()) - {s["name"] for s in P.sections()})
+    if unknown:
+        raise SystemExit(f"--only: no such shot: {', '.join(unknown)}")
     sel = load(P)
     log, rs, rb, rc = [], [], [], []
     if a.what in ("auto", "start", "all"):

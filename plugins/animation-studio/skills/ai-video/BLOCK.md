@@ -70,7 +70,7 @@ uv run "<plugin>/skills/ai-video/scripts/preflight.py" --list               # wo
 | `ltx25.py` | LTX-2.5 (community GGUF): `multishot` = start image + vocals -> one clip of 6-8 s with a cut inside, still lip-synced; experimental, needs gated model files + the ComfyUI-GGUF node pack (`references/multishot.md`, `--dry-run`) |
 | `minimax.py` | MiniMax: `comfy` = local H3 with audio anchor (>= 124 frames, 1024x576 @24 fps, ~42 s per second); `cloud` = hosted Hailuo image-to-video (no audio), opt-in via env `MINIMAX_API_KEY`, dry run unless `--send` (paid) |
 | `night_run.py` | unattended run of a jobs.json: phases = one model each, GPU lock per phase, resume, changed jobs redone (fingerprint per output in `jobs_made.json`, old file kept in `replaced/`, `--keep-stale` adopts), retry after `/free`, hooks between phases (picks), `milestones.log`, `--dry-run` estimate; outputs written under a temp name and renamed when complete; preflight before the first job (`--no-preflight`); `--min-free-gb`, `--clean-comfy` |
-| `sheets.py` | contact sheets: `sheet()` start/middle/end per clip with notes; `shot_sheet()` 20/50/80 % per shot of a film |
+| `sheets.py` | contact sheets: `sheet()` start/middle/end per clip with notes (`--frames 6` / `cols=6` to check takes); `shot_sheet()` 20/50/80 % per shot of a film |
 
 ## Rules (learned the hard way)
 

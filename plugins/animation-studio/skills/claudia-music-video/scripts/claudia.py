@@ -507,10 +507,17 @@ def default_motion(s):
     return "She moves slowly, her hair moves slightly" if cast is None else f"{cast[0]['subj'].capitalize()} moves slowly"
 
 
+HANDLING = re.compile(r"\b(hands? (him|her|it|over)|passes? (him|her|it|the)|gives? (him|her)|reach(es)? for|picks? up|"
+                      r"puts? down|turns? (a|the) pages?|leafs? through|flips? through|(closes?|opens?|shuts?) the "
+                      r"(laptop|book|lid))\b")
+
+
 def hints(shots):
     """Direction advice that is not an error (printed by jobs.py). Lessons of Das Warum (2026-11-20):
     a hand named in the hair text became a hand in the hair in a third of the shots; "raises his eyebrows" gave a
-    frozen stare; laptops grew brand logos; a "man" in B-roll is a stranger, never the film's character."""
+    frozen stare; laptops grew brand logos; a "man" in B-roll is a stranger, never the film's character.
+    Lessons of "Ein Haus, eine Nacht" (2026-11-21): a wide framing made another lead a stranger in every start image;
+    handing over / page turning / closing a lid failed in the clips; "crumpled" shirts got holes."""
     out = []
     acted = [s for s in shots if s.get("technique") in ("lipsync", "claudia_moving")]
     nouns = sorted({c["noun"] for c in CAST.values()})
@@ -526,6 +533,15 @@ def hints(shots):
                 r"\b(" + "|".join(nouns + sorted(CAST)) + r")\b", s.get("subject") or "", re.I):
             out.append(f"{n}: B-roll shows a {'/'.join(nouns)} - without a reference image that is a stranger; use "
                        "technique \"claudia_moving\" with \"who\" if it is the film's character")
+        if s.get("technique") in ("lipsync", "claudia_moving") and not has_canon(s) and re.search(
+                r"\b(medium wide|wide|long|full)[ -]shot\b", (s.get("framing") or "").lower()):
+            out.append(f"{n}: \"{s['framing']}\" of a character without a measured canon - the face gets too small for the "
+                       "reference and comes out as a stranger; use \"medium shot from the waist up\" or closer")
+        if s.get("technique") != "typo" and HANDLING.search((s.get("motion") or "").lower()):
+            out.append(f"{n}: the motion asks for handling a thing - the video model doubles or drops it; show the state "
+                       "in the start image and let the clip only look")
+        if re.search(r"\b(creased|crumpled|wrinkled)\b", text + " " + " ".join(str(s.get(k) or "") for k in ("wardrobe", "wardrobe2")).lower()):
+            out.append(f"{n}: \"creased\" / \"crumpled\" clothes get holes - describe the wear another way (collar open, sleeves pushed up)")
     count = {}
     for s in acted:
         if s.get("action"):

@@ -7,7 +7,9 @@
 """Contact sheets for choosing and reviewing AI material: one row per image or clip (clips: start / middle / end frame),
 labelled with the file name and an optional note (e.g. the lip score or the canon check).
 
-  uv run sheets.py out.jpg a.png b.mp4 ...
+  uv run sheets.py out.jpg a.png b.mp4 ... [--frames 6] [--per-sheet 8]
+  --frames N: N frames per clip, spread evenly from the first to the last frame (default 3: start / middle / end).
+              Use 6 to check takes: lettering, a fade at the end or a camera move can lie between three frames.
   from sheets import sheet; sheet("sheet.jpg", [("ai/lipsync/s02_v1_s1.mp4", "r 0.59 lag 0"), ...])
 Rows are split into several sheets of `per_sheet` rows (out_1.jpg, out_2.jpg, ...).
 """
@@ -48,14 +50,16 @@ def sheet(out, rows, per_sheet=8, cols=3):
     written = []
     chunks = [rows[i:i + per_sheet] for i in range(0, len(rows), per_sheet)] or [[]]
     for ci, chunk in enumerate(chunks):
-        img = Image.new("RGB", (cols * THUMB_W, len(chunk) * (th + 28)), (20, 20, 24))
+        tw = THUMB_W if cols <= 4 else 320             # more frames per row: smaller, the sheet stays readable
+        th = int(tw * 9 / 16)
+        img = Image.new("RGB", (cols * tw, len(chunk) * (th + 28)), (20, 20, 24))
         d = ImageDraw.Draw(img)
         for ri, (path, note) in enumerate(chunk):
             y = ri * (th + 28)
             d.text((6, y + 4), f"{Path(path).name}   {note or ''}", font=font, fill=(235, 230, 220))
             for k, f in enumerate(_frames(path, cols)[:cols]):
-                t = Image.fromarray(cv2.cvtColor(cv2.resize(f, (THUMB_W, th)), cv2.COLOR_BGR2RGB))
-                img.paste(t, (k * THUMB_W, y + 28))
+                t = Image.fromarray(cv2.cvtColor(cv2.resize(f, (tw, th)), cv2.COLOR_BGR2RGB))
+                img.paste(t, (k * tw, y + 28))
         o = Path(out) if len(chunks) == 1 else Path(out).with_name(f"{Path(out).stem}_{ci + 1}{Path(out).suffix}")
         o.parent.mkdir(parents=True, exist_ok=True)
         img.save(o, quality=88)
@@ -97,7 +101,14 @@ def shot_sheet(video, shots, out, offset=0.0, us=(0.2, 0.5, 0.8), per_sheet=10):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        sys.exit(__doc__)
-    for w in sheet(sys.argv[1], [(p, "") for p in sys.argv[2:]]):
+    import argparse
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("out")
+    ap.add_argument("files", nargs="+")
+    ap.add_argument("--frames", type=int, default=3, help="frames per clip (default 3)")
+    ap.add_argument("--per-sheet", type=int, default=8, help="rows per sheet")
+    a = ap.parse_args()
+    if a.frames < 1:
+        ap.error("--frames must be 1 or more")
+    for w in sheet(a.out, [(p, "") for p in a.files], per_sheet=a.per_sheet, cols=a.frames):
         print("->", w)

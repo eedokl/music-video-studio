@@ -59,6 +59,23 @@ Weak spots that stayed (no model solved them): lips closing on short p/b/m; fast
   bridge and the run + jump (weak in all takes). Hence: plain by default, `timeline` only for multi-action shots,
   rendered mixed (A on odd, B on even seeds).
 
+## A live film through many places ("Die bittere Lektion - Ein Haus, eine Nacht", 2026-11: 53 shots, 88 takes)
+
+Another lead (Oliver, sings) and Claudia as a silent part; seven places in one house, one night run.
+
+| rule | why (what happened) |
+|---|---|
+| People who sit in one room for the whole film look static; change the places and show the ways between them | the first live version (a lecture hall, cut against the graphics film) was rejected: "too static"; the house from the cellar to the garden was accepted |
+| Another character: "medium shot from the waist up" with the face named as lit, never "medium wide shot" | c05 and f05: all four start images showed a slimmer stranger - the face was too small for the reference; the closer framing was him in every variant |
+| The video model cannot handle things (hand over, turn a page, close a laptop, reach for something): show the state in the start image, the clip only looks | an apple changed hands and doubled, a star flew off; shots with "she already holds the apple" and a glance were clean |
+| Clothes never "creased" / "crumpled" | the shirt got holes; "the collar open and the sleeves pushed up unevenly" gave the tired look |
+| Two people in one picture: the lead from behind or over the shoulder | his face came out slimmer in every frontal two-shot (e08 stayed that way) |
+| Small things on a person: "the small orange hair clip stays fixed in her hair, nothing floats", the head still | the clip drifted through the picture when she turned her head |
+| A silent part's start pose already is her look (mouth closed, kind) | a look that had to develop in the clip turned stern or opened the mouth |
+| Garbled letters in a clean prompt: another seed (shot `"seed"`), not a longer prompt | e07 painted "GJICEST" on a model railway; "no text" added to the prompt was refused by `jobs.py` (rightly), seed 8107 was clean |
+| Check every take on 6 frames, not 3 (`sheets.py --frames 6`) | lettering, a fade to black at the end and a camera push-in lay between start, middle and end |
+| Re-pick single shots with `pick.py clips --only c05,f05` | measuring all 88 takes again for two new shots took minutes |
+
 ## Code cut (Europe 2031 in the Y2Y2R method, 2026-11)
 
 - **Frontal start images for sung shots.** Three-quarter images grew a second microphone when she turned to the lens
