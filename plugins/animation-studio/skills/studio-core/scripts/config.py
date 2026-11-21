@@ -56,6 +56,7 @@ PROGRAMS = {  # key: (names on PATH, required?, what for)
 SETTINGS = {
     "gpu_lock_dir": "folder of the shared GPU lock file",
     "hf_home": "Hugging Face model cache",
+    "face_id_model": "ArcFace-type ONNX face recognition model for ai-video face_id.py: is a start image the character? (optional)",
     "matte_model": "ONNX matting model for ai-video near_masks.py --kind matte (optional)",
     "torch_home": "torch model cache",
     "comfy_url": "ComfyUI server URL (default http://127.0.0.1:8188)",

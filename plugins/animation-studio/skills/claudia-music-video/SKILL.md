@@ -65,7 +65,8 @@ negatives and checks from the shot's cast, and none of Claudia's canon (micropho
 ```
 Shot keys: `"who": "oliver"` | `"claudia"` | `["oliver", "claudia"]` (default: the lead; two people = one reference
 each, the first one sings), an option switched on by its key (`"headband": true`), `"wardrobe"` / `"wardrobe2"`.
-Start images of such shots have no measured canon: `pick.py` takes the first variant and the sheet says "check by eye".
+Start images of such shots have no measured canon: `pick.py` takes the first variant and the sheet says "check by eye" - or, with the config key `face_id_model`
+(ai-video `face_id.py`), the variant whose face is most like the character's `refs`, with a warning when none is.
 **Every shot that shows a character of the film is `lipsync` or `claudia_moving` with `who`** - a person described in
 a `broll` subject has no reference image and comes out as a stranger.
 

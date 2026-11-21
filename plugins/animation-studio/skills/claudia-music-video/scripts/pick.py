@@ -1,6 +1,6 @@
 # /// script
 # requires-python = "==3.12.*"
-# dependencies = ["mediapipe==1.2.3", "numpy==2.5.4", "opencv-python-headless==5.0.0.93", "pillow==13.0.0"]
+# dependencies = ["mediapipe==1.2.3", "numpy==2.5.4", "onnxruntime==1.32.0", "opencv-python-headless==5.0.0.93", "pillow==13.0.0"]
 # [tool.uv]
 # exclude-newer = "2026-11-14T00:00:00Z"
 # ///
@@ -9,6 +9,9 @@
   start  shots of other characters (project.json "characters", shot "who"): no measured canon - the first variant is
          taken (a hand choice wins) and the sheet says "check by eye"; Claudia's streak / microphone check and the mic
          repair never run on them (Das Warum: the repair painted her headset and streak onto the male lead).
+         With the config key face_id_model (ai-video face_id.py) their faces are compared with the character's
+         "refs": the most similar variant is taken, an earlier pick stays unless it is a stranger (< 0.40) and another
+         variant is not, and "WARNING ... no variant looks like <who>" says so before the clips are rendered.
          Claudia start images: canon check (ai-video canon.py) - ONE clay streak on the image left (her right),
          nothing orange on the other side beyond the clip, ONE headset boom (on the streak side, none on the other
          cheek); best value wins. No variant passes -> v1 + warning (look at sheet_start.jpg).
@@ -46,6 +49,7 @@ _studio.use("song-analysis", "ai-video")
 import canon  # noqa: E402
 import claudia  # noqa: E402
 import clips  # noqa: E402
+import face_id  # noqa: E402
 import mouth  # noqa: E402
 import sheets  # noqa: E402
 from song_project import Project  # noqa: E402
@@ -139,6 +143,33 @@ def side_of(s):
     return "image_right" if "behind" in (s.get("framing") or "").lower() else "image_left"
 
 
+_REFS = {}
+
+
+def face_sims(P, cast, cands):
+    """Face similarity of every start image variant against the references of the shot's characters (ai-video
+    face_id.py; only with the config key face_id_model): {file: value or None = no face}. Two characters with
+    references: the lower of their values. Claudia is measured by her canon, not here."""
+    people = [c for c in cast if c["name"] != "claudia" and c.get("refs")]
+    if not people or not face_id.available():
+        return {}
+    for c in people:
+        if c["name"] not in _REFS:
+            _REFS[c["name"]] = face_id.reference([P.path(r) for r in c["refs"]])
+    refs = [_REFS[c["name"]] for c in people if _REFS[c["name"]] is not None]
+    if not refs:
+        return {}
+    out = {}
+    for f in cands:
+        vals = [face_id.similarity(f, r)["sim"] for r in refs]
+        out[f] = None if any(v is None for v in vals) else min(vals)
+    return out
+
+
+def face_note(v):
+    return "not found" if v is None else f"{v:.2f}" + (" STRANGER?" if v < face_id.STRANGER else "")
+
+
 ONLY = None                                           # --only: the shots to pick (the others keep their entry)
 
 
@@ -161,13 +192,33 @@ def pick_start(P, sel, log, rows, repair_mic=False):
         if not cands:
             continue
         if not claudia.has_canon(s):                 # another character: Claudia's streak / mic canon is not his
-            who = "+".join(c["name"] for c in claudia.cast_of(s))
-            rows += [(c, f"{who}: no measured canon - check face, hair and clothes by eye") for c in cands]
+            cast = claudia.cast_of(s)
+            who = "+".join(c["name"] for c in cast)
+            sims = face_sims(P, cast, cands)         # {} without the config key face_id_model
+            if not sims:
+                rows += [(c, f"{who}: no measured canon - check face, hair and clothes by eye") for c in cands]
+            else:
+                rows += [(c, f"{who}: face {face_note(sims[c])} - check hair and clothes by eye") for c in cands]
+            cur = out.get(name) if out.get(name) and P.path(out[name]).exists() else None
+            val = lambda c: -1.0 if sims.get(c) is None else sims[c]  # noqa: E731
+            best = max(cands, key=val) if sims else cands[0]
             if name in man:
                 out[name] = man[name]
-            elif not (out.get(name) and P.path(out[name]).exists()):
-                out[name] = relp(P, cands[0])
-            log.append(f"start {name}: {out[name]}  ({'by hand' if name in man else who + ', no canon check - look at sheet_start.jpg'})")
+            elif cur is None:
+                out[name] = relp(P, best)
+            elif sims and val(best) >= face_id.STRANGER > val(next((c for c in cands if relp(P, c) == cur), best)):
+                out[name] = relp(P, best)            # the picture picked before is a stranger, another one is not
+            # else: the earlier pick stays (its clips may be rendered already)
+            log.append(f"start {name}: {out[name]}  ({'by hand' if name in man else who + (', face ' + ', '.join(f'{c.stem[-2:]} {face_note(sims[c])}' for c in cands) if sims else ', no canon check - look at sheet_start.jpg')})")
+            seen = [v for v in sims.values() if v is not None]
+            if sims and name not in man and "from behind" not in (s.get("framing") or "").lower():
+                if seen and max(seen) < face_id.STRANGER:
+                    log.append(f"  WARNING {name}: no variant looks like {who} (best {max(seen):.2f} < {face_id.STRANGER})"
+                               + (" - two people in the picture score lower, look at it" if len(cast) > 1 else
+                                  " - frame closer (\"medium shot from the waist up\", the face lit) or make new variants "
+                                  "before the clips are rendered"))
+                elif not seen:
+                    log.append(f"  note {name}: no face found in any variant ({who}) - check by eye")
             save(P, sel)
             continue
         res = {c: canon.measure(c, claudia.STREAK, side_of(s)) or {} for c in cands}

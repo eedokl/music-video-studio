@@ -73,6 +73,7 @@ Another lead (Oliver, sings) and Claudia as a silent part; seven places in one h
 | Small things on a person: "the small orange hair clip stays fixed in her hair, nothing floats", the head still | the clip drifted through the picture when she turned her head |
 | A silent part's start pose already is her look (mouth closed, kind) | a look that had to develop in the clip turned stern or opened the mouth |
 | Garbled letters in a clean prompt: another seed (shot `"seed"`), not a longer prompt | e07 painted "GJICEST" on a model railway; "no text" added to the prompt was refused by `jobs.py` (rightly), seed 8107 was clean |
+| Measure the face of another character's start images (`face_id.py`, config `face_id_model`) | the four strangers of c05 / f05 scored 0.22-0.26 against his references, every picture that showed him 0.47-0.76; two-shots score lower (0.27-0.49) - a hint there, not a verdict |
 | Check every take on 6 frames, not 3 (`sheets.py --frames 6`) | lettering, a fade to black at the end and a camera push-in lay between start, middle and end |
 | Re-pick single shots with `pick.py clips --only c05,f05` | measuring all 88 takes again for two new shots took minutes |
 
