@@ -145,6 +145,7 @@ def start_image_prompt(s, wardrobe, look_img, version="studio"):
     cast = cast_of(s)
     if cast is not None:
         return _start_generic(cast, s, wardrobe, look_img)
+    wardrobe = s.get("wardrobe") or wardrobe          # a shot may change her clothes (bridge, night scene)
     wide = is_wide(s.get("framing"))
     place = s.get("set", "")
     if version == "live" and "stage" not in place.lower():
@@ -165,6 +166,7 @@ def lipsync_prompt(s, wardrobe, look_vid, line, style=None):
     cast = cast_of(s)
     if cast is not None:
         return _lipsync_generic(cast, s, wardrobe, look_vid, words)
+    wardrobe = s.get("wardrobe") or wardrobe          # a shot may change her clothes (bridge, night scene)
     if s.get("timeline") and (style or "timeline") == "timeline":   # style "plain" = the A prompt of a timeline shot
         return timeline_prompt(s, wardrobe, look_vid, words)
     manner = (s.get("manner") or "into the camera").strip().rstrip(".")

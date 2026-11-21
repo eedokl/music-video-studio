@@ -146,8 +146,10 @@ frames, closed mouths, hidden scene cuts and frozen stretches rejected ("frozen"
 against the clip's own motion, so a calm shot with a static camera is not frozen); moving clips warned when they
 barely move; when every moving clip of a shot has a hidden cut or freezes, the automatic pick is the still with the depth
 move - the clips stay on the takes page; a hand pick on another start image is rated but never the automatic pick), contact sheets `sheet_start.jpg`, `sheet_broll.jpg`, `sheet_clips.jpg`, log in
-`picks.log`. Start images that fail only on the microphone (two booms, or the boom on the wrong cheek) are
-repaired automatically in the night-run hook (`pick.py start --repair-mic`, ai-video `mic_repair.py`: wrong boom
+`picks.log`. Start images that fail only on the microphone (two booms, or the boom on the wrong cheek): make more
+variants (`jobs.py --only <shot> --start 5`) and stage her frontally. The repair is **off by default** (it left grey
+patches on the cheek in 3 of 6 images); opt in with `jobs.py --repair-mic` or project `"mic_repair": true`, then the
+night-run hook repairs them (`pick.py start --repair-mic`, ai-video `mic_repair.py`: wrong boom
 retouched + FLUX texture, else Qwen-Edit "change only the microphone"; result `ai/start/<shot>_v<k>m.png`,
 re-checked). **Look at the sheets**: mic (one, beige, her right cheek), one streak, adult face, no lettering, no scene
 jump, Christian/others not recognisable. Override in `selection.json["manual"]`; new start image -> run the night

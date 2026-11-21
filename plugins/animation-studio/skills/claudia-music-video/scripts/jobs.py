@@ -139,6 +139,9 @@ def main():
     ap.add_argument("--all-starts", action="store_true",
                     help="clips from every start image variant of the shots (more takes to choose from), not only the pick")
     ap.add_argument("--ignore-checks", action="store_true")
+    ap.add_argument("--repair-mic", action="store_true",
+                    help="repair start images that fail only on the microphone (off by default: the retouch "
+                         "left grey patches on the cheek; also project.json \"mic_repair\": true)")
     a = ap.parse_args()
     P = Project(a.project)
     P.check("claudia-music-video")                 # before the night run, not only at the cut (a wrong "title" cost a run)
@@ -360,10 +363,13 @@ def main():
             raise SystemExit("fix the brief (or --ignore-checks) - jobs.json not written")
     # no absolute paths in jobs.json: night_run expands ${CLAUDE_PLUGIN_ROOT} at run time and runs hooks in the
     # project folder (the jobs file's folder), so the hook survives plugin updates and moved projects
+    # the mic repair is opt-in (lgtm_nc, 2026-11-21: of 6 repaired start images 3 kept a grey patch or a rest of
+    # the boom on the cheek, one lost the microphone) - more start variants are the default answer
+    repair = a.repair_mic or bool(P.get("mic_repair"))
     hook = MEDIAPIPE + ["${CLAUDE_PLUGIN_ROOT}/skills/claudia-music-video/scripts/pick.py", "auto", "."]
     d = {"phases": ["flux", "qwen_edit", "depth", "ltx", "s2v", "infinitetalk", "humo", "minimax_h3", "ltx25", "wan"],
          "selection": "selection.json",
-         "hooks": {"after:flux": hook, "after:qwen_edit": hook + ["--repair-mic"]}, "jobs": jobs}
+         "hooks": {"after:flux": hook, "after:qwen_edit": hook + (["--repair-mic"] if repair else [])}, "jobs": jobs}
     n_new = len(jobs)
     d = merged(P.dir / "jobs.json", d, only, "jobs")
     jobs = d["jobs"]
