@@ -17,6 +17,9 @@ project.json:
            "caps" (upper case, clay highlight #D97757 - the Claudia videos) | "pop" / "rock" / "whisper" (letter by
            letter: each letter pops in as it is sung, held words stretch with the voice, the line kicks on the beat;
            rock = big Impact, red; whisper = small, pale, trembling) | {"base": "rock", "highlight": "#7fe3ff", ...}
+           Tight lines (the next line starts while the last words are still sung): the line moves one row up, a
+           little paler, and stays until its last word has stood 0.7 s (LAST_WORD) - also across a cut into the next
+           section; with enough pause between two lines there is one row as before.
   "lyrics_skip": ["Pro-Limit", {"contains": "Ha. Ha."}, {"index": 46}]   (project or section) lines without lyrics
            (announcements, effects); a string = start of the line text
   "lyrics_lines": [{"line": "Mein letzter", "style": "whisper"}, {"contains": "Ultra", "style": {"base": "pop",
@@ -194,8 +197,8 @@ def line_hit(spec, line):
 def lyric_lines(lines, words, S, E, skip=(), styles=()):
     """skip: line specs that get no lyric (announcements, effects); styles: [(spec, style)] per-line style overrides."""
     out = []
-    for l in lines:
-        if l["end"] < S or l["t"] > E or any(line_hit(k, l) for k in skip):
+    for l in lines:                                            # all lines: the neighbours decide how long one stays
+        if any(line_hit(k, l) for k in skip):
             continue
         ws = [w for w in words if w.get("line") == l["line"] and w["word"].strip("–—-")]
         st = next((st for spec, st in styles if line_hit(spec, l)), None)
@@ -203,7 +206,18 @@ def lyric_lines(lines, words, S, E, skip=(), styles=()):
                     "style": st})
     for i in range(len(out) - 1):                              # a line stays until just before the next one
         out[i]["t1"] = min(out[i]["t1"] + 0.4, max(out[i + 1]["t0"] - 0.1, out[i]["t0"] + 0.5))
-    return out
+    # Tight lines (fast verses: the next line starts while this one's last words are sung - El-Ge-Te-Em: in 26 of 51
+    # lines words stood < 0.5 s or never appeared): the line stays until its last word has stood LAST_WORD s and
+    # moves one row up ("up") when the next line comes in. Never three rows: it is gone before the line after next.
+    for i in range(len(out) - 1):
+        ws = out[i]["words"]
+        if not ws:
+            continue
+        need = ws[-1][1] - 0.08 + LAST_WORD + 0.25           # + the fade-out
+        if need > out[i]["t1"]:
+            limit = out[i + 2]["t0"] - 0.05 if i + 2 < len(out) else need
+            out[i]["t1"], out[i]["up"] = max(out[i]["t1"], min(need, limit)), out[i + 1]["t0"]
+    return [z for z in out if z["t1"] > S and z["t0"] < E]   # also a line still standing from the shot before
 
 
 LYRIC_STYLES = {   # project.json "lyrics_style": a name or a dict overriding these keys
@@ -220,6 +234,7 @@ LYRIC_STYLES = {   # project.json "lyrics_style": a name or a dict overriding th
                 "y": -70, "reveal": "letters", "bounce": 0, "shake": 1.6},
 }
 SPREAD, LEAD = 0.65, 0.08          # letters spread over 65 % of a word; text a hair before the voice
+LAST_WORD = 0.7                    # a line's last word stands at least this long (s), see lyric_lines
 
 
 def lyric_style(P, section=None):
@@ -235,7 +250,7 @@ def lyric_style(P, section=None):
     return base
 
 
-def draw_letters(img, z, t, st, beats):
+def draw_letters(img, z, t, st, beats, dy=0.0, dim=1.0):
     """Letter by letter as in "Prompts!": each letter pops in (small -> big with a little overshoot) when its share of
     the word is sung, so held words ("meeeehr") run along with the voice; the line kicks on each beat."""
     f = st["font"]
@@ -249,10 +264,10 @@ def draw_letters(img, z, t, st, beats):
         widths = [meas.textlength(w, font=f) for w, _, _ in words]
         space = meas.textlength(" ", font=f)
         total = sum(widths) + space * (len(widths) - 1)
-    fade = max(0.0, min(1.0, (t - z["t0"]) / 0.15, (z["t1"] - t) / 0.2))
+    fade = max(0.0, min(1.0, (t - z["t0"]) / 0.15, (z["t1"] - t) / 0.2)) * dim
     prev = max((b for b in beats if b <= t), default=-9)
     kick = max(0.0, 1 - (t - prev) / 0.18)
-    y = H + st["y"] - st.get("bounce", 0) * kick
+    y = H + st["y"] - st.get("bounce", 0) * kick * (0 if dy else 1) + dy
     d = ImageDraw.Draw(img)
     x = (W - total) / 2
     for (w, ws, we), ww in zip(words, widths):
@@ -281,12 +296,19 @@ def draw_letters(img, z, t, st, beats):
 
 
 def draw_lyrics(img, lines, t, st, beats=()):
-    z = next((z for z in lines if z["t0"] <= t < z["t1"]), None)
-    if not z or not z["words"]:
-        return
-    st = z.get("style") or st
+    """The line being sung; a tight line before it that still has to be read stands one row above, a little paler."""
+    live = [z for z in lines if z["t0"] <= t < z["t1"] and z["words"]]
+    for z in live[-2:-1]:                               # the line that moved up (lyric_lines "up")
+        s1 = z.get("style") or st
+        row = -1.35 * s1["font"].size * min(1.0, max(0.0, (t - z.get("up", t)) / 0.15))
+        draw_line(img, z, t, s1, beats, row, 0.8)
+    if live:
+        draw_line(img, live[-1], t, live[-1].get("style") or st, beats)
+
+
+def draw_line(img, z, t, st, beats=(), dy=0.0, dim=1.0):
     if st.get("reveal") == "letters":
-        return draw_letters(img, z, t, st, beats)
+        return draw_letters(img, z, t, st, beats, dy, dim)
     d = ImageDraw.Draw(img)
     f = st["font"]
     words = [(w.upper() if st["upper"] else w, a0, a1) for w, a0, a1 in z["words"]]
@@ -295,8 +317,8 @@ def draw_lyrics(img, lines, t, st, beats=()):
     if tw > W - 80:                                   # a long line shrinks to fit (Das Warum: 70 letters in "caps"
         f = font(st["fonts"], int(st["size"] * (W - 80) / tw))   # ran out of the picture on the left)
         tw = d.textlength(text, font=f)
-    x0, y0 = (W - tw) / 2, H + st["y"]
-    a = min(1.0, (t - z["t0"]) / 0.2, (z["t1"] - t) / 0.25)
+    x0, y0 = (W - tw) / 2, H + st["y"] + dy
+    a = max(0.0, min(1.0, (t - z["t0"]) / 0.2, (z["t1"] - t) / 0.25)) * dim
     if st.get("box"):
         r, g, b, alpha = st["box"]
         d.rounded_rectangle((x0 - 22, y0 - 12, x0 + tw + 22, y0 + f.size + 16), radius=18, fill=(r, g, b, int(alpha * a)))

@@ -36,6 +36,8 @@ nav { border-right: 1px solid var(--line); overflow-y: auto; }
 .badge { font-size: 11px; padding: 2px 7px; border-radius: 10px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
 .badge.mine { color: #1a0f0a; background: var(--clay); border-color: var(--clay); font-weight: 600; }
 .badge.auto { color: #0f1a11; background: var(--ok); border-color: var(--ok); }
+.badge.fresh { color: var(--ok); border-color: var(--ok); }
+.made.new { color: var(--ok); }
 .badge.warn { color: #1d1503; background: var(--warn); border-color: var(--warn); }
 .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); margin-left: 4px; }
 section.stage { display: flex; flex-direction: column; gap: 14px; padding: 16px; overflow-y: auto; min-height: 0; }
@@ -113,6 +115,11 @@ let data = null, idx = 0, playing = false, changed = [], building = false, lockU
 function fmt(t) { const m = Math.floor(t / 60); return m + ':' + (t - 60 * m).toFixed(2).padStart(5, '0'); }
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 function current(s) { return s.manual || s.auto; }
+// when a take was rendered; 'new' = within 3 hours of the newest take of the whole project (the last batch)
+function madeText(ts) { const d = new Date(ts * 1000), p = n => String(n).padStart(2, '0');
+  return p(d.getDate()) + '.' + p(d.getMonth() + 1) + '. ' + p(d.getHours()) + ':' + p(d.getMinutes()); }
+function newest() { return Math.max(0, ...data.shots.flatMap(s => s.takes.map(t => t.made || 0))); }
+function isNew(ts) { return ts && ts > newest() - 3 * 3600; }
 function label(t) {
   if (t.file === 'still') return 'still';
   return t.kind === 's2v' ? 'S2V' : t.kind === 'lipsync' ? 'LTX ' + (t.file.match(/_s(\d+)(?:_p[ab])?\.mp4$/) || ['', ''])[1]
@@ -145,6 +152,8 @@ function list() {
     if (!s.line) ln.style.fontStyle = 'italic';
     const sm = el('small', null, s.technique + (s.engine && s.engine !== 'ltx' ? ' · ' + s.engine.toUpperCase() + ' planned' : '')
                             + ' · ' + s.takes.length + ' takes');
+    const last = Math.max(0, ...s.takes.map(t => t.made || 0));
+    if (last) { const tm = el('span', isNew(last) ? 'made new' : 'made', ' · ' + madeText(last)); sm.appendChild(tm); }
     if (changed.includes(s.name)) sm.appendChild(el('span', 'dot'));
     ln.appendChild(sm); d.appendChild(ln);
     const t = s.takes.find(x => x.file === current(s));
@@ -187,6 +196,7 @@ function show(i, autoplay = true) {
     u.appendChild(el('span', 'title', label(t) + (t.image && t.file !== 'still' ? ' · ' + t.image : '')));
     if (t.file === s.auto) u.appendChild(el('span', 'badge auto', 'automatic pick'));
     if (t.file === s.manual) u.appendChild(el('span', 'badge mine', 'your choice'));
+    if (t.made) u.appendChild(el('span', 'badge' + (isNew(t.made) ? ' fresh' : ''), (isNew(t.made) ? 'new · ' : '') + madeText(t.made)));
     if (t.style) u.appendChild(el('span', 'badge', t.style));
     if (t.score != null) u.appendChild(el('span', 'badge', 'lip ' + t.score.toFixed(2)));
     if (t.motion != null) u.appendChild(el('span', 'badge', 'motion ' + t.motion));

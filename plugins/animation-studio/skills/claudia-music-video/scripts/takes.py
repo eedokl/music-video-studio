@@ -225,6 +225,7 @@ def build(P, only=None, rebuild=False, quiet=False):
             style = (clips.read_meta(c) if clips.meta_path(c).exists() else {}).get("prompt_style")
             rows.append(dict(file=rel, preview=pv.relative_to(P.dir).as_posix(), lag=lag, key=key, score=li.get("score"),
                              motion=li.get("motion"), warn="; ".join(warn), kind=c.parent.name, image=tag,
+                             made=round(c.stat().st_mtime),          # the page shows when a take was rendered
                              style={"plain": "prompt A (plain)", "timeline": "prompt B (timeline)"}.get(style)))
         if still:
             pv = P.dir / "takes" / s["name"] / "_still.mp4"
