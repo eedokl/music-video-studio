@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Portal flight</title>
+    <!-- own fonts: <link rel="stylesheet" href="./public/fonts/fonts.css" /> and FONT_FLAT / FONT_MONO in src/song.js -->
+    <style>
+      html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+      #frame { position: absolute; inset: 0; display: grid; place-items: center; }
+      #stage { position: relative; aspect-ratio: 16 / 9; width: min(100vw, calc(100vh * 16 / 9)); }
+      #stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+      #glow { mix-blend-mode: screen; opacity: 0.85; pointer-events: none; }
+      #start { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, 0.45); cursor: pointer;
+        font: 600 20px Consolas, "Courier New", monospace; letter-spacing: 0.3em; color: #2bff88; text-transform: uppercase; }
+      #start.gone { display: none; }
+      #label { position: absolute; left: 3.2%; top: 4%; font: 600 min(3.4vw, 6vh) Consolas, "Courier New", monospace; letter-spacing: 0.12em; color: #fff; opacity: 0.85; text-shadow: 0 0 0.4em rgba(255,255,255,0.5); pointer-events: none; }
+      #hud { position: absolute; left: 12px; bottom: 8px; font: 500 12px Consolas, "Courier New", monospace; color: #6a6a6a; }
+      body.render #hud, body.render #start { display: none; }
+      body.render #stage { width: 100vw; }
+    </style>
+    <script type="importmap">
+      { "imports": { "three": "./node_modules/three/build/three.module.js", "three/addons/": "./node_modules/three/examples/jsm/" } }
+    </script>
+  </head>
+  <body>
+    <div id="frame">
+      <div id="stage">
+        <canvas id="gl"></canvas>
+        <canvas id="glow" width="480" height="270"></canvas>
+        <div id="label"></div>
+        <div id="start">click = start with sound</div>
+      </div>
+    </div>
+    <div id="hud"></div>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

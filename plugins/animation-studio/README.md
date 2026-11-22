@@ -15,6 +15,7 @@ Every user skill was tested by rebuilding finished films of its kind and measuri
 | `animated-music-video` | "Make a cartoon video of this chorus with Tim and Lia singing it." | Synfig scenes on painted sets, lip sync per figure, dancing on the beat, gestures, props, gags, lyrics |
 | `bricks-music-video` | "Turn the second verse into a brick film." | Blender + LDraw minifigs, stop-motion timing on twos, printed mouth decals, comic lettering |
 | `lyric-music-video` | "A lyric video for our team song that presents the roles from this page." | three.js scenes rendered frame-exact; every letter on the voice; a new visual identity every time |
+| `portal-music-video` | "Fly through this song: every part its own world, joined by portals - a journey through time." | a three.js flight that plays live in the browser: one world per part of the song (own look, resolution and rendering technique), portals crossed on the bar line with no cut, lyrics as signs word by word; renders frame-exact, on the CPU alone when the graphics card is busy |
 | `claudia-music-video` | "A Claudia music video for this song, live on stage." | start images (Qwen-Image-Edit / FLUX), LTX-2.3 lip sync and moving B-roll, takes picked by measuring the mouth |
 | `animated-powerpoint` | "Let the four figures from slide 5 step out of the slide." | figures cut from the deck, rigged, animated in classic style (entrances, gestures, walk, lip sync for raster figures), a 2.5D stage for whole scenes, a deck intro with page turns and a finale – clips that fit back into the deck |
 | `talking-character` | "Tim asks the Computer about context windows – 20 seconds." | script → character voices (Qwen3-TTS / Piper / system) → lip sync → dialogue direction |
@@ -40,7 +41,7 @@ Every user skill was tested by rebuilding finished films of its kind and measuri
 ```
  user skills      animated-music-video  bricks-music-video  lyric-music-video  claudia-music-video
                   animated-powerpoint   talking-character   animated-short     video-review
-                  animated-3d-film
+                  animated-3d-film      portal-music-video
                           │                    │                   │                 │
  building blocks  song-analysis · toon-2d · characters · voice · ai-video · bricks-3d · stage-3d · film-finish
                           └──────────────────────┬──────────────────────────────────┘
@@ -102,6 +103,7 @@ the film (default 1280x720).
 | animated-music-video | a cartoon music video with three singing figures (one chorus, later the whole song) | who sings: 84–97 % frame agreement; word timing median 0.04–0.10 s; 0 lip-sync gaps; whole film frame-identical in length incl. credits, second language track, pop-up version and 48 fps |
 | bricks-music-video | the brick-film version of the same song | open/closed mouth agrees on 98.5–98.7 % of frames; all cuts on beats; beat offset 10 ms |
 | lyric-music-video | seven typographic lyric videos | tempo and hits identical or closer to the beat; words closer to the voice than every original (median 80–105 ms vs 110–440 ms) |
+| portal-music-video | a 4:32 portal flight through fifteen worlds, built by hand first | beat grid 119.4 BPM from the analysis (the hand-built film first used a grid 155 ms off the riff hits); the automatic cut of the song hits eight of the nine bar lines the hand-made plan used between verse 1 and the last hook; all 17 crossings of the starter flight and all 14 of the reference film seamless by measurement |
 | claudia-music-video | an AI-singer music video | lip score on the comparable shot 0.58 vs 0.22; one microphone in 6/6 frames (the reference had two); mouth measurement reproduces the reference log exactly |
 | animated-powerpoint | a presentation whose four figures step out of the slides | slide export, upscale and timing identical; nine scenes as reusable recipes: event frames identical or ±1–3 frames, loudness ±0.5 LUFS |
 | talking-character | a short talking-figure clip | mouth track 97 % identical, same 166 frames |
@@ -183,7 +185,8 @@ listeners turn to the singer, off = unchanged scene).
   ldraw_dir, node + browser). The tests use a copy of `~/.animation-studio/config.json`, never the file itself.
 - lyric-music-video needs the engine's `node_modules` (`npm install` is a download): set
   `ANIMATION_STUDIO_E2E_NODE_MODULES=<an existing lyric-video project>/video/node_modules` - its packages are linked
-  into the temp project and unlinked afterwards; without it the test SKIPs.
+  into the temp project and unlinked afterwards; without it the test SKIPs. portal-music-video uses the same
+  variable (it needs `three` and `puppeteer-core` from there) and a configured browser; it renders on the CPU.
 - The whole suite takes about 2 minutes on the studio machine (1-21 s per test; the first run after a plugin update
   builds the uv environments of the test drivers once, ~10 s each).
 

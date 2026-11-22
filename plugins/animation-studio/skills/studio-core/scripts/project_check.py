@@ -108,6 +108,7 @@ SONG = {**SHARED,                                     # music-video projects (so
         "mic_tries": {"type": (INT,)}, "mic_repair": {"type": (BOOL,)},
         "pace": {"type": (STR,), "values": ("calm", "medium", "fast")}, "code_layer": {"type": (DICT,)},   # claudia code_film.py
         "identity": {"type": (STR,)}, "tempo": {"type": (DICT,)}, "word_passes": {"type": (LIST,)},   # lyric-music-video
+        "flight": {"type": (STR,), "doc": "folder of the portal flight inside the project (new_flight.py)"},   # portal-music-video
         "held_max": {"type": (NUM,)}, "held_stretch": {"type": (BOOL, NUM, DICT)}, "held_style": {"type": (STR, DICT)},
         }
 TALK = {**SHARED,                                     # talking-character (new_talk.py)
@@ -173,7 +174,7 @@ FILM3D = {                                            # animated-3d-film project
 }
 SCHEMAS = {"song": SONG, "talk": TALK, "short": SHORT, "deck": DECK, "film3d": FILM3D}
 FAMILY = {"animated-music-video": "song", "bricks-music-video": "song", "claudia-music-video": "song",
-          "lyric-music-video": "song", "song-analysis": "song", "talking-character": "talk",
+          "lyric-music-video": "song", "portal-music-video": "song", "song-analysis": "song", "talking-character": "talk",
           "animated-short": "short", "animated-powerpoint": "deck", "animated-3d-film": "film3d"}      # film-finish / video-review: detected
 
 

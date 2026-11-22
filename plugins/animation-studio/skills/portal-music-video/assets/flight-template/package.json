@@ -1,0 +1,17 @@
+{
+  "name": "portal-flight",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node serve.mjs 5245",
+    "check": "node check.mjs",
+    "render": "node render.mjs"
+  },
+  "dependencies": {
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.16.0"
+  }
+}
