@@ -148,6 +148,14 @@ camera on the hit), 8 takes. What drifted, and what the user chose:
   wording: "her right cheek (left side of the image)" put it on the wrong side in 20 of 20 edits; naming ONLY
   the picture side ("on the LEFT side of the picture ... the cheek on the right side of the picture, next to
   the star clip, stays bare") was right in 9 of 10.
+- **Add it on the face only, never by an edit of the whole picture.** The add-only edit re-renders everything and
+  invents a second microphone in the scene - a desk microphone, one lying on the table, a boom in the air - in
+  about 10 of 24 pictures (overlooked at first because only the faces were compared). Editing a square around the
+  head and pasting only the face area back (ai-video `face_edit.py`): 24 of 24 with one small headset on the
+  right side, also with the head turned, no seam, the rest of the picture untouched. This is project.json
+  `"mic": "added"` (opt-in since 0.21.0). Measures that did NOT work for checking: the difference picture between
+  the bare and the edited image (the whole picture changes, grain included) and a line measure for cables below
+  the chin (jacket collars score like cables) - cables are found by looking.
 - **A small headset has to be asked for in sizes**: "one hair-thin skin-coloured wire ... a capsule no bigger
   than a grain of rice" (the user found the default boom "really very big"). It costs accuracy - about 17 of 24
   on the right side - so make three seeds and pick by eye. Rejected: shrinking a placed microphone by a second

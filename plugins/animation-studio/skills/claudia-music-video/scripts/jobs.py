@@ -116,7 +116,8 @@ def merged(path, new, shots, key):
     old = json.loads(path.read_text(encoding="utf-8"))
     if key is None:                                   # prompts.json: {shot: {...}}
         return dict(old, **new)
-    keep = [j for j in old.get(key, []) if j.get("id", "").split("/")[0] not in shots]
+    ids = {j.get("id") for j in new[key]}             # shared jobs ("refs/bare_1") come with every run: no doubles
+    keep = [j for j in old.get(key, []) if j.get("id", "").split("/")[0] not in shots and j.get("id") not in ids]
     return dict(new, **{key: keep + new[key]})
 
 
@@ -168,6 +169,19 @@ def main():
     def add(kind, jid, out, **args):
         jobs.append({"id": jid, "kind": kind, "out": out, "args": args})
 
+    bare_refs = {}                                    # "mic": "added": Claudia's references without the headset
+
+    def bare_ref(ref):
+        """The job that edits the headset out of one reference image (made once) -> its output path."""
+        if ref not in bare_refs:
+            out = f"ai/refs_bare/{Path(ref).stem}.png"
+            add("qwen_edit", f"refs/bare_{len(bare_refs) + 1}", out, refs=[ref], prompt=claudia.MIC_REF_BARE,
+                neg=claudia.NEG_BARE, seed=4101 + len(bare_refs))
+            bare_refs[ref] = out
+        return bare_refs[ref]
+
+    mic_tries = max(1, min(3, int(P.get("mic_tries", 2))))
+    n_added = 0
     sf = P.dir / "selection.json"
     sj = json.loads(sf.read_text(encoding="utf-8")) if sf.exists() else {}
     sel_start = dict(sj.get("start") or {}, **((sj.get("manual") or {}).get("start") or {}))
@@ -190,7 +204,23 @@ def main():
             cands = []
             if s.get("start_image"):                 # a given start image (re-shoot of an earlier film's shot)
                 cands = [rel(P, P.path(s["start_image"]))]
+            added = claudia.mic_added(s)
+            if added:                                 # two steps: the picture without a headset, then only the headset
+                n_added += 1
+                bp = pr["start_image_bare"] = claudia.start_image_prompt(s, wardrobe, look_img, version, bare=True)
+                pr["mic_add"] = claudia.MIC_ADD
+                problems += [f"{name} bare start image: {e}" for e in claudia.check(bp, "image_bare", s)]
+                refs_b = [bare_ref(r) for r in use_refs]
             for k in range(1, (0 if cands else nst) + 1):
+                if added:
+                    bare = f"ai/start_bare/{name}_v{k}.png"
+                    add("qwen_edit", f"{name}/bare_v{k}", bare, refs=refs_b, prompt=bp, neg=claudia.NEG_BARE, seed=base + k)
+                    for t in range(mic_tries):        # tries of one picture: v1, v1b, v1c
+                        out = f"ai/start/{name}_v{k}{'bc'[t - 1] if t else ''}.png"
+                        cands.append(out)
+                        add("qwen_edit", f"{name}/start_v{k}{'bc'[t - 1] if t else ''}", out, refs=[bare], face=True,
+                            prompt=claudia.MIC_ADD, neg=claudia.MIC_ADD_NEG, seed=base + 50 + 10 * k + t)
+                    continue
                 out = f"ai/start/{name}_v{k}.png"
                 cands.append(out)
                 add("qwen_edit", f"{name}/start_v{k}", out, refs=use_refs, prompt=sp, neg=claudia.neg_image(s), seed=base + k)
@@ -380,6 +410,10 @@ def main():
     for j in jobs:
         kinds[j["kind"]] = kinds.get(j["kind"], 0) + 1
     print(f"-> jobs.json: {len(jobs)} jobs {kinds}; prompts.json; wardrobe: {wardrobe}")
+    if n_added:
+        print(f'"mic": "added": {n_added} shot(s) get a start image without a headset and {mic_tries} tries of the added '
+              "one per picture - run the image phases first (night_run.py jobs.json --phases flux,qwen_edit) and look "
+              "at sheet_start*.jpg (side, size, no cable) before the clips are rendered")
 
 
 if __name__ == "__main__":

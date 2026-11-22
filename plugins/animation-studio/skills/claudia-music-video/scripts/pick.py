@@ -171,6 +171,7 @@ def face_note(v):
 
 
 ONLY = None                                           # --only: the shots to pick (the others keep their entry)
+BARE = {}                                             # canon values of the start images without a headset
 
 
 def _sections(P):
@@ -222,16 +223,31 @@ def pick_start(P, sel, log, rows, repair_mic=False):
             save(P, sel)
             continue
         res = {c: canon.measure(c, claudia.STREAK, side_of(s)) or {} for c in cands}
+        # "mic": "added": the same picture exists without the headset (ai/start_bare/) - the microphone counts as
+        # there when the line share on her cheek rose against that picture (a hair edge alone measures up to 0.026)
+        gain = {}
+        if claudia.mic_added(s):
+            for c in cands:
+                tag = c.stem[len(name) + 1:].rstrip("bcm")
+                bare = P.dir / "ai" / "start_bare" / f"{name}_{tag}.png"
+                if bare.exists() and res[c].get("face"):
+                    b = BARE.get(bare) or BARE.setdefault(bare, canon.measure(bare, claudia.STREAK, side_of(s)) or {})
+                    if b.get("face"):
+                        gain[c] = res[c].get("mic_expected", 0.0) - b.get("mic_expected", 0.0)
+        no_mic = lambda c: c in gain and gain[c] < claudia.MIC_GAIN  # noqa: E731
         for c, m in res.items():
+            mic = ("TWO/WRONG SIDE" if m.get("mic_both") else
+                   (f"added {gain[c]:+.3f}" + (" NOT FOUND?" if no_mic(c) else "")) if c in gain else
+                   ("missing?" if m.get("mic_missing") else "ok"))
             rows.append((c, f"streak {'yes' if m.get('streak') else 'NO'}  wrong side {'YES' if m.get('wrong') else 'no'}"
-                            f"  mic {'TWO/WRONG SIDE' if m.get('mic_both') else ('missing?' if m.get('mic_missing') else 'ok')}"
-                            f"  value {m.get('value', -1):.2f}"))
+                            f"  mic {mic}  value {m.get('value', -1):.2f}"))
         if name in man:
             out[name] = man[name]
             log.append(f"start {name}: by hand {man[name]}")
             save(P, sel)
             continue
-        ok = [c for c in cands if res[c].get("streak") and not res[c].get("wrong") and not res[c].get("mic_both")]
+        ok = [c for c in cands if res[c].get("streak") and not res[c].get("wrong") and not res[c].get("mic_both")
+              and not no_mic(c)]
         if not ok and repair_mic:
             fix = [c for c in cands if res[c].get("streak") and not res[c].get("wrong") and res[c].get("face")]
             if fix:
@@ -254,13 +270,18 @@ def pick_start(P, sel, log, rows, repair_mic=False):
                     ok = [dst] if mic_repair.passes(res[dst]) else []
         # no variant passes: the least wrong one (streak present > streak on the right side > one mic > value), not
         # simply the first file name (user test: the fallback took the start image WITHOUT her streak)
-        least_wrong = lambda c: (bool(res[c].get("streak")), not res[c].get("wrong"), not res[c].get("mic_both"),  # noqa: E731
-                                 res[c].get("value", -1))
+        # "mic": "added": the streak belongs to the picture, the headset to the try - one headset on the right side
+        # first (the streak measure rejects right pictures often enough; the microphone was the reason for the try)
+        least_wrong = ((lambda c: (not res[c].get("mic_both") and not no_mic(c), bool(res[c].get("streak")),
+                                   not res[c].get("wrong"), res[c].get("value", -1))) if gain else
+                       (lambda c: (bool(res[c].get("streak")), not res[c].get("wrong"), not res[c].get("mic_both"),
+                                   res[c].get("value", -1))))
         best = max(ok, key=lambda c: res[c].get("value", -1)) if ok else max(cands, key=least_wrong)
         out[name] = relp(P, best)
         log.append(f"start {name}: {best.name}" + ("" if ok else "  (NO variant passes: streak on the image left, one mic - check by eye, "
                                                          "or make new variants)") +
-                   "  [" + ", ".join(f"{c.stem[-2:]} {res[c].get('value', -1):.2f}" for c in cands) + "]")
+                   "  [" + ", ".join(f"{c.stem[len(name) + 1:]} {res[c].get('value', -1):.2f}" for c in cands) + "]"
+                   + ("  (headset added - look at sheet_start.jpg before the clips: side, size, no cable)" if gain else ""))
         save(P, sel)                                  # per shot: a crash later keeps the picks made so far
 
 

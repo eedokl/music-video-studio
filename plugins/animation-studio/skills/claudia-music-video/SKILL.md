@@ -154,7 +154,14 @@ variants (`jobs.py --only <shot> --start 5`) and stage her frontally. The repair
 patches on the cheek in 3 of 6 images); opt in with `jobs.py --repair-mic` or project `"mic_repair": true`, then the
 night-run hook repairs them (`pick.py start --repair-mic`, ai-video `mic_repair.py`: wrong boom
 retouched + FLUX texture, else Qwen-Edit "change only the microphone"; result `ai/start/<shot>_v<k>m.png`,
-re-checked). **Look at the sheets**: mic (one, beige, her right cheek), one streak, adult face, no lettering, no scene
+re-checked). **The headset added afterwards** (`"mic": "added"` in project.json, or on one shot; opt-in): the start
+image is made WITHOUT a microphone (`ai/start_bare/`, from references whose headset was edited away once,
+`ai/refs_bare/`), then a second edit adds only a small beige headset - limited to her face (ai-video
+`face_edit.py`), so the rest of the picture stays as it is. Each picture gets `"mic_tries"` (default 2) tries
+(`<shot>_v1.png`, `_v1b.png`); the pick takes one headset on the right side that was really added (cheek line share
+against the bare picture). On six test shots 24 of 24 tries were right (painted in one step: 19 of 38 wrong side,
+cables, doubles); it costs about 1.5 min more per shot and the capsule colour varies, so look at the sheets first.
+Not used for shots from behind, shots with other people and given start images. **Look at the sheets**: mic (one, beige, her right cheek), one streak, adult face, no lettering, no scene
 jump, Christian/others not recognisable. Override in `selection.json["manual"]`; new start image -> run the night
 run again for that shot (`--only s05`), new clips get new names. A re-made start image that the canon check scores
 LOWER than the old one is not taken automatically (nothing is re-rendered): put it into `manual.start` first.

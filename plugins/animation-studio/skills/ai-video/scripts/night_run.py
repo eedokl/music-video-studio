@@ -18,7 +18,8 @@ jobs.json (written by a user skill, e.g. claudia-music-video jobs.py; paths rela
                       "audio": {"src": "analysis/vocals_lead.wav", "from": 9.48, "dur": 4.3},
                       "prompt": "...", "frames": 97, "seed": 41, "strength": 1.0,
                       "meta": {"song_start": 9.48, "lead_in": 0.25, "shot": "s02"}}}]}
-Kinds: flux (comfy_image), qwen_edit, depth (estimate_depth, one subprocess for the phase), ltx_lipsync, ltx_moving,
+Kinds: flux (comfy_image), qwen_edit (args "face": true = edit only the face of refs[0] and paste it back,
+face_edit.py), depth (estimate_depth, one subprocess for the phase), ltx_lipsync, ltx_moving,
 s2v, infinitetalk, humo, minimax_h3 (local MiniMax H3), ltx25_multishot (LTX-2.5: a cut inside one sung clip,
 experimental), wan (comfy_video).  An image argument may be {"pick": group, "key": shot, "candidates": [...]}: the chosen file
 from selection.json["manual"][group][key] (hand choice), else selection.json[group][key], else the first existing
@@ -272,6 +273,25 @@ class Run:
             from comfy_image import generate
             generate(a["prompt"], out, a.get("w", 1280), a.get("h", 720), a.get("seed", 1), a.get("steps"),
                      a.get("model", "flux"), a.get("neg"))
+        elif k == "qwen_edit" and a.get("face"):
+            # edit only the face of ONE picture (refs[0]) and paste it back: the rest stays pixel-identical and
+            # nothing can be invented outside the head (face_edit.py; its two CPU steps run as helper processes
+            # because they need MediaPipe - the image model runs here, under this run's GPU lock)
+            import qwen_edit
+            src, out = self.p(a["refs"][0]), Path(out)
+            fe = ["uv", "run", str(Path(__file__).resolve().parent / "face_edit.py")]
+            crop, box, ed = (out.with_name(f"{out.stem}_face{x}") for x in ("_crop.png", "_box.json", "_edit.png"))
+            try:
+                subprocess.run(fe + ["crop", str(src), str(crop), str(box)], check=True)
+                if json.loads(box.read_text(encoding="utf-8")).get("face"):
+                    n = int(a.get("face_size", 1024))
+                    qwen_edit.edit([crop], a["prompt"], ed, n, n, a.get("seed", 1), a.get("neg", qwen_edit.NEG))
+                else:
+                    self.log(f"qwen_edit {job['id']}: no face found in {src.name} - copied unchanged")
+                subprocess.run(fe + ["paste", str(src), str(ed), str(box), str(out)], check=True)
+            finally:
+                for x in (crop, box, ed):
+                    x.unlink(missing_ok=True)
         elif k == "qwen_edit":
             import qwen_edit
             qwen_edit.edit([self.p(r) for r in a["refs"]], a["prompt"], out, a.get("w", 1280), a.get("h", 720),

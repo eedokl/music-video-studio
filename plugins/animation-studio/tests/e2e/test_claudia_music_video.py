@@ -155,6 +155,41 @@ def run_claudia(ctx):
         "print('characters ok')", ""])
     out = ctx.py(drv, deps_from=[JOBS], name="characters.py")
     expect("characters ok" in out.stdout, f"claudia characters:\n{out.stdout}")
+    # "mic": "added": a start image without a headset (no microphone word left but the "no microphone" sentence), the
+    # add prompt names only the picture side; not from behind, not with a given start image, a shot may opt out
+    drv = "\n".join([
+        f"import sys; sys.path.insert(0, r'{JOBS.parent}'); import claudia",
+        "s = {'name': 's01', 'technique': 'lipsync', 'framing': 'close-up', 'action': 'she nods', 'set': 'in a field'}",
+        "claudia.setup({})",
+        "assert not claudia.mic_added(s) and claudia.mic_added(dict(s, mic='added'))",
+        "claudia.setup({'mic': 'added'})",
+        "assert claudia.mic_added(s) and not claudia.mic_added(dict(s, framing='medium shot from behind'))",
+        "assert not claudia.mic_added(dict(s, mic='painted')) and not claudia.mic_added(dict(s, start_image='x.png'))",
+        "old = claudia.start_image_prompt(s, 'a coat', 'Warm light.')",
+        "bp = claudia.start_image_prompt(s, 'a coat', 'Warm light.', bare=True)",
+        "assert bp.count('microphone') == 1 and bp.count('headset') == 1 and claudia.MIC_NONE in bp, bp",
+        "assert bp.endswith('Warm light.') and 'star clip of the woman in image 1' in bp and 'eyes open.' in bp, bp",
+        "assert claudia.check(bp, 'image_bare', s) == [] and claudia.check(old, 'image', s) == [], claudia.check(bp, 'image_bare', s)",
+        "assert any('no microphone' in e for e in claudia.check(old, 'image_bare', s))",
+        "wide = claudia.start_image_prompt(dict(s, framing='wide shot', technique='claudia_moving'), 'a coat', 'Warm light.', bare=True)",
+        "assert wide.count('microphone') == 1 and claudia.MIC_NONE in wide, wide",
+        "assert 'LEFT side of the picture' in claudia.MIC_ADD and 'right cheek' not in claudia.MIC_ADD",
+        "assert 'cable hanging down' in claudia.MIC_ADD_NEG and claudia.NEG_BARE.startswith('microphone, headset')",
+        "try:",
+        "    claudia.start_image_prompt(dict(s, set='next to a microphone stand'), 'a coat', 'L.', bare=True)",
+        "    raise AssertionError('a microphone in the shot text was not refused')",
+        "except SystemExit:",
+        "    pass",
+        "try:",
+        "    claudia.setup({'mic': 'glued'})",
+        "    raise AssertionError('a wrong mic value was not refused')",
+        "except SystemExit:",
+        "    pass",
+        "claudia.setup({})",
+        "assert not claudia.mic_added(s) and claudia.start_image_prompt(s, 'a coat', 'Warm light.') == old",
+        "print('mic added ok')", ""])
+    out = ctx.py(drv, deps_from=[JOBS], name="mic_added.py")
+    expect("mic added ok" in out.stdout, f"claudia mic added:\n{out.stdout}")
     ctx.uv(RENDER, d, "--only", "s02", timeout=900)
     log = (d / "render.log").read_text(encoding="utf-8").splitlines()
     expect(len(log) == 2 and " clip " in log[0] and "still ai/broll/s02_v1.png" in log[1], f"render.log after --only:\n{log}")

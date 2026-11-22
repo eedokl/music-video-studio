@@ -103,6 +103,9 @@ SONG = {**SHARED,                                     # music-video projects (so
         "video": {"type": (STR,)}, "version": {"type": (STR,)}, "brief": {"type": (DICT,)},   # claudia / lyric
         "character_refs": {"type": (LIST, DICT)}, "characters": {"type": (DICT,)}, "lead": {"type": (STR,)}, "variants": {"type": (INT, DICT)}, "finish": {"type": (DICT, STR)},
         "ai_label": {"type": (STR, BOOL, NULL)}, "lip_curve": {"type": (DICT, LIST, STR)},
+        "mic": {"type": (STR,), "values": ("painted", "added"),       # claudia: headset painted with the start image, or
+                "doc": '"added" = start image without a headset, the headset added by a second edit'},   # added after it
+        "mic_tries": {"type": (INT,)}, "mic_repair": {"type": (BOOL,)},
         "pace": {"type": (STR,), "values": ("calm", "medium", "fast")}, "code_layer": {"type": (DICT,)},   # claudia code_film.py
         "identity": {"type": (STR,)}, "tempo": {"type": (DICT,)}, "word_passes": {"type": (LIST,)},   # lyric-music-video
         "held_max": {"type": (NUM,)}, "held_stretch": {"type": (BOOL, NUM, DICT)}, "held_style": {"type": (STR, DICT)},

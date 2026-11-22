@@ -38,6 +38,38 @@ MIC_EDIT = ("Keep image 1 exactly: same person, face, expression, hair, single o
             "no microphone is visible. Photographic, film grain.")
 MIC_EDIT_NEG = ("second microphone, two microphones, black microphone, dark microphone, microphone on her left cheek, "
                 "microphone boom on both sides, handheld microphone, microphone stand, changed face, changed hair, text, logo")
+# "mic": "added" (project.json, or one shot) - the headset in two steps: a start image WITHOUT any microphone (from
+# reference images whose headset was edited away), then an edit that adds only the headset, limited to her FACE
+# (ai-video face_edit.py: a square around the head is edited, the face area pasted back). Measured on El-Ge-Te-Em
+# (2026-11-22): painted in one step the boom sat on the wrong cheek in 19 of 38 shots, came with a cable or twice.
+# Added by an edit of the whole picture, with the side named ONLY as a side of the picture, it was on the right
+# side in 9 of 10 (big) / about 17 of 24 (small) - "her right cheek (left side of the image)" was wrong in 20 of
+# 20 - but about 10 of 24 pictures got a second microphone somewhere in the scene. Added on the face only: 24 of 24
+# with one small headset on the right side and nothing else changed (6 shots, also a turned head). Still: the
+# start images are looked at before the clips (capsule colour varies: beige, sometimes dark or orange).
+# Only pictures of her alone with a face found; from behind and with other people the painted path stays.
+MIC_BARE = [(" and headset microphone of the woman", " of the woman"),
+            (", a single thin beige skin-coloured headset microphone whose boom runs along her right cheek "
+             "(left side of the image)", ""),
+            (", a single thin beige headset microphone on her right cheek", ""),
+            (", and the thin beige headset microphone is clearly visible on her right cheek, no other microphone.", ".")]
+MIC_NONE = "She wears no microphone and no headset, both cheeks and ears are bare."
+MIC_REF_BARE = ("Keep image 1 exactly: same woman, face, expression, hair, single orange streak, star clip, outfit, pose, "
+                "framing, light and colours. Remove her headset microphone completely: no boom, no capsule, no earpiece, "
+                "no cable, her cheeks are bare skin. Photographic, film grain.")
+MIC_ADD = ("Keep image 1 exactly: same woman, face, expression, hair, single orange streak, star clip, outfit, pose, "
+           "framing, light and colours. Add only one thing: a tiny, discreet theatre headset microphone on the LEFT side "
+           "of the picture: one hair-thin skin-coloured wire, as thin as a strand of hair, comes out of her hair at the "
+           "left edge of her face and lies flat on the skin of the cheek on the left side of the picture, ending beside "
+           "the corner of her mouth in a very small skin-coloured capsule no bigger than a grain of rice. It is barely "
+           "noticeable. The cheek on the right side of the picture, next to the star clip, stays completely bare. "
+           "Photographic, film grain.")
+MIC_ADD_NEG = ("second microphone, two microphones, black microphone, dark microphone, microphone on her left cheek, "
+               "microphone boom on both sides, handheld microphone, microphone stand, changed face, changed hair, text, "
+               "logo, microphone on the right side of the picture, microphone below the star clip, thick boom, thick "
+               "cable, cable hanging down, large foam ball, big windscreen, big microphone, call-centre headset, gaming "
+               "headset, headband, earcup")
+MIC_GAIN = 0.004        # canon.mic_lines share on her cheek, added picture minus bare picture: a microphone is there
 NEG_IMAGE = ("illustration, drawing, anime, cartoon, 3d render, painting, teenage, childlike, text, letters, logo, "
              "watermark, brand name, flag, second orange streak, two orange streaks, orange clothing, deformed hands, "
              "extra fingers, blurry, " + MIC_NEG)
@@ -45,6 +77,7 @@ NEG_LIPSYNC = ("pc game, console game, video game, cartoon, childish, ugly, stat
                "letters, subtitles, watermark, logo, scene cut, sudden scene change, " + MIC_NEG)
 NEG_MOVING = ("text, letters, words, subtitles, captions, title, watermark, logo, typography, scene cut, sudden scene "
               "change, cartoon, ugly, static, face on a screen")
+NEG_BARE = "microphone, headset, microphone boom, earpiece, cable, " + NEG_IMAGE
 STILL_END = "cinematic 35mm film still, film grain, no text, no letters, no logos, no flags"
 VIDEO_END = "Cinematic photographic 35mm film look, film grain, realistic motion. Continuous single shot."
 STREAK = "#D97757"
@@ -139,9 +172,18 @@ def is_wide(framing):
     return any(w in (framing or "").lower() for w in WIDE)
 
 
-def start_image_prompt(s, wardrobe, look_img, version="studio"):
+def start_image_prompt(s, wardrobe, look_img, version="studio", bare=False):
     """Qwen-Image-Edit prompt for a start image of Claudia (two refs for close/medium, one for wide); a shot of other
-    characters (project.json "characters", shot "who") gets the generic prompt of its cast."""
+    characters (project.json "characters", shot "who") gets the generic prompt of its cast.
+    bare=True: the same picture without any microphone ("mic": "added" - the headset is added by a second edit)."""
+    if bare:
+        p = start_image_prompt(s, wardrobe, look_img, version)
+        for a, b in MIC_BARE:
+            p = p.replace(a, b)
+        if "microphone" in p or "headset" in p:
+            raise SystemExit(f'shot {s.get("name", "?")}: "mic": "added" - the shot text names a microphone or headset '
+                             "itself; take it out (the headset is added after the picture)")
+        return p.replace(look_img, f"{MIC_NONE} {look_img}") if look_img and look_img in p else f"{p} {MIC_NONE}"
     cast = cast_of(s)
     if cast is not None:
         return _start_generic(cast, s, wardrobe, look_img)
@@ -302,12 +344,17 @@ def check(prompt, kind, s=None):
         errs.append('LTX positive prompt contains "no text" - move text/letters to the negative prompt')
     if kind in ("image", "lipsync") and ("beige" not in p or "right cheek" not in p):
         errs.append("microphone not pinned (thin beige headset on her right cheek)")
+    if kind == "image_bare" and MIC_NONE.lower() not in p:
+        errs.append('bare start image ("mic": "added") without the "no microphone" sentence')
     if kind in ("lipsync", "moving", "s2v") and not any(w in p for w in LIGHT_WORDS):
         errs.append("no light/look sentence - LTX jumps scenes without one")
     rest = p
     for canon_text in (QWEN_INTRO_2, QWEN_INTRO_1, ID_FULL, ID_FAR, ID_VIDEO):
         rest = rest.replace(canon_text.lower(), "")
-    if kind in ("image", "lipsync") and "streak" in rest:
+    for a, b in MIC_BARE:                                # the same canon texts without the microphone
+        rest = rest.replace(QWEN_INTRO_2.replace(a, b).lower(), "").replace(QWEN_INTRO_1.replace(a, b).lower(), "")
+        rest = rest.replace(ID_FULL.replace(a, b).lower(), "").replace(ID_FAR.replace(a, b).lower(), "")
+    if kind in ("image", "image_bare", "lipsync") and "streak" in rest:
         errs.append("the shot text mentions the streak again (risk of two streaks) - the canon text says it once")
     if re.search(r"\blogo\b", p) and "no logo" not in p:
         errs.append("asks for a logo - companies only as neutral text")
@@ -353,6 +400,7 @@ PEOPLE = re.compile(r"\b(man|men|woman|women|people|person|persons|colleagues?|c
                     r"girl|boy|couple|audience|hands?|someone)\b", re.I)
 CAST = {}
 LEAD = "claudia"
+MIC_MODE = "painted"        # project.json "mic": "added" = the headset is added to a start image made without one
 
 
 def _norm(name, spec):
@@ -371,7 +419,12 @@ def _norm(name, spec):
 
 def setup(P):
     """Register the project's characters and lead (call once after loading the project; no "characters" = Claudia)."""
-    global LEAD
+    global LEAD, MIC_MODE
+    mode = str(P.get("mic") or "painted").lower()
+    if mode not in ("painted", "added"):
+        raise SystemExit(f'project.json "mic": "{mode}" - use "added" (headset added to a start image without one) or '
+                         'leave it out (painted with the picture)')
+    MIC_MODE = mode
     CAST.clear()
     for name, spec in (P.get("characters") or {}).items():
         if name.lower() == "claudia" and spec.get("mic", True) and "full" not in spec:
@@ -400,6 +453,14 @@ def cast_of(s):
     if len(out) > 2:
         raise SystemExit(f'shot {(s or {}).get("name", "?")}: at most two characters in one start image (two reference images)')
     return out
+
+
+def mic_added(s):
+    """True = this shot's headset is added by a second edit: project.json "mic": "added" (a shot may say "mic":
+    "painted" / "added" itself), Claudia alone with her canon, not seen from behind, no given start image."""
+    mode = str((s or {}).get("mic") or MIC_MODE).lower()
+    return (mode == "added" and cast_of(s) is None and not (s or {}).get("start_image")
+            and "behind" not in ((s or {}).get("framing") or "").lower())
 
 
 def has_canon(s):
