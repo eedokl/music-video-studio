@@ -127,6 +127,9 @@ uv run "$S/jobs.py" <proj> --only s05 --all-starts [--start 3] # MORE TAKES of a
 uv run "$A/night_run.py" <proj>/jobs.json --dry-run   # jobs + time estimate
 uv run "$A/night_run.py" <proj>/jobs.json             # GPU (waits for the shared lock)
 ```
+**Start images first**: run `night_run.py <proj>/jobs.json --phases flux,qwen_edit`, look at the start-image sheets
+with the user (headset side and size, cables, clothes, the right person), fix them, and only then run the clips -
+a wrong start image wastes every take made from it (`references/lessons.md`, "Review rounds on a finished cut").
 Vocal inputs of LTX / InfiniteTalk start in a silence and are levelled (-16 dBFS sung RMS, peaks <= -1 dBFS,
 15 ms ramps - `clips.prepare_vocal`, identical to the live reference). `jobs.py` refuses prompts that break the canon/LTX rules (see `references/lessons.md`). Order: FLUX stills -> Qwen
 start images -> pick hook (canon check) -> depth -> LTX lip-sync + moving -> S2V. Resumable; `milestones.log`.

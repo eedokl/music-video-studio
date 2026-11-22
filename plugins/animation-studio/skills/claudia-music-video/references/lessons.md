@@ -134,3 +134,94 @@ camera on the hit), 8 takes. What drifted, and what the user chose:
 - Start-image note: Qwen-Edit kept the canon in all three variants for this pose (tuxedo, three-quarter view,
   pure black background, one amber key from the right); the clip must be left out of the scope bars' reach
   (film-finish `sting.py --fit`).
+
+## Review rounds on a finished cut ("El-Ge-Te-Em", 2026-11: 81 shots, three comment rounds by the user)
+
+**Before the takes**
+
+- **Look at the start images before any clip is rendered.** The first night run made 378 jobs; 19 of 38 Claudia
+  shots had the headset on the wrong cheek and the clips of all of them were wasted. Run the image phases alone
+  (`night_run.py jobs.json --phases flux,qwen_edit`), show the sheets, then run the rest. The user asked for
+  exactly this order.
+- **The headset in two steps holds the side better than one prompt.** Start image without any microphone (the
+  reference images edited bare first), then an add-only edit of that picture. What decided the side was the
+  wording: "her right cheek (left side of the image)" put it on the wrong side in 20 of 20 edits; naming ONLY
+  the picture side ("on the LEFT side of the picture ... the cheek on the right side of the picture, next to
+  the star clip, stays bare") was right in 9 of 10.
+- **A small headset has to be asked for in sizes**: "one hair-thin skin-coloured wire ... a capsule no bigger
+  than a grain of rice" (the user found the default boom "really very big"). It costs accuracy - about 17 of 24
+  on the right side - so make three seeds and pick by eye. Rejected: shrinking a placed microphone by a second
+  edit (a second microphone every time) and giving the canon reference as a size model (it replaced her face).
+- **Look for a cable.** In the bed scenes the model hung a cable from the ear down to the blanket; it runs
+  through the whole take and cannot be retouched out of a clip. Fix the start image (remove headset and cable,
+  add the small one) and render new takes. In blue night light the capsule takes the orange of the streak -
+  "beige" in the prompt plus "orange capsule" in the negative brought back two microphones or the cable; the
+  orange one was kept.
+- **A reference image can carry the fault**: the second Claudia reference (close-up for streak and clip) shows
+  the boom on the picture's right. Check the references against the canon before blaming the prompt.
+
+**Takes**
+
+- **LTX holds the start image at the beginning of a take** - up to 18 frames, then the movement starts at once.
+  With the 0.25 s lead-in 6 to 11 of these frames are in the film ("it stands still for a moment, then she
+  moves"). Of 45 chosen lip-sync takes seven had 5 to 11 standing frames in the film. What helped, best first:
+  - new takes with a longer lead-in (+16 frames: `audio.from` earlier, `frames` + 16, meta `song_start` /
+    `lead_in` adjusted), so that the standing frames fall into the skipped lead-in (22 frames instead of 6);
+  - a silent clip (`claudia_moving`, B-roll) simply starts later in the take: selection `"lag": 10`;
+  - a sung take: the cut moves later by the standing frames, if the take BEFORE it is long enough (a silent one
+    may be slowed a little); the lips stay where they are because clips are placed by `song_start`;
+  - a transition on the cut. A white flash (6 frames) was not seen and left 4-5 standing frames visible ("I
+    still see the stand and no flash"); `zoom_through` over 12 frames was chosen - the incoming picture settles,
+    so the standing frames move.
+  One user comment to remember: at one cut the short stand was "almost a nice effect" - ask before fixing all.
+- **"She sings quietly" makes her mumble.** Three takes with it: mouth range 0.11-0.14, score around 0. With
+  "sings softly but articulates every syllable with a clearly moving mouth" and only the words that fall into
+  the shot (shot key `sing`): 0.55, 0.33, 0.25.
+- **More takes without disturbing the film**: `jobs.py` with a changed `action` or times re-fingerprints the
+  shot, and the night run moves the existing takes (also the one the user chose) to `replaced/`. For a few extra
+  takes write a second job file from the existing entries (new seed, new output name, the prompt changed in
+  place) and run `night_run.py` on that file.
+- **A new take is not automatically the better one**: for one shot all three new takes moved from the first
+  frame but measured worse on the lips (around 0 against 0.19) - the old take stayed and the cut was changed.
+- **The lip score says little where the lead voice pauses.** In a shot with 0.6 s of singing and 2 s of pause the
+  take that kept mouthing scored higher (0.19) than the one that closed the mouth (-0.03); the user chose the
+  second. Judge such shots by eye.
+- **The takes page saves a choice for every shot.** After the user has been on it, all shots count as "by hand",
+  and new takes are rated but never chosen. Enter the new take yourself for the shots the user asked to redo,
+  keep a copy of selection.json first, and say which shots you changed.
+- **Liquids need a source and a target in the prompt.** "A last drop falls into the empty jug" made water drip
+  from a switch on the front panel. Naming the outlet, the path and the landing place, plus "nothing drips from
+  the buttons ..." and negatives, gave one realistic take of five (a hand reached in once, the panel leaked
+  again once, two showed almost nothing).
+
+**Text**
+
+- **Writing on a prop is added in code, and it must actually be added.** The sticky note of "... auf dem 'Finger
+  weg' steht" was planned blank (image models cannot letter) and stayed blank in two cuts - the user noticed.
+  The note is the only yellow area on a dark cabinet: find it per frame by colour, smooth the four corners over
+  +-3 frames, warp the handwriting onto it and MULTIPLY it into the picture (grain and shading stay); write it a
+  little before the words are sung so that it stands when they come.
+- **Word times for shown lyrics come from an isolated lead voice.** `refine_timing.py` belongs to the lyric-video
+  workflow and is not run by the Claudia pipeline: the lyrics ran on raw Whisper times and the user saw it
+  ("the text is not well in sync"). On the Demucs track (lead and backing in one) the refinement halved the
+  median error but could not see pauses that the backing vocals fill; two of three hand repairs made from that
+  track were wrong. With the Suno lead stem: Whisper again on the stem, then `refine_timing.py` on the stem.
+  Ask for the stems at the start of the project, not after the third cut.
+- **Suno stems may be shifted against the song in use**: here by 38568 samples (0.8035 s; the song had been
+  re-exported with silence at the start) and 8.9 dB louder. Correlate the fresh Suno song with the project's
+  song at several places (a constant offset = the same recording) and shift the stems before using them.
+- **A line that the film shows elsewhere gets no lyric**: the bot's sentences stand in its chat bubble, so their
+  six lines are in `lyrics_skip`. The user asked for it the moment both were on screen.
+- Tight lines in fast verses: see film-finish `overlays.py` (the line moves one row up; before that the last
+  words of 26 of 51 lines stood under half a second or never appeared).
+
+**Finish**
+
+- **Film grain 5.5 looks gritty in the small mp4** (2x2-pixel grain, "35mm film look" in the prompts and the
+  compression add up). The user chose 2.5 (`"finish": {"grain": 2.5}`); the full file shrank from 396 to 175 MB.
+- **Cursive lyrics without the box** were chosen over the caps default for this film: `lyrics_style` with
+  `"base": "script"`, a cursive font, `"box": null`, size 42 - legible on bright and dark shots because of the
+  dark edge and the darker band at the bottom.
+- **Collect, then build.** The user wrote a round of comments and wanted each one answered - what is seen, what
+  it is measured as, what could be done - before anything was rendered. Measuring first changed several fixes
+  (a standing start turned out to be a line with a pause; a "bad" take was the best by the numbers).
