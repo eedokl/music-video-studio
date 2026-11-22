@@ -218,12 +218,24 @@ def lipsync_prompt(s, wardrobe, look_vid, line, style=None):
     act = action[4:] if action.lower().startswith("she ") else action
     first = act if act.lower().startswith("sings") else f"sings {manner}, {act}"
     sing = f' She sings the words "{words}".' if words else ""
+    if sing and s.get("hold_last"):                              # the shot ends on a long held word
+        sing += HOLD_LAST
     place = s.get("set_short") or s.get("set", "")
     return (f"{s.get('framing', 'Medium shot').capitalize()} of {ID_VIDEO}, wearing {wardrobe}, she {first}.{sing} "
             f"{MOUTH}{(' ' + place[0].upper() + place[1:] + '.') if place else ''} "
             f"{s.get('camera', 'Static camera').capitalize()}, cinematic photographic 35mm film look, {look_vid}.")
 
 
+# Shot key "hold_last": true - one sentence for a long held last word. Measured on El-Ge-Te-Em (s63, a 2 s note, two
+# seeds, same start image): mouth opening on the note 0.20 / 0.24 without it, 0.34 / 0.30 with it and the mood words
+# out; Wan S2V reaches 0.52 there, so it still holds a note better - at 832x480 and 16 fps.
+HOLD_LAST = " She holds the last word as one long open note, her mouth stays open until the note ends."
+# "manner" words that describe a mood instead of a way to sing: LTX obeys every adjective (the Claudia recipe says so
+# too). El-Ge-Te-Em: "she sings quietly" - three takes with a mouth range of 0.11-0.14, lip score about 0; "dryly,
+# with a tired smile" - mouth shut with one seed, open with another; without the mood words both seeds moved.
+# 9 dry/deadpan shots of that film: median lip score 0.26 against 0.39 for the other 29 (not controlled).
+MOOD_WORDS = re.compile(r"\b(dry|dryly|deadpan|quiet|quietly|lazy|lazily|tired|tiredly|sleepy|sleepily|bored|flat|"
+                        r"flatly|mumbl\w*|whisper\w*|under her breath|under his breath)\b", re.I)
 HOLD_WORDS = re.compile(r"\b(small head movements?|upright|static camera|faces the camera|stands still|"
                         r"motionless)\b", re.I)
 
@@ -603,6 +615,11 @@ def hints(shots):
         if s.get("technique") != "typo" and HANDLING.search((s.get("motion") or "").lower()):
             out.append(f"{n}: the motion asks for handling a thing - the video model doubles or drops it; show the state "
                        "in the start image and let the clip only look")
+        mood = MOOD_WORDS.search(str(s.get("manner") or "")) if s.get("technique") == "lipsync" else None
+        if mood:
+            out.append(f"{n}: \"manner\" has the mood word \"{mood.group(0)}\" - LTX may keep the mouth shut for it; say "
+                       "how the words are sung (\"warmly and articulates every syllable with a clearly moving mouth\") "
+                       "and put the mood into the face or the action")
         if re.search(r"\b(creased|crumpled|wrinkled)\b", text + " " + " ".join(str(s.get(k) or "") for k in ("wardrobe", "wardrobe2")).lower()):
             out.append(f"{n}: \"creased\" / \"crumpled\" clothes get holes - describe the wear another way (collar open, sleeves pushed up)")
     count = {}

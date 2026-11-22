@@ -185,6 +185,37 @@ camera on the hit), 8 takes. What drifted, and what the user chose:
 - **"She sings quietly" makes her mumble.** Three takes with it: mouth range 0.11-0.14, score around 0. With
   "sings softly but articulates every syllable with a clearly moving mouth" and only the words that fall into
   the shot (shot key `sing`): 0.55, 0.33, 0.25.
+- **Mood words against a moving mouth - tested, with a control.** Three shots, the same two seeds in every arm,
+  longer lead-in in all of them, 20 takes: (0) prompt unchanged, (A) mood words out, (B) A + articulation + a
+  sentence for the held last word, (C) B without "natural small head movements and breathing". What it showed:
+  - The seed mattered more than any wording: one seed was good and one weak across all arms in two of three shots.
+    Never judge a prompt change by one take, and keep a control arm - the longer lead-in alone moves the numbers.
+  - Mood words can shut the mouth: "dryly, with a tired smile" - shut with one seed (range 0.07), moving with
+    the other; without the words both moved. Where the mouth already moved, taking them out changed nothing.
+  - The held-note sentence raised the opening on a 2 s note in both seeds (0.20 -> 0.29 -> 0.34 and 0.24 -> 0.27
+    -> 0.30 from arm 0 to A to B); S2V reaches 0.52. Shot key `"hold_last": true` since 0.23.0.
+  - Arm C made no difference: the fixed mouth sentence does not hold the mouth back.
+- **Why an S2V take looks hectic**: 832x480 scaled up by 1.5, 16 fps repeated to 24, and a mouth that opens two to
+  three times as far as in LTX takes (range 0.65-1.09 against 0.2-0.5). Fine on one long note, restless on fast
+  words. Two of three such shots were better served by an LTX take of the same start image (lip score 0.32
+  against 0.09; 0.21 against 0.31 but the calmer face was chosen).
+- **The S2V assignment rests on word lengths, and those came from raw Whisper times.** One "held note of 1.2 s"
+  lasted 0.71 s by the times from the lead stem. Check the held word against refined times before S2V is paid for.
+- **LTX does not sing a stacked gang chant that opens a line.** "El-Ge-Te-Em - und Freitag fünf bin": ten takes,
+  four prompts (also a timed one: "0.9-1.7s: she shouts ... with a wide open mouth"), two audio sources (the Demucs
+  vocals and the Suno lead stem): the mouth stayed shut or frozen on the chant every time and moved on the solo
+  words right after it. The same word sung mid-line ("Ich sag El-Ge-Te-Em") worked. The cause is not known - two
+  explanations were tested and failed (backing vocals in the audio; no instruction). What worked: **cut the shot
+  in two** and give the chant to the gang - a 0.8 s B-roll of colleagues shouting, driven by the backing-vocal stem
+  as audio (kind ltx_lipsync on a group picture; it moved from the first frame, the instrumental-driven clip did
+  not), then the singer from the next word on. Takes are placed by their own `song_start`, so a shot can be split
+  at any time without a new take; only the section list changes.
+- **Two takes of the same start image are not cut together** inside one line (the Claudia recipe: no jump cuts
+  inside a scene) - a split needs a different picture for one half.
+- **A take chosen on the takes page before it was rated is saved with lag 0.** Rate first (`pick.py clips --only
+  <shot>`), or set the measured lag afterwards: two of three such picks sat one frame off (0.20 -> 0.33).
+  After a shot is split, the lag has to be measured over the part that is still shown (-3 -> -1 here).
+- **The takes page reads the shot list when it starts.** After adding or splitting a shot, restart it.
 - **More takes without disturbing the film**: `jobs.py` with a changed `action` or times re-fingerprints the
   shot, and the night run moves the existing takes (also the one the user chose) to `replaced/`. For a few extra
   takes write a second job file from the existing entries (new seed, new output name, the prompt changed in

@@ -187,6 +187,12 @@ def run_claudia(ctx):
         "    pass",
         "claudia.setup({})",
         "assert not claudia.mic_added(s) and claudia.start_image_prompt(s, 'a coat', 'Warm light.') == old",
+        "lp = claudia.lipsync_prompt(dict(s, manner='warmly', hold_last=True), 'a coat', 'warm light', 'Hallo Welt')",
+        "assert 'She sings the words \"Hallo Welt\". She holds the last word as one long open note' in lp, lp",
+        "assert 'holds the last word' not in claudia.lipsync_prompt(dict(s, manner='warmly'), 'a coat', 'warm light', 'Hallo Welt')",
+        "h = claudia.hints([dict(s, manner='dryly, with a tired smile'), dict(s, name='s02', manner='warmly'),",
+        "                   dict(s, name='s03', technique='claudia_moving', manner='quietly')])",
+        "assert len(h) == 1 and h[0].startswith('s01: \"manner\" has the mood word \"dryly\"'), h",
         "print('mic added ok')", ""])
     out = ctx.py(drv, deps_from=[JOBS], name="mic_added.py")
     expect("mic added ok" in out.stdout, f"claudia mic added:\n{out.stdout}")

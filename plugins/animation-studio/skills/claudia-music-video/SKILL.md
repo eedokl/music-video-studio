@@ -103,7 +103,11 @@ Then **write the creative brief** (this is the film - do not skip it, do not cop
     (`manner` = how she sings, e.g. "softly", "with energy", "tiredly into the camera"; `action` = a small movement,
     e.g. "the wind blows her hair", "a slight sway of the head" - plan.py proposes both from the look. The LTX prompt
     is built like the Europe 2031 night run V1: "she sings <manner>, <action>. She sings the words "...". <mouth>".
-    "deadpan" is her face, not a way to sing: bound to the words ("sings deadpan: ...") it kept mouths shut.)
+    "deadpan" is her face, not a way to sing: bound to the words ("sings deadpan: ...") it kept mouths shut.
+    The same holds for every mood word in `manner` - "quietly", "dryly", "lazy", "tired": LTX obeys the adjective and
+    mumbles or shuts the mouth (jobs.py prints a hint). Write how the words are sung - "warmly and articulates
+    every syllable with a clearly moving mouth" - and put the mood into the face or the action. A shot that ends
+    on a long held word may say `"hold_last": true` (one sentence asking for an open mouth until the note ends).)
   - Only for shots with two or three separate actions on the beat (gesture lists, chorus energy, "Hey!" shouts):
     add a `timeline` `[[0, 1.0, "she punches her fist up on each Hey"], [1.0, 3.1, "she walks ..., one step on every
     beat"]]` - one concrete action per span, no hold words ("small head movements", "static camera", "upright"), and a
