@@ -381,6 +381,11 @@ def check(prompt, kind, s=None):
 #   ["oliver", "claudia"] (default: the lead) and switches an option on with its key ("headband": true).
 # Claudia stays the built-in default with her microphone canon; {"claudia": {"base": "claudia", "mic": false}} (or
 # naming her in another lead's film) is Claudia as a guest without the stage microphone.
+# "sheet": true = the character's FIRST reference is a views sheet (front, three-quarter, profile of the same person on
+#   one picture; the second reference, if any, a close-up of the face). The prompt then says so - without that
+#   sentence the picture model may paint every view as a person of its own. Measured 2026-11-23 on one man, 8 scenes
+#   x 2 seeds, face similarity against 8 photos held back: sheet + close-up 0.69, two single photos 0.68 (their
+#   clothes travelled into the scenes), two photos with a cap 0.65 (the cap came along).
 # Measured (Das Warum, 2026-11-20): Claudia's canon check and mic repair run on another character painted her headset
 # and streak onto him - every canon rule below is bound to the shot's cast.
 LIGHT_WORDS = ("light", "palette", "glow", "spotlight", "beams", "sun", "dusk", "dawn")
@@ -516,11 +521,18 @@ def _start_generic(cast, s, wardrobe, look_img):
              if s.get("technique") == "lipsync" else "")
     if len(cast) == 1:
         two = not wide and len(a.get("refs") or [0, 0]) > 1
-        intro = (f"Keep the exact {a['keep']} of the {a['noun']} in image 1"
-                 + (f" (image 2 shows the same {a['noun']} from another angle, use it only for {a['poss']} face and hair, "
-                    "not for the framing, the clothes or the background)" if two
-                    else f", but not {a['poss']} clothes or the background")
-                 + (f". {a['ref_fix']}" if a.get("ref_fix") else "") + ":")
+        if a.get("sheet"):
+            intro = (f"Image 1 is a reference sheet showing several views of ONE AND THE SAME {a['noun']}, not several "
+                     "people" + (f"; image 2 is a close-up of {a['poss']} face" if two else "")
+                     + f". Generate exactly ONE {a['noun']} in one continuous scene and keep {a['poss']} exact {a['keep']}, "
+                     "but not the clothes, the framing or the background of the references"
+                     + (f". {a['ref_fix']}" if a.get("ref_fix") else "") + ":")
+        else:
+            intro = (f"Keep the exact {a['keep']} of the {a['noun']} in image 1"
+                     + (f" (image 2 shows the same {a['noun']} from another angle, use it only for {a['poss']} face and "
+                        "hair, not for the framing, the clothes or the background)" if two
+                        else f", but not {a['poss']} clothes or the background")
+                     + (f". {a['ref_fix']}" if a.get("ref_fix") else "") + ":")
         parts = [intro, (a["far"] if wide else a["full"]) + _opts(a, s) + ".",
                  f"Now {a['subj']} wears {_wardrobe(a, s, wardrobe)}.",
                  f"{fr}, {s.get('action') or a['subj'] + ' looks at the camera'},", f"{place}." if place else "", ready, look_img]
@@ -528,6 +540,9 @@ def _start_generic(cast, s, wardrobe, look_img):
         b = cast[1]
         la, lb = (a["noun"], b["noun"]) if a["noun"] != b["noun"] else (f"first {a['noun']}", f"second {b['noun']}")
         fix = "".join(f" {c['ref_fix']}." for c in cast if c.get("ref_fix"))
+        fix = "".join(f" Image {i} is a sheet showing several views of that one {l}, not several people; there are "
+                      "exactly two people in the picture." for i, (c, l) in enumerate(((a, la), (b, lb)), 1)
+                      if c.get("sheet")) + fix
         parts = [f"Two people in one picture: the {la} keeps the exact {a['keep']} of the {a['noun']} in image 1; the {lb} "
                  f"keeps the exact {b['keep']} of the {b['noun']} in image 2.{fix}",
                  f"The {la} is {a['far'] if wide else a['full']}{_opts(a, s)}, wearing {_wardrobe(a, s, wardrobe)}.",

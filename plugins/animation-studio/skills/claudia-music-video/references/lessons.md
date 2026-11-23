@@ -264,3 +264,33 @@ camera on the hit), 8 takes. What drifted, and what the user chose:
 - **Collect, then build.** The user wrote a round of comments and wanted each one answered - what is seen, what
   it is measured as, what could be done - before anything was rendered. Measuring first changed several fixes
   (a standing start turned out to be a line with a pause; a "bad" take was the best by the numbers).
+
+## Lessons from a likeness test of another lead (2026-11-23: one man, 8 scenes x 2 seeds, 4-step Qwen-Image-Edit 2511)
+
+Face similarity (ArcFace) of every start image against 8 photos of him that no variant had seen; his own photos reach
+0.79 among each other.
+
+| references | mean | worst picture | seen |
+|---|---|---|---|
+| two photos (frontal with a cap, three-quarter with a hand at the head and a jacket logo) | 0.65 | 0.48 | cap and logo in many scenes |
+| two clean single photos, bare-headed | 0.68 | 0.49 | the red t-shirt of one photo in several scenes; two men side by side until the prompt said "exactly ONE man" |
+| **views sheet (front, three-quarter, profile) + close-up of the face** | **0.69** | **0.53** | no cap, no logo; best on small faces and on the singing shot |
+| own identity LoRA (musubi-tuner, 840 steps, 768 px), strength 1.0 / 0.6 | 0.63 / 0.65 | 0.52 / 0.47 | at 1.0 flat colours and soft faces |
+| full model instead of the 4-step one (20 steps, CFG 4, 5 min a picture) | 0.62 | 0.50 | not closer, ten times slower |
+
+- **What a reference shows travels into every shot** - cap, logo, shirt colour, a hand at the head. Cut references
+  to what must stay (head and hair) or build a sheet from clean photos; character key `"sheet": true`.
+- **An identity LoRA did not beat the references** on this model and machine (six hours of training). Not tried:
+  training at 1024 px with about 3000 steps, or without control images.
+- **With the plugin's own wording** (`"sheet": true`, 8 single shots, 4 two-shots with Claudia as a guest): 0.71
+  mean, worst 0.65, one man in every picture, exactly two people in every two-shot.
+- **Claudia, same test (8 variants x 12 pictures, canon.py):** her face is not the problem - all variants made from
+  the three stills in use lie at 0.52-0.56 against them. One boom on the correct cheek: the two Europe 2031
+  references 5 of 12 (two booms in 7), a sheet cut from her three stills 8 of 12, the official claudia.gallery face
+  sheet (no microphone on it) 7 of 12 with the headset still as image 2 and 5 of 12 with the headset from the text
+  alone. The official sheet gives the official face (0.77 against the sheet, 0.52-0.56 with the stills) and lays
+  the streak as the sheet has it, from the middle of the bangs toward the image right - canon.py, which expects
+  the image left, then calls 10-11 of 12 wrong. Which face and which streak side are canon is the user's decision;
+  nothing was changed. 12 pictures a variant: hints, not proof.
+- The sheet here was three snapshots of different days. Photos taken in one session (same light, plain wall, bare
+  head, no logo) are untested and should do better.

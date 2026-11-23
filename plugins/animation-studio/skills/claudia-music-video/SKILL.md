@@ -63,6 +63,10 @@ negatives and checks from the shot's cast, and none of Claudia's canon (micropho
   "claudia": {"base": "claudia", "mic": false, "refs": ["refs/claudia_close.png"]}   // Claudia as a guest, no stage mic
 }
 ```
+`"sheet": true` on a character = its first reference is a **views sheet** (front, three-quarter and profile of the same
+person side by side on one picture, bare of anything that should not travel into every shot: cap, logo, a hand at the
+head) and the second a close-up of the face; the prompt then tells the picture model that the sheet shows one person.
+Measured on one man (see `references/lessons.md`): closer to him than two single photos, and no cap or logo any more.
 Shot keys: `"who": "oliver"` | `"claudia"` | `["oliver", "claudia"]` (default: the lead; two people = one reference
 each, the first one sings), an option switched on by its key (`"headband": true`), `"wardrobe"` / `"wardrobe2"`.
 Start images of such shots have no measured canon: `pick.py` takes the first variant and the sheet says "check by eye" - or, with the config key `face_id_model`

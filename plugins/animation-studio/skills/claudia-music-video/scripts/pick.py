@@ -155,7 +155,7 @@ def face_sims(P, cast, cands):
         return {}
     for c in people:
         if c["name"] not in _REFS:
-            _REFS[c["name"]] = face_id.reference([P.path(r) for r in c["refs"]])
+            _REFS[c["name"]] = face_id.reference([P.path(r) for r in c["refs"]], every=bool(c.get("sheet")))
     refs = [_REFS[c["name"]] for c in people if _REFS[c["name"]] is not None]
     if not refs:
         return {}

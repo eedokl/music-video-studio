@@ -114,13 +114,16 @@ def faces(bgr):
     return out
 
 
-def reference(paths):
-    """Mean unit vector of the reference images (the largest face of each); None when no face is found in any."""
+def reference(paths, every=False):
+    """Mean unit vector of the reference images (the largest face of each); None when no face is found in any.
+    every=True: all faces of each image count (a views sheet shows the same person several times)."""
     vs = []
     for p in paths:
         im = imread(p)
         fs = faces(im) if im is not None else []
-        if fs:
+        if fs and every:
+            vs += [f[0] for f in fs]
+        elif fs:
             vs.append(max(fs, key=lambda f: f[1])[0])
     if not vs:
         return None
