@@ -72,6 +72,7 @@ uv run "<plugin>/skills/ai-video/scripts/preflight.py" --list               # wo
 | `ltx25.py` | LTX-2.5 (community GGUF): `multishot` = start image + vocals -> one clip of 6-8 s with a cut inside, still lip-synced; experimental, needs gated model files + the ComfyUI-GGUF node pack (`references/multishot.md`, `--dry-run`) |
 | `minimax.py` | MiniMax: `comfy` = local H3 with audio anchor (>= 124 frames, 1024x576 @24 fps, ~42 s per second); `cloud` = hosted Hailuo image-to-video (no audio), opt-in via env `MINIMAX_API_KEY`, dry run unless `--send` (paid) |
 | `night_run.py` | unattended run of a jobs.json: phases = one model each, GPU lock per phase, resume, changed jobs redone (fingerprint per output in `jobs_made.json`, old file kept in `replaced/`, `--keep-stale` adopts), retry after `/free`, hooks between phases (picks), `milestones.log`, `--dry-run` estimate; outputs written under a temp name and renamed when complete; preflight before the first job (`--no-preflight`); `--min-free-gb`, `--clean-comfy` |
+| `film_motion.py` | take length and movement of a film, one measure for every film: `measure()` (takes, mean / longest take, movement median, share of still steps), `per_shot()` per project section; `uv run film_motion.py film.mp4 [--shots project.json] [--json out]` - to compare a film with a reference video or earlier films |
 | `sheets.py` | contact sheets: `sheet()` start/middle/end per clip with notes (`--frames 6` / `cols=6` to check takes); `shot_sheet()` 20/50/80 % per shot of a film |
 
 ## Rules (learned the hard way)
@@ -86,6 +87,7 @@ uv run "<plugin>/skills/ai-video/scripts/preflight.py" --list               # wo
 - **One long shot:** render it smaller instead of splitting it - at 1024x576 (`ltx.render(..., w=1024, h=576)`)
   clips of 217 frames (9 s) went through 7 of 7 times; `clips.ltx_max_frames(w, h)` gives the limit, `ltx_fit(...,
   max_frames=)` takes it. Only these two sizes were tried.
+- **A take that reads as slow motion:** render it on slowed vocals and show it faster - job audio `"speed": 1.18` (night_run stretches the vocals with `clips.stretch_audio`, the clip json gets `"tempo"`, `clips.frame_index` places it; `clips.ltx_frames(..., speed=)` gives the longer clip). A walk went from 1.38 to 1.57 steps per second with about the same lip score; prompt words ("real-time speed", negative "slow motion") did not speed it up. One of three takes looked unnatural faster - decide per shot.
 - **Render a shot at its final length.** A 5 s clip stretched 1.5-1.8x by frame interpolation (ffmpeg
   `minterpolate`) smeared the fast-moving prop in it; the same shot rendered in real time was clean.
 - **An action on a hit of the music** (one shot on a track, nobody sings): `ltx.render("moving", img, <the music

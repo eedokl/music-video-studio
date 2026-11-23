@@ -154,6 +154,31 @@ def main():
     wardrobe = brief.get("wardrobe") or creative.pick(P, "wardrobe", claudia.WARDROBE[version])
     only = [x for x in a.only.split(",") if x]
     ref_cache = []
+    # "takes": "long" - LTX clips at 1024x576, up to 217 frames (9 s) in one clip instead of 121 (5 s) at 1280x704
+    long_takes = P.get("takes") == "long"
+    max_frames = clips.ltx_max_frames(*clips.LTX_LONG_SIZE) if long_takes else clips.LTX_MAX_FRAMES
+    size = dict(w=clips.LTX_LONG_SIZE[0], h=clips.LTX_LONG_SIZE[1], max_frames=max_frames) if long_takes else {}
+    fit_notes = []
+
+    def fit(s, dur):
+        """(frames, lead_in, speed) of an LTX clip for this shot; says so when the clip cannot cover the shot."""
+        try:
+            speed = float(s.get("speed") or 1)
+        except (TypeError, ValueError):
+            raise SystemExit(f'shot {s["name"]}: "speed" must be a number such as 1.18, not {s.get("speed")!r}')
+        if not 1 <= speed <= clips.SPEED_MAX:
+            raise SystemExit(f'shot {s["name"]}: "speed" {speed} - use 1 (as rendered) up to {clips.SPEED_MAX}')
+        frames, lead = clips.ltx_fit(dur, max_frames=max_frames, speed=speed)
+        if clips.ltx_frames(dur, lead, speed) > max_frames:
+            most = clips.ltx_seconds(max_frames, speed)
+            fit_notes.append(f'{s["name"]}: {dur:.1f} s' + (f' at speed {speed:g}' if speed != 1 else '') +
+                             f' is longer than one LTX clip covers ({most:.1f} s) - the cut holds the last frame for '
+                             f'the rest; ' + ('lower "speed" or split the shot' if long_takes else
+                                              'set project.json "takes": "long" (9 s at 1024x576) or split the shot'))
+        return frames, lead, speed
+
+    def speed_key(speed):
+        return {"speed": speed} if speed != 1 else {}
 
     def default_refs():                               # Claudia's refs: only asked for when she is in a shot
         if not ref_cache:
@@ -235,13 +260,13 @@ def main():
             if not a.no_depth:
                 add("depth", f"{name}/depth", f"ai/depth/{name}_start_depth.png", image=img)
             if tech == "lipsync":
-                frames, lead = clips.ltx_fit(dur)
+                frames, lead, speed = fit(s, dur)
                 line = s.get("sing") or s.get("line")
-                if s.get("timeline") and lead:
+                if s.get("timeline") and (lead or speed != 1):
                     # the spans count from the shot start; the LTX clip starts `lead` s earlier (the first span also
-                    # covers the lead-in)
-                    s = dict(s, timeline=[[0 if float(t0) <= 0 else round(float(t0) + lead, 2),
-                                           round(float(t1) + lead, 2), act] for t0, t1, act in s["timeline"]])
+                    # covers the lead-in) and runs `speed` times longer than the shot
+                    s = dict(s, timeline=[[0 if float(t0) <= 0 else round((float(t0) + lead) * speed, 2),
+                                           round((float(t1) + lead) * speed, 2), act] for t0, t1, act in s["timeline"]])
                 lp = claudia.lipsync_prompt(s, wardrobe, look_vid, line)
                 pr["lipsync"] = lp
                 problems += [f"{name} lipsync: {e}" for e in claudia.check(lp, "lipsync", s)]
@@ -259,8 +284,8 @@ def main():
                 n_ltx = nseed if s.get("engine", "ltx") == "ltx" else 1      # s2v/infinitetalk: + 1 LTX seed
                 if mode == "mixed" and s.get("engine", "ltx") == "ltx" and not a.seeds:
                     n_ltx = max(n_ltx, 4)                     # a real A/B: 2 seeds of each prompt
-                if s.get("engine", "ltx") != "ltx" and dur > 4.7:
-                    n_ltx = 0                                 # longer than LTX can do in one clip (121 frames)
+                if s.get("engine", "ltx") != "ltx" and dur > clips.ltx_seconds(max_frames, speed, 0.25):
+                    n_ltx = 0                                 # longer than LTX can do in one clip (121 / 217 frames)
                 # mixed: odd seeds A, even seeds B; with a single LTX seed B (a timeline shot is one where B won)
                 plain_k = (lambda k: mode == "plain" or (mode == "mixed" and k % 2 == 1 and n_ltx > 1))
                 for im, tg, k in [(im, tg, k) for im, tg in imgs for k in range(1, n_ltx + 1)]:
@@ -269,9 +294,9 @@ def main():
                     pt = ("_pa" if plain_k(k) else "_pb") if s.get("timeline") else ""
                     add("ltx_lipsync", f"{name}/ltx_s{k}" + ("" if tg == "{img}" else f"_{tg}"),
                         f"ai/lipsync/{name}_{tg}_s{k}{pt}.mp4", image=im,
-                        audio={"src": rel(P, vocals), "from": round(s["from"] - lead, 3), "dur": round(frames / 24 + 0.2, 3),
+                        audio={"src": rel(P, vocals), "from": round(s["from"] - lead, 3), "dur": round(frames / 24 / speed + 0.2, 3), **speed_key(speed),
                                "quiet_start": True, "prepare": True},
-                        prompt=lp_a if plain_k(k) else lp, neg=claudia.neg_lipsync(s), frames=frames,
+                        prompt=lp_a if plain_k(k) else lp, neg=claudia.neg_lipsync(s), frames=frames, **size,
                         seed=base + 100 + k,
                         strength=STRENGTHS[(k - 1) % 4],
                         meta={"song_start": round(s["from"] - lead, 3), "lead_in": lead, "shot": name,
@@ -335,7 +360,7 @@ def main():
                             meta={"song_start": s["from"], "shot": name})
             else:
                 inst = inst or instrumental(P)
-                frames, lead = clips.ltx_fit(dur)
+                frames, lead, speed = fit(s, dur)
                 mp = claudia.moving_prompt((claudia.timeline_text(s["timeline"]) if s.get("timeline") else None)
                                            or s.get("motion") or s.get("action") or claudia.default_motion(s),
                                            s.get("camera", "slow push-in"), look_vid)
@@ -346,8 +371,8 @@ def main():
                     add("ltx_moving", f"{name}/moving" + seed_tag(sd, base + 300) + ("" if tg == "{img}" else f"_{tg}"),
                         f"ai/moving/{name}_{tg}{seed_tag(sd, base + 300, P, 'moving', name)}.mp4",
                         image=im,
-                        audio={"src": rel(P, inst), "from": round(s["from"] - lead, 3), "dur": round(frames / 24 + 0.2, 3)},
-                        prompt=mp, neg=claudia.neg_moving(s), frames=frames, seed=sd,
+                        audio={"src": rel(P, inst), "from": round(s["from"] - lead, 3), "dur": round(frames / 24 / speed + 0.2, 3), **speed_key(speed)},
+                        prompt=mp, neg=claudia.neg_moving(s), frames=frames, **size, seed=sd,
                         meta={"song_start": round(s["from"] - lead, 3), "lead_in": lead, "shot": name})
         else:   # broll
             if not s.get("subject") and not s.get("start_image"):
@@ -365,7 +390,7 @@ def main():
             if not a.no_depth:
                 add("depth", f"{name}/depth", f"ai/depth/{name}_broll_depth.png", image=img)
             inst = inst or instrumental(P)
-            frames, lead = clips.ltx_fit(dur)
+            frames, lead, speed = fit(s, dur)
             mp = claudia.moving_prompt(s.get("motion") or "Light shifts slowly, dust floats in the air",
                                        s.get("camera", "slow push-in"), look_vid)
             crowd = s.get("recipe") == "crowd"
@@ -379,13 +404,13 @@ def main():
                 add("ltx_moving", f"{name}/moving" + seed_tag(sd, base + 300) + ("" if tg == "{img}" else f"_{tg}"),
                     f"ai/moving/{name}_{tg}{seed_tag(sd, base + 300, P, 'moving', name)}.mp4",
                     image=im,
-                    audio={"src": rel(P, inst), "from": round(s["from"] - lead, 3), "dur": round(frames / 24 + 0.2, 3)},
-                    prompt=mp, neg=claudia.neg_moving(s), frames=frames, seed=sd,
+                    audio={"src": rel(P, inst), "from": round(s["from"] - lead, 3), "dur": round(frames / 24 / speed + 0.2, 3), **speed_key(speed)},
+                    prompt=mp, neg=claudia.neg_moving(s), frames=frames, **size, seed=sd,
                     compression=s.get("compression", 42 if crowd else 18),
                     meta={"song_start": round(s["from"] - lead, 3), "lead_in": lead, "shot": name})
     prompts = merged(P.dir / "prompts.json", prompts, only, None)
     (P.dir / "prompts.json").write_text(json.dumps(prompts, ensure_ascii=False, indent=1), encoding="utf-8")
-    for h in claudia.hints([s for s in P.sections() if not only or s["name"] in only]):
+    for h in claudia.hints([s for s in P.sections() if not only or s["name"] in only]) + fit_notes:
         print("hint:", h)
     if problems:
         print("Prompt problems:\n  " + "\n  ".join(problems))

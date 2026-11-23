@@ -80,6 +80,20 @@ def cuts_from_lines(lines, beats, length, max_len, pre=0.08, gap=2.5, min_len=1.
     return res
 
 
+def long_takes(segs, lo=6.0, hi=8.9):
+    """Sung lines joined to takes of lo..hi seconds (one LTX clip at 1024x576 covers 8.9 s): a line joins the take
+    before it while that take is shorter than lo and both together stay within hi. Cuts stay on line starts."""
+    out = []
+    for t0, t1, ln in segs:
+        if out and ln is not None and out[-1][2] is not None and out[-1][1] - out[-1][0] < lo and t1 - out[-1][0] <= hi:
+            a0, _, aln = out[-1]
+            text = aln["text"] if ln.get("cont") else f'{aln["text"]} {ln["text"]}'
+            out[-1] = (a0, t1, dict(aln, text=text, end=ln.get("end", aln.get("end"))))
+        else:
+            out.append((t0, t1, ln))
+    return out
+
+
 def marker_of(line_idx, markers):
     m = [x for x in markers if x["line"] <= line_idx]
     return m[-1]["marker"] if m else ""
@@ -91,6 +105,9 @@ def main():
     ap.add_argument("--version", choices=["studio", "live"])
     ap.add_argument("--lipsync", type=float, help="share of sung shots with lip-sync (default 0.5)")
     ap.add_argument("--max-len", type=float, default=5.0)
+    ap.add_argument("--takes", choices=["short", "long"],
+                    help="long = every sung part one take of 6-9 s with movement (LTX at 1024x576); also "
+                         'project.json "takes": "long"')
     ap.add_argument("--s2v", action="store_true", help=argparse.SUPPRESS)     # old flag: S2V is on by default now
     ap.add_argument("--no-s2v", action="store_true", help="no Wan2.2-S2V shots (LTX only; S2V ~11-18 min per shot)")
     ap.add_argument("--force", action="store_true", help="replace a plan that already has creative fields")
@@ -116,14 +133,22 @@ def main():
     seed = creative.seed(P)
     r = creative.rng(P, "plan:technique")
     markers = P.markers()
+    long = (a.takes or p.get("takes")) == "long"
+    if a.takes:
+        p["takes"] = a.takes
+    moves = []
     looks = list(claudia.LOOKS[version])
     default_look = brief.get("look") or creative.pick(P, "plan:look", looks)
     shots, hist = [], []
     last_framing, last_cam = None, None
-    for i, (t0, t1, ln) in enumerate(cuts_from_lines(lines, beats, length, a.max_len)):
+    cuts = long_takes(cuts_from_lines(lines, beats, length, 8.9)) if long else \
+        cuts_from_lines(lines, beats, length, a.max_len)
+    for i, (t0, t1, ln) in enumerate(cuts):
         sung = ln is not None
         if not sung:
             tech = "broll"
+        elif long:                                                # she is in every sung take and sings it
+            tech = "lipsync"
         elif hist[-2:] == ["lipsync", "lipsync"]:
             tech = "broll"
         elif hist[-2:] in (["broll", "broll"], ["claudia_moving", "broll"], ["broll", "claudia_moving"]):
@@ -133,7 +158,7 @@ def main():
             have = sum(1 for x in shots if x["technique"] == "lipsync")
             due = share * n_sung - have
             tech = "lipsync" if (due > 0.5 or (due > -0.5 and r.random() < share)) else "broll"
-        if tech == "broll" and sung and r.random() < brief.get("claudia_moving_share", 0.15):
+        if not long and tech == "broll" and sung and r.random() < brief.get("claudia_moving_share", 0.15):
             tech = "claudia_moving"
         engine = "ltx"
         fr = [f for f in claudia.FRAMINGS.get(tech, [""]) if f != last_framing] or [""]
@@ -154,14 +179,19 @@ def main():
                       "line": (ln["text"] if sung else "(instrumental)"), "cont": bool(sung and ln.get("cont")),
                       "marker": mk, "technique": tech, "engine": engine, "framing": framing, "camera": cam, "look": lk,
                       "lyrics": sung, "idea": "", "action": "", "set": "", "set_short": "", "subject": "", "motion": ""})
-        if tech == "lipsync":                        # mood + a small movement from the look (V1 of the Europe 2031 run:
+        if tech == "lipsync" and long:               # a move that carries 6-9 s, with the camera that goes with it
+            act, cam = claudia.long_move(creative.rng(P, f"move:{name}"), moves)
+            moves.append(act)
+            shots[-1].update(manner=claudia.LONG_MANNER, action=act, camera=cam,
+                             framing=creative.rng(P, f"framing:{name}").choice(claudia.LONG_FRAMINGS))
+        elif tech == "lipsync":                      # mood + a small movement from the look (V1 of the Europe 2031 run:
             used = {x.get("action") for x in shots[:-1]}
             shots[-1]["manner"], shots[-1]["action"] = claudia.sing_mood(lk, creative.rng(P, f"mood:{name}"), used)  # the brief may change them
         for idea in creative.ideas(P, name):                 # ideas already recorded for this shot (user ideas win)
             if idea.get("by") == "user" or not shots[-1]["idea"]:
                 shots[-1]["idea"] = idea["idea"]
         hist.append(tech)
-    if not a.no_s2v:
+    if not a.no_s2v and not long:               # S2V drifts on takes over 4.7 s
         # Wan2.2-S2V for held notes, the rule of the Europe 2031 studio film (planung/shotplan.py waehle()): candidates
         # hold a sung word >= 0.7 s, ranked by held seconds - 0.25 x words per second (slow lines first), at most a
         # quarter of the singing shots and 6 per film (S2V costs 11-18 min a shot); spoken / rap parts stay LTX.

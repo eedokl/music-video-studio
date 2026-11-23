@@ -127,6 +127,24 @@ Reference shots (Europe 2031: projector screens, paper stacks, storms, server ha
 new pictures. A new seed (`project.json "seed"`) gives a new take of plan, wardrobe, seeds and camera moves.
 **Checkpoint:** show the shot list (time, line, technique, idea) and ask for changes before any GPU time.
 
+### Long takes with movement (option)
+
+`uv run "$S/plan.py" <proj> --takes long` (project.json `"takes": "long"`) plans the film in takes of 6-9 s instead
+of one shot per line: one take = one place = two to four sung lines, she walks, dances or gestures through it and
+the camera travels; every sung take is LTX lip-sync, rendered at 1024x576 with up to 217 frames. Offer it when the
+user wants more movement or longer scenes, or names a video of that kind as the model. Ask, do not assume: the
+default stays the short plan.
+- **`"speed": 1.18`** on a shot whose take reads as slow motion: the vocals are slowed for the render and the cut
+  shows the clip that much faster (lips in real time, body faster). Shot by shot, after looking at the takes - some
+  takes look unnatural faster, and slow motion suits others. A faster take is shorter (7.6 s at 1.18).
+- **`timeline`** on a take that should be richer: two or three things happening one after the other. It adds
+  gestures, not walking speed.
+- pick.py then prefers the take that moves most among those with about the same lip score; lip scores of long
+  takes lie lower than those of short ones without the mouths being worse.
+- `uv run "$A/film_motion.py" film.mp4 [--shots project.json]` gives take length and movement of a film, the same way
+  for every film (and for a reference video's own numbers).
+What held and what did not, the speed test, the mirror and back-view tricks: `references/long-takes.md`.
+
 ## 4. Prompts and night run
 
 ```
@@ -242,4 +260,5 @@ after fixes, the V1/V2 comparison. Typical V2 work: more seeds for weak lips, mo
 re-pick with lag, re-run shots whose clip jumped scenes or invented letters (only the negative prompt mentions text).
 
 References: `references/lessons.md` (rules with their reasons), `references/versions.md` (studio vs live),
+`references/long-takes.md` (takes of 6-9 s with movement, shot speed),
 `references/reference-tests.md` (test against Europe 2031). Models and timings: ai-video `references/models.md`.

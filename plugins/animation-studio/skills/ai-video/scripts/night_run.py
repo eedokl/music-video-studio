@@ -304,8 +304,9 @@ class Run:
                 if k == "ltx25_multishot":       # LTX-2.5: never beyond its 8 s
                     import ltx25
                     q = max(q, au["from"] - (ltx25.MAX_FRAMES - a.get("frames", ltx25.MAX_FRAMES)) // 8 * 8 / 24)
-                elif k.startswith("ltx"):        # LTX: never beyond LTX_MAX_FRAMES (RAM)
-                    room = (clips.LTX_MAX_FRAMES - a.get("frames", 97)) // 8 * 8 / 24
+                elif k.startswith("ltx"):        # LTX: never beyond the longest clip of this size (RAM)
+                    room = (a.get("max_frames", clips.LTX_MAX_FRAMES) - a.get("frames", 97)) // 8 * 8 / 24 \
+                        / float(au.get("speed") or 1)
                     q = max(q, au["from"] - room)
                 if q < au["from"] - 0.01:
                     shift = au["from"] - q
@@ -314,10 +315,13 @@ class Run:
                     meta["lead_in"] = round(meta.get("lead_in", 0) + shift, 3)
                     step = 4 if k in ("infinitetalk", "humo", "minimax_h3") else 8   # frames still cover the window
                     fps = 25 if k in ("infinitetalk", "humo") else 24
-                    a["frames"] = a.get("frames", 97) + int(-(-shift * fps // step)) * step
+                    a["frames"] = a.get("frames", 97) + int(-(-shift * float(au.get("speed") or 1) * fps // step)) * step
             wav = clips.cut_audio(self.p(au["src"]), au["from"], au["dur"], final.parent / "audio" / f"{final.stem}.wav")
             if au.get("prepare"):                # -16 dBFS sung RMS, peaks <= -1 dBFS, 15 ms ramps
                 meta["vocal_rms_before_db"] = clips.prepare_vocal(wav)
+            if float(au.get("speed") or 1) != 1:  # shot "speed": the model hears slowed vocals, the cut shows the
+                clips.stretch_audio(wav, float(au["speed"]))    # clip that much faster (clips.frame_index "tempo")
+                meta["tempo"] = float(au["speed"])
             meta.setdefault("song_start", au["from"])
             meta["audio"] = str(wav)
             if k == "infinitetalk":
@@ -342,6 +346,7 @@ class Run:
                 import ltx
                 ltx.render("lipsync" if k == "ltx_lipsync" else "moving", img, wav, a["prompt"], out,
                            a.get("frames", 97), a.get("seed", 31), a.get("strength", 1.0), a.get("neg"), meta,
+                           w=a.get("w", ltx.W), h=a.get("h", ltx.H),      # "takes": "long" renders at 1024x576
                            compression=a.get("compression", 18))
         elif k == "wan":
             import comfy_video

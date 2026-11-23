@@ -107,6 +107,9 @@ SONG = {**SHARED,                                     # music-video projects (so
                 "doc": '"added" = start image without a headset, the headset added by a second edit'},   # added after it
         "mic_tries": {"type": (INT,)}, "mic_repair": {"type": (BOOL,)},
         "pace": {"type": (STR,), "values": ("calm", "medium", "fast")}, "code_layer": {"type": (DICT,)},   # claudia code_film.py
+        "takes": {"type": (STR,), "values": ("short", "long"),         # claudia: sung takes of 6-9 s at 1024x576
+                  "doc": '"long" = one take per two to four sung lines (plan.py --takes long)'},
+        "pick_by": {"type": (STR,), "values": ("lips", "motion")},     # claudia pick.py: the automatic take
         "identity": {"type": (STR,)}, "tempo": {"type": (DICT,)}, "word_passes": {"type": (LIST,)},   # lyric-music-video
         "flight": {"type": (STR,), "doc": "folder of the portal flight inside the project (new_flight.py)"},   # portal-music-video
         "held_max": {"type": (NUM,)}, "held_stretch": {"type": (BOOL, NUM, DICT)}, "held_style": {"type": (STR, DICT)},

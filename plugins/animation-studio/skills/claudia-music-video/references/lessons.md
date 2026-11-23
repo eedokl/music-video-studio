@@ -294,3 +294,18 @@ Face similarity (ArcFace) of every start image against 8 photos of him that no v
   nothing was changed. 12 pictures a variant: hints, not proof.
 - The sheet here was three snapshots of different days. Photos taken in one session (same light, plain wall, bare
   head, no logo) are untested and should do better.
+
+## Lessons from rebuilding a reference video shot for shot (long takes)
+
+A music video with 7.3 s takes and a lot of movement was rebuilt with Qwen-Image-Edit and LTX-2.3 on the same song
+(32 shots, two rounds, about 4.5 h GPU). Details and tables: `long-takes.md`.
+- **The gap to such a film is movement, not picture or lips**: about 22 of 32 pictures matched the idea in one pass,
+  lips measured the same on both films, movement reached about half (median 7.5 against 13.7).
+- **Compare by the same measure**: the first verdict "lips are the biggest gap" came from our own scores alone; the
+  same measurement on the reference gave the same numbers. Measure the reference before judging against it.
+- **Round two pays for framing and single effects** (wider starts, a folding city, the mirror, the back view), not
+  for the amount of movement: three seeds and timeline prompts moved the most moving shots from 19-47 % to 29-62 %
+  of the reference.
+- **A planned change needs its start image picked again** before the clips run - three takes of a re-planned shot
+  were rendered on the old picture.
+- **Slow motion is steered by the sound, not by words** (shot key `"speed"`), and only shot by shot.

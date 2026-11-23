@@ -55,6 +55,9 @@ import sheets  # noqa: E402
 from song_project import Project  # noqa: E402
 
 
+MOTION_SLACK = 0.12      # "pick_by": "motion" - how much lip score a take may give up for more movement
+
+
 def load(P):
     f = P.dir / "selection.json"
     return json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
@@ -408,7 +411,7 @@ def pick_clips(P, sel, log, rows, curve):
                                         ("frozen picture", q["frozen"])) if bad]
             closed = bool(why)                            # rejected: hidden scene cut / picture stops / mouth shut
             if c not in extra:
-                rated.append((score, c, lag, rl, closed, r))
+                rated.append((score, c, lag, rl, closed, r, q["motion"]))
             rows.append((c, f"r0 {r['r0']}  best {r['r_best']}@{r['lag']}  range {r['range']}  face {r['face']}  "
                             f"score {score}{'  REJECTED: ' + ', '.join(why) if why else ''}"))
             log.append(f"  {c.parent.name + '/' + c.name:36s} r0 {r['r0']}  r@{lag} {rl}  range {r['range']}  face {r['face']}  score {score}"
@@ -419,7 +422,16 @@ def pick_clips(P, sel, log, rows, curve):
         if s.get("engine", "ltx") == "ltx" and any(x[1].parent.name == "lipsync" for x in open_):
             # the plan says LTX (test: after an engine switch the old S2V take won the automatic pick)
             open_ = [x for x in open_ if x[1].parent.name == "lipsync"]
-        score, c, lag, rl, closed, r = max(open_, key=lambda x: x[0])
+        best = max(open_, key=lambda x: x[0])
+        by = P.get("pick_by") or ("motion" if P.get("takes") == "long" else "lips")
+        if by == "motion":      # long takes: of the takes whose lips are about as good, the one that moves most
+            near = [x for x in open_ if x[0] >= best[0] - MOTION_SLACK]
+            most = max(near, key=lambda x: x[6])
+            if most is not best:
+                log.append(f"  {name}: {most[1].name} moves more ({most[6]} against {best[6]}) at a lip score within "
+                           f"{MOTION_SLACK} of the best ({most[0]} / {best[0]}) - taken (\"pick_by\": \"lips\" = by score only)")
+            best = most
+        score, c, lag, rl, closed, r = best[:6]
         out[name] = {"file": relp(P, c), "lag": lag, "score": score, "r": rl, "r0": r["r0"], "range": r["range"]}
         log.append(f"clip {name}: {c.parent.name}/{c.name}  lag {lag:+d}  score {score}")
         if all((x[3] or 0) < 0 for x in rated) and curve in ("rhubarb", "mix"):

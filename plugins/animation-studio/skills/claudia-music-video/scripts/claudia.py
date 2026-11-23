@@ -158,6 +158,29 @@ CAMERAS = {"lipsync": ["static camera", "very slow push-in", "slow lateral drift
                      "static camera", "slow orbit to the right"],
            "claudia_moving": ["slow push-in", "slow orbit", "static camera", "slow pull-back"]}
 
+# "takes": "long" (plan.py --takes long): one take = one place = two to four sung lines, she moves through the picture.
+# Each pair held Claudia's face over 7-9 s at 1024x576 (pilot "Spiegel" and the shot-for-shot rebuild, 2026-11-23);
+# the framings start from the knees up or closer - a full-length start loses the face (canon.py found none).
+LONG_FRAMINGS = ["frontal medium shot from the knees up", "frontal medium shot from the waist up",
+                 "frontal medium close-up"]
+LONG_MOVES = [
+    ("she walks steadily toward the camera with long steps, her arms swing, her hair bounces with every step",
+     "the camera tracks backward in front of her at her walking speed"),
+    ("she stands her ground and sings with one raised open hand", "slow push-in"),
+    ("she steps toward the camera and opens both arms wide, her hair moves", "the camera tracks backward in front of her"),
+    ("she dances close to the lens, her shoulders and arms move on every beat, her hair flies",
+     "handheld camera moving with her"),
+    ("she leans forward, then straightens up and opens one hand", "slow continuous push-in toward her face"),
+    ("she turns her eyes from the side to the lens, a slight sway of the head", "very slow push-in"),
+]
+LONG_MANNER = "clearly and articulates every syllable with a wide moving mouth"
+
+
+def long_move(rng, used):
+    """(action, camera) for a long take, none twice in a row while there are others."""
+    fresh = [m for m in LONG_MOVES if m[0] not in used[-2:]] or LONG_MOVES
+    return rng.choice(fresh)
+
 
 def look(brief, name, version="studio"):
     """(image sentence, video sentence) of a look: the brief's own looks first, then the version's defaults."""
