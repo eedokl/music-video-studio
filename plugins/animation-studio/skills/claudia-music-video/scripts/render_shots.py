@@ -13,7 +13,7 @@ Material per shot, best first:
   3. a placeholder card (shot, technique, line, idea) - visible gaps, never silent failures
   + "typo" (typo.py): NEWSFLASH, stamps on the sung words, departure board, title - drawn on its own ground or over
     the material above (technique "typo" has no material)
-Finish (project.json "finish", defaults as in the reference films): film grain sigma 5.5, vignette 0.38,
+Finish (project.json "finish"): film grain sigma 2.5 (5.5 until 0.25.0 read as noise in the small mp4), vignette 0.38,
 darker band under the lyrics, fade in 0.5 s at the song start and out 2.5 s at its end (at most 40 % of the last shot); "ai_label" (text) is shown
 in the last 3 s of the last shot (LTX licence + plugin rule: AI content is labelled).
 Usage: uv run render_shots.py [<project>]
@@ -157,7 +157,7 @@ def main():
     W, H = typo.W, typo.H = P.size   # frame size of the film (project.json "size")
     words = (P.sheet().get("words", []) if (P.analysis / "song_sheet.json").exists() else [])
     sel = json.loads((P.dir / "selection.json").read_text(encoding="utf-8")) if (P.dir / "selection.json").exists() else {}
-    fin = dict(dict(grain=5.5, vignette=0.38, text_band=0.45, fade_in=0.5, fade_out=2.5), **(P.get("finish") or {}))
+    fin = dict(dict(grain=2.5, vignette=0.38, text_band=0.45, fade_in=0.5, fade_out=2.5), **(P.get("finish") or {}))
     song_len = duration(P.song)
     secs = P.sections()
     last = secs[-1]["name"] if secs else None

@@ -258,6 +258,8 @@ camera on the hit), 8 takes. What drifted, and what the user chose:
 
 - **Film grain 5.5 looks gritty in the small mp4** (2x2-pixel grain, "35mm film look" in the prompts and the
   compression add up). The user chose 2.5 (`"finish": {"grain": 2.5}`); the full file shrank from 396 to 175 MB.
+  The second film at 5.5 ("Du bist die Maschine") read as "verrauscht" too, so 2.5 is the default since 0.25.1;
+  set `"finish": {"grain": 5.5}` only for an explicitly gritty look.
 - **Cursive lyrics without the box** were chosen over the caps default for this film: `lyrics_style` with
   `"base": "script"`, a cursive font, `"box": null`, size 42 - legible on bright and dark shots because of the
   dark edge and the darker band at the bottom.
