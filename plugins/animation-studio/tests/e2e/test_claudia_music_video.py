@@ -1,5 +1,7 @@
 """claudia-music-video: synthetic AI clips (ffmpeg test pictures with sound) + their <clip>.json meta as night_run /
 ltx.py write them + selection.json -> render_shots.py -> make_film.py (lyrics, film, sheets, review.json)."""
+import json
+
 from common import (FPS, Test, full, expect, expect_film, need, read_json, script, song_sheet, tone, tool,
                     video_frames, write_json)
 
@@ -121,6 +123,47 @@ def run_claudia(ctx):
     expect("seed tag ok" in out.stdout, f"jobs.seed_tag:\n{out.stdout}")
     for f in ("s09_v1.json", "s09_v1.mp4"):
         (d / "ai" / "s2v" / f).unlink()
+    # --keep-old: a rewritten shot's finished takes stay on the takes page as <shot>_<tag>_... (sidecars, start image
+    # copy, kept-flag, selection.json / picks.log follow); a second call keeps nothing twice; a wave is hinted
+    lip, st = d / "ai" / "lipsync", d / "ai" / "start"
+    st.mkdir(parents=True, exist_ok=True)
+    (st / "s77_v2.png").write_bytes(b"png")
+    for stem in ("s77_v2_s1", "s77_v2_s1_g"):
+        write_json(lip / f"{stem}.json", {"kind": "ltx_lipsync", "seed": 5, "image": str(st / "s77_v2.png")})
+        (lip / f"{stem}.mp4").write_bytes(b"")
+    write_json(lip / "s77_v2_s1.mouth.json", {"m": []})
+    sel = json.loads((d / "selection.json").read_text(encoding="utf-8"))
+    sel_before = dict(sel)
+    sel.setdefault("manual", {}).setdefault("clip", {})["s77"] = {"file": "ai/lipsync/s77_v2_s1_g.mp4", "lag": 0}
+    write_json(d / "selection.json", sel)
+    drv = "\n".join([
+        f"import sys, json; sys.path.insert(0, r'{JOBS.parent}'); import jobs, claudia; from song_project import Project",
+        "from pathlib import Path",
+        f"P = Project(r'{d}'); lip = Path(r'{lip}')",
+        "m = jobs.keep_old(P, ['s77'], 'wink')",
+        "assert sorted(m.values()) == ['ai/lipsync/s77_wink_v2_s1.mp4', 'ai/lipsync/s77_wink_v2_s1_g.mp4'], m",
+        "assert sorted(f.name for f in lip.glob('s77_*')) == ['s77_wink_v2_s1.json', 's77_wink_v2_s1.mouth.json', "
+        "'s77_wink_v2_s1.mp4', 's77_wink_v2_s1_g.json', 's77_wink_v2_s1_g.mp4'], sorted(f.name for f in lip.glob('s77_*'))",
+        "meta = json.loads((lip / 's77_wink_v2_s1.json').read_text(encoding='utf-8'))",
+        "assert meta['kept'] == 'wink' and Path(meta['image']).name == 's77_v2wink.png' and Path(meta['image']).exists(), meta",
+        "sel = json.loads((P.dir / 'selection.json').read_text(encoding='utf-8'))",
+        "assert sel['manual']['clip']['s77']['file'] == 'ai/lipsync/s77_wink_v2_s1_g.mp4', sel['manual']['clip']",
+        "assert jobs.keep_old(P, ['s77'], 'wink') == {} and jobs.keep_old(P, ['s77'], 'again') == {}, 'kept twice'",
+        "assert jobs.seed_tag(6, 5, P, 'lipsync', 's77') == '_sd6'",
+        "try:\n    jobs.keep_old(P, ['s77'], 'a b'); raise AssertionError('bad tag taken')\nexcept SystemExit: pass",
+        "h = claudia.hints([dict(name='a', technique='lipsync', action='he gives a small polite wave'),",
+        "                   dict(name='b', technique='lipsync', idea='she waves goodbye'),",
+        "                   dict(name='c', technique='lipsync', action='she waves goodbye', wave=True),",
+        "                   dict(name='d', technique='lipsync', action='her hair falls in soft waves'),",
+        "                   dict(name='e', technique='broll', subject='waves crash at the shore')])",
+        "assert sorted(x.split(':')[0] for x in h if 'a wave in the text' in x) == ['a', 'b'], h",
+        "print('keep old ok')", ""])
+    out = ctx.py(drv, deps_from=[JOBS], name="keep_old.py")
+    expect("keep old ok" in out.stdout, f"jobs.keep_old / wave hint:\n{out.stdout}")
+    for f in list(lip.glob("s77_*")) + [st / "s77_v2.png", d / "ai" / "start_alt" / "s77_v2wink.png"]:
+        f.unlink()
+    (d / "ai" / "start_alt").rmdir()
+    write_json(d / "selection.json", sel_before)
     # other characters (project.json "characters" / "lead", shot "who"): their own identity, refs and negatives; none
     # of Claudia's canon (microphone, streak) in a prompt, a check or the mic repair; Claudia herself unchanged
     drv = "\n".join([

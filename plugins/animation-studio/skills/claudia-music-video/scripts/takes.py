@@ -25,6 +25,7 @@ No GPU: the takes exist already (2-4 LTX seeds per singing shot, S2V, the moving
 import argparse
 import json
 import re
+import socket
 import subprocess
 import sys
 import threading
@@ -51,6 +52,18 @@ def vocalise(line):
     S2V vocalises 49 / 64 measured weak but were kept for their expression)."""
     ws = re.findall(r"[A-Za-zÄÖÜäöüß]+", line or "")
     return bool(line) and all(w.lower() in VOCALISE for w in ws)
+
+
+class OwnPortServer(ThreadingHTTPServer):
+    """A port of its own: Python's server sets SO_REUSEADDR, which on Windows lets a second server bind a port that an
+    old one still holds - the browser then got the OLD project's page (Du bist die Maschine, 2026-11-25: a takes page
+    of another project answered). Exclusive use makes the second start fail with "port in use" instead."""
+    allow_reuse_address = sys.platform != "win32"
+
+    def server_bind(self):
+        if sys.platform == "win32":
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
 
 
 def shouts(line):
@@ -490,7 +503,7 @@ def serve(P, port=0, host="127.0.0.1"):
                 return self.reply(400, {"error": str(e)})
             self.reply(404, {"error": "unknown"})
 
-    httpd = ThreadingHTTPServer((host, port), Handler)
+    httpd = OwnPortServer((host, port), Handler)
     print(f"takes: http://{host}:{httpd.server_address[1]}/   (Ctrl+C to stop)", flush=True)
     httpd.serve_forever()
 

@@ -336,6 +336,10 @@ Rules taken from it (ai-video `face_pass.py`, `face_fix.py`):
 - **The crop needs head context**: crop side = 3.4 x face width. At 2.6 the pass squeezed the face in one shot.
 - **Look at the sheet**: the face can come out a little more made-up (eyeliner, fuller lips), a hair streak next to
   the face can widen in some frames, skin gets more texture - in a profile shot there was little to gain.
+- **The fixed take is an offer, not the answer**: compare `_g` with its original on the takes page. In the Dance
+  cut 2 of 9 fixed takes went back to the original (they looked made-up), and in the main film the user re-picked
+  the plain s24 take over its fix. After a hand pick, `face_fix.py --list --only <the re-picked shots>` checks just
+  those (CPU, minutes) - of six re-picked takes none was far.
 - Better still: frame singing shots so the face is >= ~150 px; the pass is the repair for wide shots that must stay.
 
 **Face tracker: MediaPipe by default, RetinaFace as an option.** The test used RetinaFace (facexlib, MIT, from the
@@ -369,3 +373,28 @@ ai-video `face_track_retina.py`, CPU PyTorch in its own uv environment - not the
   ~40 px, strong profiles, crowds, fast pans where the face jumps out of the search window. RetinaFace sees every face of the whole frame (no search window),
   ~0.5-0.8 s per frame on the CPU; first use installs ~250 MB (CPU torch) and downloads detection_Resnet50_Final.pth
   (~105 MB).
+
+## Rewriting a shot after the cut ("Du bist die Maschine", 2026-11-25: waving into the camera)
+
+- **No waving unless asked.** "he gives a small polite wave" (s17, the man in the back seat) and "points at the
+  viewer and waves one hand" (s23) became waving straight into the camera in every start image (3 + 2 variants) and
+  every take. The user: no waving into the camera unless it is asked for. Rewritten as "he sits calmly with both hands
+  resting in his lap and looks ahead down the road past the camera, not into the lens" / "points one finger at the
+  viewer, her other hand rests at her side": no wave in 5 new start images and 10 takes. jobs.py now hints at a wave
+  in `action` / `idea` (shot `"wave": true` when the user wants one).
+- **"Looks ahead, not into the lens" with a camera in front** works only in part: of three start images one looked
+  clearly past the camera, two just beside the lens. When a second person must not look at the viewer, place the
+  camera to the side. In the new take the driver no longer turned to the back seat - the user accepted that.
+- **One take still waved**: the driver lifted a hand at the end of 1 of 6 new takes although no prompt said so - look
+  at the ends of the takes.
+- **Keep the old takes**: `jobs.py --only s17,s23 --keep-old wink` renames the finished takes to `s17_wink_...`
+  (start image copied to `ai/start_alt/`, selection.json and picks.log follow) - without it the night run moves them
+  to `replaced/`, where the takes page no longer shows them and a hand pick on them breaks.
+- **Two people in the frame, lip score**: 4 of 6 new car takes (and both old ones) measured "mouth closed" while she
+  plainly sings; the other two measured normally. Probably the mouth of the silent man was measured - judge two-person
+  shots by eye on the takes page.
+- **A hidden cut the measure missed**: of two cinema takes that jump to a close-up at the end, pick.py flagged one
+  ("1 hidden cut(s)?") and picked the other automatically - check the last second of the automatic pick.
+- New s17/s23 cost 21 min GPU (5 start images + 10 LTX takes at ~110 s each), not the estimated hour.
+- The takes page / review page now bind their port exclusively: on Windows a second server could share a port an old
+  one still held, and the browser showed another project's page.

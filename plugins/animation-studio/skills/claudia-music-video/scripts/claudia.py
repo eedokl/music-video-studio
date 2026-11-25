@@ -625,6 +625,10 @@ HANDLING = re.compile(r"\b(hands? (him|her|it|over)|passes? (him|her|it|the)|giv
                       r"(laptop|book|lid))\b")
 
 
+WAVE = re.compile(r"\b(waves?|waving|waved) (goodbye|hello|bye|one hand|a hand|his hand|her hand|at|to|into)\b|"
+                  r"\b(polite|small|friendly|little|short|quick) wave\b|\bwaves? (him|her|them|us)\b")
+
+
 def hints(shots):
     """Direction advice that is not an error (printed by jobs.py). Lessons of Das Warum (2026-11-20):
     a hand named in the hair text became a hand in the hair in a third of the shots; "raises his eyebrows" gave a
@@ -638,6 +642,11 @@ def hints(shots):
         n, text = s.get("name", "?"), " ".join(str(s.get(k) or "") for k in ("action", "set", "subject", "motion")).lower()
         if re.search(r"\b(by hand|hand (in|through) (his|her) hair|pushes? (his|her) hair|pushed back by)\b", text):
             out.append(f"{n}: a hand at the hair in the text - Qwen draws the hand there in every variant; describe the hair itself")
+        if (s.get("technique") in ("lipsync", "claudia_moving") and not s.get("wave") and WAVE.search(
+                text + " " + str(s.get("idea") or "").lower())):
+            out.append(f"{n}: a wave in the text - it came out as waving into the camera in every start image and take "
+                       "(Du bist die Maschine s17/s23, 2026-11-25); leave it out unless the user asked for one (then the "
+                       "shot says \"wave\": true); people other than the singer look at her or ahead, not into the lens")
         if "eyebrow" in text:
             out.append(f"{n}: raised eyebrows read as a frozen stare in the start image - describe a relaxed face instead")
         if re.search(r"\b(laptops?|notebook computers?|monitors?|smartphones?)\b", text) and "unbranded" not in text:

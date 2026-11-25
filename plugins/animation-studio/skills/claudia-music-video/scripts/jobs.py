@@ -34,7 +34,10 @@ characters") - identity text, reference images, negatives and the canon rules th
 More takes of a shot: --only s05 --all-starts makes clips from EVERY start image variant (not only the picked one), so
 the takes page offers them side by side; add --start 3 for one more start image, --seeds 4 for more seeds.
 Direction hints (hand at the hair, raised eyebrows, laptops, people in B-roll, repeated poses) are printed, not fatal.
+A rewritten shot (new action, no waving ...): --only s17 --keep-old wink keeps its finished takes on the takes page as
+s17_wink_<img>_s<k>.mp4 (start image copied to ai/start_alt/) - without it the night run moves them to replaced/.
 Usage: uv run jobs.py [<project>] [--start 2] [--seeds 2] [--broll 2] [--no-depth] [--only s02,s05] [--all-starts]
+                      [--keep-old TAG]
 Then:  uv run <ai-video>/scripts/night_run.py <project>/jobs.json [--dry-run]
 """
 import argparse
@@ -104,9 +107,59 @@ def seed_tag(seed, default, P=None, folder=None, shot=None):
         for f in sorted((P.dir / "ai" / folder).glob(f"{shot}_*.mp4")):
             if "_sd" in f.stem or ".part." in f.name or ".encoding." in f.name or not clips.meta_path(f).exists():
                 continue
-            if clips.read_meta(f).get("seed") == seed:
+            m = clips.read_meta(f)
+            if m.get("seed") == seed and not m.get("kept"):
                 return ""
     return f"_sd{seed}"
+
+
+TAKE_DIRS = ("lipsync", "s2v", "infinitetalk", "humo", "minimax_h3", "ltx25", "moving")
+
+
+def keep_old(P, shots, tag):
+    """--keep-old <tag>: before a rewritten shot is rendered again, its finished takes are renamed
+    <shot>_<tag>_<rest> (+ every sidecar) instead of being moved to replaced/ by the night run - the takes page keeps
+    offering them next to the new ones (Du bist die Maschine s17/s23, 2026-11-25: new takes without the waving, the old
+    ones kept to compare). Their start image is copied to ai/start_alt/<shot>_<img><tag>.png and the clip's json points
+    there, so the page marks them as made on an older start image. selection.json and picks.log follow the new names.
+    Returns {old relative path: new relative path}."""
+    if not tag.isalnum():
+        raise SystemExit(f"--keep-old: the tag must be letters/digits only (it goes into file names): {tag!r}")
+    moved = {}
+    for name in shots:
+        for d in TAKE_DIRS:
+            for f in sorted((P.dir / "ai" / d).glob(f"{name}_*.mp4")):
+                if ".part." in f.name or ".encoding." in f.name or f.stem.startswith(f"{name}_{tag}_"):
+                    continue
+                meta = clips.read_meta(f) if clips.meta_path(f).exists() else {}
+                if meta.get("kept"):
+                    continue
+                stem = f.stem
+                new_stem = f"{name}_{tag}_{stem[len(name) + 1:]}"
+                if (f.parent / f"{new_stem}.mp4").exists():
+                    raise SystemExit(f"--keep-old: {f.parent.name}/{new_stem}.mp4 exists - take another tag")
+                for side in sorted(f.parent.glob(f"{stem}.*")):
+                    side.rename(f.parent / (new_stem + side.name[len(stem):]))
+                img = meta.get("image")
+                if img and Path(img).exists():
+                    alt = P.dir / "ai" / "start_alt" / f"{Path(img).stem}{tag}{Path(img).suffix}"
+                    alt.parent.mkdir(parents=True, exist_ok=True)
+                    if not alt.exists():
+                        alt.write_bytes(Path(img).read_bytes())
+                    meta["image"] = str(alt.resolve())
+                if meta:
+                    meta["kept"] = tag
+                    clips.meta_path(f.parent / f"{new_stem}.mp4").write_text(
+                        json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")
+                moved[f"ai/{d}/{stem}.mp4"] = f"ai/{d}/{new_stem}.mp4"
+    for fn, cut in (("selection.json", 0), ("picks.log", 3)):       # picks.log names "lipsync/<clip>.mp4"
+        p = P.dir / fn
+        if moved and p.exists():
+            t = p.read_text(encoding="utf-8", errors="replace")
+            for o, n in moved.items():
+                t = t.replace(o[cut:], n[cut:])
+            p.write_text(t, encoding="utf-8")
+    return moved
 
 
 def merged(path, new, shots, key):
@@ -140,6 +193,9 @@ def main():
     ap.add_argument("--all-starts", action="store_true",
                     help="clips from every start image variant of the shots (more takes to choose from), not only the pick")
     ap.add_argument("--ignore-checks", action="store_true")
+    ap.add_argument("--keep-old", metavar="TAG",
+                    help="with --only: keep the shots' finished takes as <shot>_<TAG>_... on the takes page instead of "
+                         "replaced/ (a rewritten shot, the old takes to compare)")
     ap.add_argument("--repair-mic", action="store_true",
                     help="repair start images that fail only on the microphone (off by default: the retouch "
                          "left grey patches on the cheek; also project.json \"mic_repair\": true)")
@@ -153,6 +209,8 @@ def main():
     brief = P.get("brief") or {}
     wardrobe = brief.get("wardrobe") or creative.pick(P, "wardrobe", claudia.WARDROBE[version])
     only = [x for x in a.only.split(",") if x]
+    if a.keep_old and not only:
+        raise SystemExit("--keep-old needs --only <shots> (the shots you rewrote)")
     ref_cache = []
     # "takes": "long" - LTX clips at 1024x576, up to 217 frames (9 s) in one clip instead of 121 (5 s) at 1280x704
     long_takes = P.get("takes") == "long"
@@ -420,6 +478,10 @@ def main():
     # project folder (the jobs file's folder), so the hook survives plugin updates and moved projects
     # the mic repair is opt-in (lgtm_nc, 2026-11-21: of 6 repaired start images 3 kept a grey patch or a rest of
     # the boom on the cheek, one lost the microphone) - more start variants are the default answer
+    if a.keep_old:
+        kept = keep_old(P, only, a.keep_old)
+        print(f"--keep-old {a.keep_old}: {len(kept)} take(s) kept on the takes page"
+              + "".join(f"\n  {o} -> {n}" for o, n in kept.items()))
     repair = a.repair_mic or bool(P.get("mic_repair"))
     hook = MEDIAPIPE + ["${CLAUDE_PLUGIN_ROOT}/skills/claudia-music-video/scripts/pick.py", "auto", "."]
     d = {"phases": ["flux", "qwen_edit", "depth", "ltx", "s2v", "infinitetalk", "humo", "minimax_h3", "ltx25", "wan"],

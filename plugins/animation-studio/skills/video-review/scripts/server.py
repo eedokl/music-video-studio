@@ -15,6 +15,7 @@ choice or start a cut. Every GET also needs a Host header naming this server (12
 """
 import json
 import re
+import socket
 import subprocess
 import sys
 import threading
@@ -24,6 +25,18 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 PAGE = HERE.parent / "assets" / "index.html"
+
+
+class OwnPortServer(ThreadingHTTPServer):
+    """A port of its own: Python's server sets SO_REUSEADDR, which on Windows lets a second server bind a port that an
+    old one still holds - the browser then got the OLD project's page (Du bist die Maschine, 2026-11-25: a takes page
+    of another project answered). Exclusive use makes the second start fail with "port in use" instead."""
+    allow_reuse_address = sys.platform != "win32"
+
+    def server_bind(self):
+        if sys.platform == "win32":
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
 
 
 def serve(rp, port=0, host="127.0.0.1"):
@@ -163,6 +176,6 @@ def serve(rp, port=0, host="127.0.0.1"):
                 return self.reply(200, {"ok": True})
             self.reply(404, {"error": "unknown"})
 
-    httpd = ThreadingHTTPServer((host, port), Handler)
+    httpd = OwnPortServer((host, port), Handler)
     print(f"video review: http://{host}:{httpd.server_address[1]}/", flush=True)
     httpd.serve_forever()

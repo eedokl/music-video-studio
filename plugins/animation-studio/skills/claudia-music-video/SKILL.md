@@ -107,6 +107,9 @@ Then **write the creative brief** (this is the film - do not skip it, do not cop
     (`manner` = how she sings, e.g. "softly", "with energy", "tiredly into the camera"; `action` = a small movement,
     e.g. "the wind blows her hair", "a slight sway of the head" - plan.py proposes both from the look. The LTX prompt
     is built like the Europe 2031 night run V1: "she sings <manner>, <action>. She sings the words "...". <mouth>".
+    **No waving** (no "polite wave", "waves goodbye", "waves one hand") unless the user asks for it: it becomes
+    waving into the camera in every start image and take (Du bist die Maschine s17/s23, 2026-11-25; jobs.py hints,
+    a shot the user wants waving says `"wave": true`). A second person looks at her or ahead, not into the lens.
     "deadpan" is her face, not a way to sing: bound to the words ("sings deadpan: ...") it kept mouths shut.
     The same holds for every mood word in `manner` - "quietly", "dryly", "lazy", "tired": LTX obeys the adjective and
     mumbles or shuts the mouth (jobs.py prints a hint). Write how the words are sung - "warmly and articulates
@@ -163,7 +166,9 @@ start images -> pick hook (canon check) -> depth -> LTX lip-sync + moving -> S2V
 (brand logos), a person of the film in B-roll, the same action in many shots - fix the brief before the night run.
 **Changed jobs are redone**: the night run keeps a fingerprint of every output (`jobs_made.json`: prompt, seed, the
 picked start image and that image's fingerprint). Rewrite a shot in the brief, run `jobs.py --only <shot>` and the
-night run again - its images and clips are made anew, the old files move to `ai/<kind>/replaced/`. `--status` /
+night run again - its images and clips are made anew, the old files move to `ai/<kind>/replaced/` (gone from the
+takes page). When the user wants the old takes to compare (a shot rewritten after the cut), add `--keep-old <tag>`:
+they stay as `<shot>_<tag>_...` next to the new ones. `--status` /
 `--dry-run` show them as "to redo". After a plugin update that rewords prompts, `--keep-stale` adopts what is there.
 Rough cost: ~10 min loading + per lip-sync shot 2 seeds x ~2.5 min, per B-roll ~2.5 min; a 3-min song ~4-7 h.
 Keep other big programs closed (LTX peaks near 45 GB RAM). Only ever one GPU job: never kill other jobs or locks.
