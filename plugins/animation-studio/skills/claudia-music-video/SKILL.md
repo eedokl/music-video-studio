@@ -74,6 +74,22 @@ Start images of such shots have no measured canon: `pick.py` takes the first var
 **Every shot that shows a character of the film is `lipsync` or `claudia_moving` with `who`** - a person described in
 a `broll` subject has no reference image and comes out as a stranger.
 
+**Figure library** (one definition per figure for every film - the inline copies drifted apart): a figure used in more
+than one film lives in `<library>/<name>/character.json` (the same keys as above, `"refs"` = file names beside it,
+plus `"description"` / `"source"` as notes); the project only names it and may change nothing but the clothes:
+```
+"characters": {"oliver_v2": {"library": true, "wardrobe": "a dark navy jacket over a plain grey t-shirt"},
+               "mann": {"library": "oliver"}}          // another key = the library figure "oliver" under that name
+```
+Library folders: project.json `"character_library"` (relative to the project), then the config key
+`character_library` (`check_tools.py --set character_library=<folder>`, several separated by `;`); the plugin ships no
+figures. Any other key next to `"library"` stops jobs.py (change the figure in its character.json, or define a new
+figure inline under another name). Old inline definitions keep working. Moving a figure into the library or renaming
+it re-renders nothing as long as the prompts stay the same and the reference images keep their **file names**
+(night_run fingerprints prompts and ref names, not folders) - check with `night_run.py jobs.json --dry-run` (0 redo).
+On this kind of machine the library holds `oliver` (Bitte-Lektion / LGTM: two photos), `oliver_v2` (views sheet +
+close-up) and `claudia_v2`; ask the user before adding a figure (it is their face / their character).
+
 **Engines for sung shots** (field `engine`, default `ltx`):
 
 | engine | when | cost |

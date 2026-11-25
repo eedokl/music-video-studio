@@ -22,7 +22,7 @@ Settings (not programs):
   comfy_dir*  ComfyUI folder (optional: ai-video night_run.py --clean-comfy and the free-space check)
   animation_studio_root  the plugin folder (env ANIMATION_STUDIO_ROOT) - read by toon-2d scene shims; written by
               check_tools.py --setup and toon-2d new_scene.py
-  sfx_cache, comfy_start, comfy_models, font, rife_model, minimax_api_base, claudia_refs, actors3d, awake: see SETTINGS below.
+  sfx_cache, comfy_start, comfy_models, font, rife_model, minimax_api_base, claudia_refs, character_library, actors3d, awake: see SETTINGS below.
 """
 import json
 import os
@@ -68,6 +68,7 @@ SETTINGS = {
     "rife_model": "RIFE model folder (default: rife-v4.6 next to the RIFE exe)",
     "minimax_api_base": "MiniMax API base URL",
     "claudia_refs": "reference images of Claudia (folder, or a.png;b.png)",
+    "character_library": "shared figure library (folders separated by ;) of <name>/character.json + refs, for claudia-music-video project.json \"characters\": {\"<name>\": {\"library\": true}}",
     "animation_studio_root": "the plugin folder, read by toon-2d scene shims (env ANIMATION_STUDIO_ROOT)",
     "actors3d": "folder(s) of realistic 3D actors (<name>/figur.blend, Rigify) for stage-3d \"figures\": \"rigify\"",
     "awake": "0 = let the computer sleep during long jobs (default: kept awake while a job holds the GPU lock)",

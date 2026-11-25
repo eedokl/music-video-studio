@@ -203,6 +203,35 @@ def run_claudia(ctx):
         "print('characters ok')", ""])
     out = ctx.py(drv, deps_from=[JOBS], name="characters.py")
     expect("characters ok" in out.stdout, f"claudia characters:\n{out.stdout}")
+    # shared character library (<lib>/<name>/character.json + refs): a project names the figure and may override only
+    # the wardrobe; the prompts equal those of the same figure defined inline (a move into the library re-renders
+    # nothing), refs come from the library folder with their file names; unknown figure / other overrides stop
+    drv = "\n".join([
+        f"import sys, json, tempfile; sys.path.insert(0, r'{JOBS.parent}'); import claudia",
+        "from pathlib import Path",
+        "lib = Path(tempfile.mkdtemp()); (lib / 'tom').mkdir()",
+        "spec = {'pronoun': 'he', 'sheet': True, 'full': 'a tall man with grey hair', 'far': 'a tall man',",
+        "        'refs': ['tom_sheet.jpg', 'tom_face.jpg'], 'negative': 'beard', 'wardrobe': 'a green coat'}",
+        "for r in spec['refs']: (lib / 'tom' / r).write_bytes(b'x')",
+        "(lib / 'tom' / 'character.json').write_text(json.dumps(dict(spec, description='doc only')), encoding='utf-8')",
+        "s = {'name': 's01', 'technique': 'lipsync', 'framing': 'close-up', 'who': 'tom', 'action': 'he nods'}",
+        "inline = dict(spec, refs=[str(lib / 'tom' / r) for r in spec['refs']], wardrobe='a red scarf')",
+        "claudia.setup({'characters': {'tom': inline}})",
+        "want = (claudia.start_image_prompt(s, 'x', 'L.'), claudia.lipsync_prompt(s, 'x', 'l', 'Hi'), claudia.neg_image(s), claudia.shot_refs(s, lambda: 1 / 0))",
+        "claudia.setup({'character_library': str(lib), 'characters': {'tom': {'library': True, 'wardrobe': 'a red scarf'}}})",
+        "got = (claudia.start_image_prompt(s, 'x', 'L.'), claudia.lipsync_prompt(s, 'x', 'l', 'Hi'), claudia.neg_image(s), claudia.shot_refs(s, lambda: 1 / 0))",
+        "assert got == want and 'a red scarf' in got[0] and 'doc only' not in got[0], (got, want)",
+        "assert [Path(r).name for r in got[3]] == ['tom_sheet.jpg', 'tom_face.jpg'] and Path(got[3][0]).parent == lib / 'tom', got[3]",
+        "claudia.setup({'character_library': [str(lib)], 'characters': {'mann': {'library': 'tom'}}})",
+        "assert 'a green coat' in claudia.start_image_prompt(dict(s, who='mann'), 'x', 'L.') and claudia.library_names({'character_library': str(lib)})['tom'] == lib / 'tom'",
+        "for bad, word in (({'tom': {'library': True, 'full': 'a short man'}}, 'only wardrobe'), ({'bob': {'library': True}}, 'no figure \"bob\"')):",
+        "    try:",
+        "        claudia.setup({'character_library': str(lib), 'characters': bad}); raise AssertionError(bad)",
+        "    except SystemExit as e:",
+        "        assert word in str(e), e",
+        "print('library ok')", ""])
+    out = ctx.py(drv, deps_from=[JOBS], name="library.py")
+    expect("library ok" in out.stdout, f"claudia character library:\n{out.stdout}\n{out.stderr}")
     # "mic": "added": a start image without a headset (no microphone word left but the "no microphone" sentence), the
     # add prompt names only the picture side; not from behind, not with a given start image, a shot may opt out
     drv = "\n".join([

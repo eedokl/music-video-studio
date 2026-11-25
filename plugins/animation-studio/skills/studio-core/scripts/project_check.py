@@ -102,7 +102,7 @@ SONG = {**SHARED,                                     # music-video projects (so
         "music_by": {"type": (STR, LIST, NULL)}, "song_title": {"type": (STR, NULL)},
         "bricks": {"type": (DICT,)},                                              # bricks-music-video
         "video": {"type": (STR,)}, "version": {"type": (STR,)}, "brief": {"type": (DICT,)},   # claudia / lyric
-        "character_refs": {"type": (LIST, DICT)}, "characters": {"type": (DICT,)}, "lead": {"type": (STR,)}, "variants": {"type": (INT, DICT)}, "finish": {"type": (DICT, STR)},
+        "character_refs": {"type": (LIST, DICT)}, "characters": {"type": (DICT,)}, "character_library": {"type": (STR, LIST)}, "lead": {"type": (STR,)}, "variants": {"type": (INT, DICT)}, "finish": {"type": (DICT, STR)},
         "ai_label": {"type": (STR, BOOL, NULL)}, "lip_curve": {"type": (DICT, LIST, STR)},
         "mic": {"type": (STR,), "values": ("painted", "added"),       # claudia: headset painted with the start image, or
                 "doc": '"added" = start image without a headset, the headset added by a second edit'},   # added after it

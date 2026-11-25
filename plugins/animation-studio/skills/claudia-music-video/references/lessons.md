@@ -410,3 +410,16 @@ ai-video `face_track_retina.py`, CPU PyTorch in its own uv environment - not the
   old one on its first run, and render_shots / make_film print the finish in use (make_film said only "look none").
 - **Versions**: `make_film.py --version` keeps the cut as `film_vN.mp4` / `_small` / `_mail`, `film_vN_sheet.png`,
   `selection_vN.json` (the next free number, or `--version 8`) - each version had been copied by hand.
+
+## Shared figure library (Dance / Hymne wish list, 2026-11-25)
+
+- **Five copies of "oliver", two different men**: lgtm_nc, lgtm_nc_a/_mic, bl_haus, bl_live and das_warum used the two
+  photos (frontal + three-quarter), scenes/maschine called the views-sheet figure "oliver", maschine_dance and
+  erkenn_dich_selbst had both (as oliver / oliver_v2); wardrobe, "far" text and negatives differed between the copies.
+  User decision: "oliver" = the Bitte-Lektion / LGTM figure, the sheet figure is "oliver_v2". Since 0.31.0 a figure
+  lives once in the library (`<library>/<name>/character.json` + refs) and a project names it (`{"library": true}`),
+  overriding only the wardrobe.
+- **Renaming is free when the prompts and ref file names stay**: scenes/maschine switched oliver -> oliver_v2 from the
+  library; jobs.py wrote byte-identical prompts.json, jobs.json differed only in the refs' folders, and
+  `night_run.py --dry-run` showed 181 jobs, 0 redo. Proof done on a hard-linked copy of the project (JSON files copied),
+  so the real jobs.json was never rewritten while another session worked in it.

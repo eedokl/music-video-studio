@@ -442,6 +442,96 @@ PEOPLE = re.compile(r"\b(man|men|woman|women|people|person|persons|colleagues?|c
 CAST = {}
 LEAD = "claudia"
 MIC_MODE = "painted"        # project.json "mic": "added" = the headset is added to a start image made without one
+# ------------------------------------------------------------------ shared character library -------------------------
+# One figure, one definition: <library>/<name>/character.json holds the identity (the same keys as an inline
+# project.json character: pronoun, full, far, video, keep, refs, sheet, options, negative, wardrobe, base, noun, ref_fix)
+# and its reference images beside it ("refs" are file names relative to that folder). A project names the figure:
+#   "characters": {"oliver_v2": {"library": true}}                    (true = the key is the library name)
+#   "characters": {"mann": {"library": "oliver_v2", "wardrobe": "a dark raincoat"}}
+# and may override ONLY "wardrobe" - identity, refs and negatives live in the library, so they cannot drift apart
+# between films (2026-11-25: five projects carried their own copy of "oliver", two figures under one name).
+# Library folders: project.json "character_library" (relative to the project), then config `character_library`
+# (env ANIMATION_STUDIO_CHARACTER_LIBRARY; several folders separated by ";"). The plugin ships no figures.
+# Renaming a figure or moving it into the library does not re-render takes: night_run fingerprints prompts and the
+# reference FILE NAMES only - keep the file names of the refs when copying them into the library.
+LIBRARY_FILE = "character.json"
+LIBRARY_OVERRIDES = ("wardrobe",)
+LIBRARY_INFO = ("description", "source", "note")      # documentation keys of a character.json, not prompt material
+
+
+def library_dirs(P=None):
+    """The character library folders in lookup order (project first, then the machine config)."""
+    import os
+    from pathlib import Path
+    try:
+        import _studio                                # studio-core config (absent in bare imports of this module)
+        _studio.use()
+        import config
+        cfg = config.get("character_library") or ""
+    except (ImportError, SystemExit):
+        cfg = os.environ.get("ANIMATION_STUDIO_CHARACTER_LIBRARY") or ""
+    own = (P.get("character_library") if P is not None else None) or []
+    base = getattr(P, "dir", None)
+    out = []
+    for v in (own if isinstance(own, list) else [own]) + cfg.replace(os.pathsep, ";").split(";"):
+        v = str(v).strip()
+        if not v:
+            continue
+        p = Path(v)
+        if not p.is_absolute() and base is not None:
+            p = Path(base) / p
+        if p not in out:
+            out.append(p)
+    return out
+
+
+def library_names(P=None):
+    """{name: folder} of every figure in the library folders (the first folder wins on a name in two)."""
+    found = {}
+    for d in library_dirs(P):
+        for f in (sorted(d.glob(f"*/{LIBRARY_FILE}")) if d.is_dir() else []):
+            found.setdefault(f.parent.name.lower(), f.parent)
+    return found
+
+
+def library_spec(name, P=None):
+    """The library figure `name` as an inline character spec (refs as absolute paths)."""
+    found = library_names(P)
+    key = str(name).lower()
+    if key not in found:
+        dirs = ", ".join(str(d) for d in library_dirs(P)) or "none configured"
+        raise SystemExit(f'character library: no figure "{name}" (folders: {dirs}; figures: '
+                         f'{", ".join(sorted(found)) or "none"}) - set config character_library '
+                         '(check_tools.py --set character_library=<folder>) or project.json "character_library"')
+    folder = found[key]
+    try:
+        spec = json.loads((folder / LIBRARY_FILE).read_text(encoding="utf-8"))
+    except ValueError as e:
+        raise SystemExit(f"character library: {folder / LIBRARY_FILE} is not valid JSON ({e})")
+    spec = {k: v for k, v in spec.items() if not k.startswith("_") and k not in LIBRARY_INFO}
+    refs = []
+    for r in spec.get("refs") or []:
+        p = folder / r
+        if not p.exists():
+            raise SystemExit(f"character library: reference image {p} of {folder.name} is missing")
+        refs.append(str(p))
+    if refs:
+        spec["refs"] = refs
+    return spec
+
+
+def _resolve(name, spec, P=None):
+    """A project.json character entry: inline (as before) or {"library": true | "<name>", "wardrobe": ...}."""
+    if not isinstance(spec, dict) or "library" not in spec:
+        return spec
+    other = sorted(set(spec) - {"library"} - set(LIBRARY_OVERRIDES))
+    if other:
+        raise SystemExit(f'project.json characters.{name}: comes from the character library - only '
+                         f'{", ".join(LIBRARY_OVERRIDES)} may be set here, not {", ".join(other)} (change the figure '
+                         'in its character.json, or define it inline under another name)')
+    out = library_spec(name if spec["library"] is True else str(spec["library"]), P)
+    out.update({k: spec[k] for k in LIBRARY_OVERRIDES if spec.get(k)})
+    return out
 
 
 def _norm(name, spec):
@@ -468,6 +558,7 @@ def setup(P):
     MIC_MODE = mode
     CAST.clear()
     for name, spec in (P.get("characters") or {}).items():
+        spec = _resolve(name.lower(), spec, P)
         if name.lower() == "claudia" and spec.get("mic", True) and "full" not in spec:
             continue                                  # {"claudia": {"refs": [...]}}: the built-in Claudia with her mic
         CAST[name.lower()] = _norm(name.lower(), spec)

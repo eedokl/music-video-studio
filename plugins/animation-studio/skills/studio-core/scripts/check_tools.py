@@ -14,7 +14,7 @@
 Exit code 1 when a REQUIRED program is missing. Never installs anything: show the missing lines to the user and ask.
 Known keys: the programs in TOOLS below plus config.SETTINGS (gpu_lock_dir, hf_home, torch_home, comfy_url,
 comfy_dir, comfy_start, sfx_cache, font, rife_model, minimax_api_base, claudia_refs, animation_studio_root,
-actors3d);
+actors3d, character_library);
 --set refuses any other key (typo protection). ffmpeg is only stored when it has the libx264 encoder.
 Environment overrides: ANIMATION_STUDIO_<KEY>, plain names only for the unambiguous keys (see config.py).
 """
@@ -85,7 +85,7 @@ TOOLS = {
 }
 
 
-VALUE_KEYS = {"claudia_refs", "comfy_start"}           # values, not single files: reported as "set", not checked
+VALUE_KEYS = {"claudia_refs", "comfy_start", "character_library"}           # values, not single files: reported as "set", not checked
 KNOWN = set(TOOLS) | set(config.PROGRAMS) | set(config.SETTINGS)
 DRIVE_ROOT_DEPTH = 2                                     # on a bare drive root only patterns up to 2 folders deep
 

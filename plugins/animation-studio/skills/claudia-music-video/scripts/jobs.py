@@ -31,6 +31,8 @@ Reference images of Claudia: project.json "character_refs": [face, close-up] or 
 non-vocal stems), else Demucs no_vocals (song-analysis separate_vocals.py, cache/sep/), else the song (warning).
 Other characters than Claudia: project.json "characters" + "lead", shot "who" (claudia.py, section "other
 characters") - identity text, reference images, negatives and the canon rules then come from the shot's cast.
+A figure used in several films comes from the shared figure library: "characters": {"oliver_v2": {"library": true}}
+(config character_library, claudia.py section "shared character library"; only "wardrobe" may be overridden).
 More takes of a shot: --only s05 --all-starts makes clips from EVERY start image variant (not only the picked one), so
 the takes page offers them side by side; add --start 3 for one more start image, --seeds 4 for more seeds.
 Direction hints (hand at the hair, raised eyebrows, laptops, people in B-roll, repeated poses) are printed, not fatal.
