@@ -1,7 +1,8 @@
 """ai-video face_pass.py tracker switch, without models or GPU: a fake RetinaFace detection file (what
 face_track_retina.py writes) drives the same face choice, follow and smoothing as MediaPipe - the lead face near the
 middle / the --hint face, a missing frame bridged, someone else's face ignored; measure(tracker="retinaface") reads the
-cached detections (no torch run), keeps its own cache next to the MediaPipe one, an unknown tracker is refused."""
+cached detections (no torch run), keeps its own cache next to the MediaPipe one; "auto" asks RetinaFace only where
+MediaPipe lost the face near the far line; an unknown tracker is refused."""
 import json
 
 from common import Test, expect, script
@@ -41,6 +42,22 @@ out["hint"] = dict(hits=t["hits"], face=t["face"], x0=t["rows"][0]["x0"])
 r = fp.measure(clip, tracker="retinaface")
 out["measure"] = r
 out["caches"] = sorted(p.name for p in d.glob("c.face*.json"))
+# "auto": a MediaPipe result (written as its cache) that lost the face near the far line -> RetinaFace; one that lost
+# a near face, or found it in most frames -> stays MediaPipe
+import os, shutil, time
+auto = {}
+for tag, hits, low in (("lost_near_line", 12, 80), ("lost_near_face", 12, 150), ("found", 29, 80)):
+    c = d / f"{tag}.mp4"
+    shutil.copy(clip, c)
+    shutil.copy(d / "c.retina.json", d / f"{tag}.retina.json")
+    (d / f"{tag}.face.json").write_text(json.dumps(dict(v=fp.MEASURE_V, face=low + 10, low=low, hits=hits, frames=N,
+                                                        hint=None, tracker="mediapipe", far=low < fp.SMALL)))
+    t0 = time.time() + 5
+    for p in (d / f"{tag}.retina.json", d / f"{tag}.face.json"):
+        os.utime(p, (t0, t0))
+    m, used = fp.measure_auto(c, log=lambda s: None)
+    auto[tag] = [used, m["hits"]]
+out["auto"] = auto
 try:
     fp.measure(clip, tracker="bogus")
     out["bogus"] = "accepted"
@@ -65,11 +82,14 @@ def run_face_tracker(ctx):
            f"measure with retinaface: {m}")
     expect(o["caches"] == ["c.face.retinaface.json"], f"retinaface keeps its own cache: {o['caches']}")
     expect("unknown face tracker" in o["bogus"], f"unknown tracker: {o['bogus']}")
+    a = o["auto"]
+    expect(a["lost_near_line"] == ["retinaface", 28] and a["lost_near_face"][0] == "mediapipe" and
+           a["found"][0] == "mediapipe", f"auto tracker rule: {a}")
     ctx.note(f"retinaface dets: lead {lead['hits']}/30 frames, face {lead['low']:.0f}-{lead['face']:.0f} px, hint -> "
             f"left face; own cache; unknown tracker refused")
 
 
 TESTS = [
     Test("face-tracker", run_face_tracker, about="ai-video face_pass.py: RetinaFace detections (fake file) drive the "
-         "same face choice / follow / smoothing, own measure cache, unknown tracker refused"),
+         "same face choice / follow / smoothing, own measure cache, auto rule, unknown tracker refused"),
 ]

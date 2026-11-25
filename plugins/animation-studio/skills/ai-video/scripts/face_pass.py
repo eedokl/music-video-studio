@@ -25,7 +25,7 @@ made-up (eyeliner, fuller lips), a hair streak near the face can widen, more ski
 Needs: ComfyUI with the LTX-2.3 checkpoint (role ltx23) and the LoRA file of role ltx23_upscale_x2 (assets/models.json,
 models/loras), the clip's json (image = start image, audio = vocals, prompt), config face_landmarker, ffmpeg.
 
-  uv run face_pass.py measure <clip.mp4> [...] [--tracker retinaface]   face width (px, scaled to a 1024-wide picture)
+  uv run face_pass.py measure <clip.mp4> [...] [--tracker auto|retinaface]   face width (px, scaled to 1024 wide)
   uv run face_pass.py fix <clip.mp4> [-o out.mp4] [--hint x y] [--seed 7] [--redo] [--tracker retinaface]
         -> <clip>_g.mp4 + json (the clip's json plus "face_fix") + <clip>_g.sheet.jpg (top original, bottom fixed);
            the generated crop is kept in <clip dir>/face_pass/<clip stem>/pass_<seed>.mp4 - a second call only
@@ -54,6 +54,8 @@ SMALL = 85             # face width (px at 1024 wide, 10th percentile of the tak
 FADE_TO = 130          # face width from which the original clip is shown again (soft blend between SMALL and this)
 SEED = 7
 TRACKERS = ("mediapipe", "retinaface")
+AUTO_HITS = 0.9        # "auto": MediaPipe found the face in fewer frames than this share ...
+AUTO_NEAR = 110        # ... and the face's small part is under this (px) - near the "far" line: ask RetinaFace
 MEASURE_V = 2          # bump when the tracking changes: cached <clip>.face.json files are measured again
 CKPT, GEMMA, UPSCALER = "ltx23", "gemma3_te", "ltx23_upscale_x2"
 SIGMAS = "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0"
@@ -211,6 +213,22 @@ def _track(clip, frames, hint, tracker):
     if tracker not in TRACKERS:
         raise SystemExit(f"unknown face tracker {tracker!r} - one of {', '.join(TRACKERS)}")
     return track(frames, hint, dets=retina_faces(clip) if tracker == "retinaface" else None)
+
+
+def measure_auto(clip, hint=None, tracker="auto", log=print):
+    """(measure, tracker used). tracker "auto": MediaPipe, and RetinaFace only where MediaPipe found no face or lost it
+    (face in < AUTO_HITS of the frames) while the face is near the far line (small part < AUTO_NEAR px) - there a
+    profile or a turned head can decide "far" or not. A near face MediaPipe loses for a moment stays with MediaPipe."""
+    if tracker != "auto":
+        return measure(clip, hint, tracker), tracker
+    m = measure(clip, hint)
+    lost = m["face"] is None or (m.get("frames") and m["hits"] < AUTO_HITS * m["frames"] and m["low"] < AUTO_NEAR)
+    if not lost:
+        return m, "mediapipe"
+    why = "no face" if m["face"] is None else f"face in {m['hits']}/{m['frames']} frames, small part {m['low']:.0f} px"
+    log(f"  {Path(clip).name}: MediaPipe {why} - measuring again with RetinaFace (CPU)")
+    r = measure(clip, hint, "retinaface")
+    return (r, "retinaface") if r["face"] is not None else (m, "mediapipe")
 
 
 def measure(clip, hint=None, tracker="mediapipe"):
@@ -468,7 +486,7 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
     m = sub.add_parser("measure")
     m.add_argument("clips", nargs="+")
-    m.add_argument("--tracker", choices=TRACKERS, default="mediapipe")
+    m.add_argument("--tracker", choices=TRACKERS + ("auto",), default="mediapipe")
     f = sub.add_parser("fix")
     f.add_argument("clip")
     f.add_argument("-o", "--out")
@@ -480,9 +498,9 @@ def main():
     a = ap.parse_args()
     if a.cmd == "measure":
         for c in a.clips:
-            r = measure(c, tracker=a.tracker)
+            r, used = measure_auto(c, tracker=a.tracker)
             v = "no face" if r["face"] is None else (f"median {r['face']:5.0f} px, small part {r['low']:5.0f} px, "
-                                                      f"{r['hits']}/{r.get('frames', '?')} frames")
+                                                      f"{r['hits']}/{r.get('frames', '?')} frames, {used} ")
             print(f"{v:38s}{'far' if r['far'] else '':5s}{c}")
     else:
         fix(a.clip, a.out, a.hint, a.seed, a.redo, tracker=a.tracker)

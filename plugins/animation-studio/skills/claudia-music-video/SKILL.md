@@ -221,10 +221,10 @@ anchor, vocals riding along; ~5 min GPU per take; where the take comes close it 
 85 and 130 px) -> `<clip>_g.mp4` + `<clip>_g.sheet.jpg` (top original, bottom fixed) and the fixed clip as the shot's
 manual clip; the generated face stays in `ai/lipsync/face_pass/`, so `--blend` re-blends without GPU. Tell the user the cost and show the sheets; a shot where the face
 looks more made-up or a streak widened goes back to its original clip. Opt out: project `"face_fix": false`, shot
-`"face_fix": false`; several faces in the frame: shot `"face_hint": [x, y]`. Tracking is MediaPipe; when `--list`
-shows "no face" on a visible face or few frames found (tiny faces, profiles, crowds, fast pans), use
-`--tracker retinaface` / project `"face_fix": {"tracker": "retinaface"}` (CPU PyTorch in its own uv environment,
-~250 MB + 105 MB weights on first use; ask before that download). Why and the compared ways:
+`"face_fix": false`; several faces in the frame: shot `"face_hint": [x, y]`. Tracking is MediaPipe; by default
+(`"tracker": "auto"`) a take where MediaPipe finds no face or loses it (< 90 % of the frames) while the face is under
+110 px is measured again with RetinaFace (CPU PyTorch in its own uv environment, ~250 MB + 105 MB weights on the
+machine's first such take - say so before; `--tracker mediapipe` never, `retinaface` always). Why and the compared ways:
 `references/lessons.md` "Far faces".
 **More takes later:** project.json shot `"seed"` (moving clip) or `"s2v_seed"` / `"s2v_seeds": 2` (S2V) - a seed
 other than the default goes into the file name (`<shot>_<img>_sd<seed>.mp4`), so the old take stays and the night

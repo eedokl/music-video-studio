@@ -361,9 +361,11 @@ ai-video `face_track_retina.py`, CPU PyTorch in its own uv environment - not the
 - Why not RetinaFace by default: in the KEEP venv it needed PyTorch + CUDA (py3.10, torch cu128, several GB,
   hand-repaired, only on one machine) and the GPU while ComfyUI renders; MediaPipe is a small CPU wheel the plugin
   already uses for the mouth curve. The optional tracker therefore runs CPU PyTorch in its own uv environment.
-- **When to switch to RetinaFace** (`"face_fix": {"tracker": "retinaface"}`): faces under ~40 px in the frame,
-  strong profiles, crowds, fast pans where the face jumps out of the search window. Sign that it is needed:
-  `face_fix.py --list` shows "no face" on a shot where a face is plainly visible, or "n/N frames" after the size
-  (the face was found in under 90 % of the frames). RetinaFace sees every face of the whole frame (no search window),
+- **When RetinaFace is used** (default `"tracker": "auto"`): only where MediaPipe finds no face, or loses it (face
+  in < 90 % of the frames) while the face's small part is under 110 px - near the 85-px line, where a profile or a
+  turned head can decide "far" or not. On the three films (main, Dance, Hymne) MediaPipe lost a face in 11 takes,
+  7 of them near faces (125-165 px: head turned away, hand in front, motion blur - never "far" either way); the narrow
+  rule asks RetinaFace on 4. `"tracker": "mediapipe"` / `"retinaface"` = always that one. Useful cases: faces under
+  ~40 px, strong profiles, crowds, fast pans where the face jumps out of the search window. RetinaFace sees every face of the whole frame (no search window),
   ~0.5-0.8 s per frame on the CPU; first use installs ~250 MB (CPU torch) and downloads detection_Resnet50_Final.pth
   (~105 MB).
