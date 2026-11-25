@@ -337,8 +337,11 @@ Rules taken from it (ai-video `face_pass.py`, `face_fix.py`):
 - **Look at the sheet**: the face can come out a little more made-up (eyeliner, fuller lips), a hair streak next to
   the face can widen in some frames, skin gets more texture - in a profile shot there was little to gain.
 - **The fixed take is an offer, not the answer**: compare `_g` with its original on the takes page. In the Dance
-  cut 2 of 9 fixed takes went back to the original (they looked made-up), and in the main film the user re-picked
-  the plain s24 take over its fix. After a hand pick, `face_fix.py --list --only <the re-picked shots>` checks just
+  cut (club light, neon, coloured light) 2 of 9 fixed takes went back to the original - the pass invented make-up:
+  glitter eyeshadow (s06), strong eye make-up that changed the face (s08); since 0.30.0 the negative prompt names
+  eyeshadow and glitter. In the Hymne (natural light) 3 of 3 were good, a profile at a table (s27) included. With 2-6
+  faces in the frame it took Claudia in the middle every time. In the main film the user re-picked the plain s24
+  take over its fix. After a hand pick, `face_fix.py --list --only <the re-picked shots>` checks just
   those (CPU, minutes) - of six re-picked takes none was far.
 - Better still: frame singing shots so the face is >= ~150 px; the pass is the repair for wide shots that must stay.
 
@@ -398,3 +401,12 @@ ai-video `face_track_retina.py`, CPU PyTorch in its own uv environment - not the
 - New s17/s23 cost 21 min GPU (5 start images + 10 LTX takes at ~110 s each), not the estimated hour.
 - The takes page / review page now bind their port exclusively: on Windows a second server could share a port an old
   one still held, and the browser showed another project's page.
+
+## Pinned finish and film versions (Dance / Hymne, 2026-11-25)
+
+- **A plugin default changed a film's look silently**: 0.25.1 lowered the grain 5.5 -> 2.5; the Dance project had no
+  `"finish"` in project.json and looked different after the update - the session first told the user the wrong grain.
+  Since 0.30.0 plan.py writes `"finish": {"grain", "vignette"}` into a new project, render_shots.py pins them in an
+  old one on its first run, and render_shots / make_film print the finish in use (make_film said only "look none").
+- **Versions**: `make_film.py --version` keeps the cut as `film_vN.mp4` / `_small` / `_mail`, `film_vN_sheet.png`,
+  `selection_vN.json` (the next free number, or `--version 8`) - each version had been copied by hand.

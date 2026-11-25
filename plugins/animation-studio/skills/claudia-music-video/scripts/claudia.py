@@ -10,6 +10,7 @@ Prompt rules (measured lessons, Europe 2031 and Europe 2031 Live):
   - every video prompt carries ONE light/look sentence matching its start image, or LTX jumps to another scene
   - companies only as neutral text, no logos; no real politicians; other people (e.g. Christian) anonymous, from behind
 """
+import json
 import re
 
 ID_FULL = ("a 28-year-old Caucasian American woman with a grown-up angular face, defined cheekbones and a strong jawline, "
@@ -627,6 +628,31 @@ HANDLING = re.compile(r"\b(hands? (him|her|it|over)|passes? (him|her|it|the)|giv
 
 WAVE = re.compile(r"\b(waves?|waving|waved) (goodbye|hello|bye|one hand|a hand|his hand|her hand|at|to|into)\b|"
                   r"\b(polite|small|friendly|little|short|quick) wave\b|\bwaves? (him|her|them|us)\b")
+
+
+FINISH = dict(grain=2.5, vignette=0.38, text_band=0.45, fade_in=0.5, fade_out=2.5)
+PINNED = ("grain", "vignette")       # written into project.json: a plugin update must not change a film's look silently
+
+
+def pin_finish(P):
+    """Write grain + vignette into project.json "finish" where they are missing (once) and return the finish in use.
+    0.25.1 lowered the default grain 5.5 -> 2.5: projects without "finish" changed their look silently at the next
+    render (maschine_dance, 2026-11-25). A pinned value stays; delete it to take the plugin default again."""
+    fin = P.p.get("finish")
+    fin = dict(fin) if isinstance(fin, dict) else {}
+    missing = [k for k in PINNED if k not in fin]
+    if missing:
+        fin.update({k: FINISH[k] for k in missing})
+        P.p["finish"] = fin
+        P.file.write_text(json.dumps(P.p, ensure_ascii=False, indent=1), encoding="utf-8")
+        print(f'project.json "finish": {", ".join(f"{k} {FINISH[k]}" for k in missing)} written (plugin default, now '
+              "fixed for this film)")
+    return dict(FINISH, **fin)
+
+
+def finish_line(fin):
+    return (f"finish: grain {fin['grain']}, vignette {fin['vignette']}, text band {fin['text_band']}, "
+            f"fade in {fin['fade_in']} s / out {fin['fade_out']} s")
 
 
 def hints(shots):

@@ -75,7 +75,12 @@ def run_claudia(ctx):
            "assert 's01' not in s['manual']['clip'] and s['clip']['s01']['file'].endswith('s1.mp4'), s; print('choose ok')")
     out = ctx.run(["python", "-c", drv])
     expect("choose ok" in out.stdout, f"takes.choose:\n{out.stdout}")
-    ctx.uv(RENDER, d, timeout=900)
+    pj0 = read_json(d / "project.json").get("finish")
+    out = ctx.uv(RENDER, d, timeout=900)
+    fin = read_json(d / "project.json").get("finish") or {}
+    expect("finish: grain " in out.stdout and fin.get("grain") is not None and fin.get("vignette") is not None
+           and (pj0 is None or all(fin.get(k) == v for k, v in pj0.items())),
+           f"finish not pinned / printed: before {pj0}, after {fin}: {out.stdout[-400:]}")
     log = (d / "render.log").read_text(encoding="utf-8")
     expect(log.count(" clip ") == 2 and "card" not in log, f"render_shots did not use both clips:\n{log}")
     # the still instead of the clip (takes page "still"), render --only keeps the other render.log lines, changed()
@@ -246,10 +251,12 @@ def run_claudia(ctx):
         n = len(list((d / "scenes" / s["name"]).glob("f.*.png")))
         want = round(s["to"] * FPS) - round(s["from"] * FPS)
         expect(n == want, f"scenes/{s['name']}: {n} frames, expected {want}")
-    ctx.uv(FILM, d, timeout=900)
+    out = ctx.uv(FILM, d, "--version", timeout=900)
+    expect("finish: grain " in out.stdout and "-> version 1:" in out.stdout, f"make_film finish / version: {out.stdout[-400:]}")
     total = round(SONG * FPS)
     expect_film(ctx, d / "film.mp4", total)
-    for f in ("film_small.mp4", "film_mail.mp4", "film_sheet.png", "film_shots.jpg", "review.json"):
+    for f in ("film_small.mp4", "film_mail.mp4", "film_sheet.png", "film_shots.jpg", "review.json", "film_v1.mp4",
+              "film_v1_mail.mp4", "film_v1_sheet.png", "selection_v1.json"):
         expect((d / f).exists(), f"{f} missing")
     rv = read_json(d / "review.json")
     expect([s["name"] for s in rv["shots"]] == ["s01", "s02"], f"review.json shots {rv['shots']}")

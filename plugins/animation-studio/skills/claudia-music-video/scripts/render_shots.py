@@ -30,6 +30,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 import _studio  # noqa: E402
 _studio.use("song-analysis", "ai-video")
+import claudia  # noqa: E402
 import clips  # noqa: E402
 import creative  # noqa: E402
 import typo  # noqa: E402
@@ -157,13 +158,14 @@ def main():
     W, H = typo.W, typo.H = P.size   # frame size of the film (project.json "size")
     words = (P.sheet().get("words", []) if (P.analysis / "song_sheet.json").exists() else [])
     sel = json.loads((P.dir / "selection.json").read_text(encoding="utf-8")) if (P.dir / "selection.json").exists() else {}
-    fin = dict(dict(grain=2.5, vignette=0.38, text_band=0.45, fade_in=0.5, fade_out=2.5), **(P.get("finish") or {}))
+    fin = claudia.pin_finish(P)
     song_len = duration(P.song)
     secs = P.sections()
     last = secs[-1]["name"] if secs else None
     if secs and "fade_out" not in (P.get("finish") or {}):
         # claudia3: 2.5 s darkened almost the whole 3 s last shot - at most 40 % of the last shot (>= 0.8 s)
         fin["fade_out"] = min(fin["fade_out"], max(0.8, 0.4 * (song_len - secs[-1]["from"])))
+    print(claudia.finish_line(fin), flush=True)
     yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
     rr = np.sqrt(((xx - W / 2) / (W / 2)) ** 2 + ((yy - H / 2) / (H / 2)) ** 2)
     vign = (1 - fin["vignette"] * np.clip((rr - 0.55) / 0.85, 0, 1) ** 1.6)[..., None]

@@ -128,6 +128,9 @@ def main():
     version = a.version or p.get("version", "studio")
     p["version"] = version
     p["look"] = "none"                      # the photographic finish (grain + vignette) is applied by render_shots.py
+    fin = p.setdefault("finish", {})        # pinned at the start: a later plugin default must not change this film
+    for k in claudia.PINNED:
+        fin.setdefault(k, claudia.FINISH[k])
     brief = p.setdefault("brief", {})
     share = a.lipsync if a.lipsync is not None else brief.get("lipsync_share", 0.5)
     seed = creative.seed(P)

@@ -61,8 +61,10 @@ CKPT, GEMMA, UPSCALER = "ltx23", "gemma3_te", "ltx23_upscale_x2"
 SIGMAS = "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0"
 EYES = ("Sharp, detailed, symmetric eyes with clear irises and natural eyelids, steady gaze, natural skin texture, "
         "natural light make-up.")
+# eyeshadow / glitter: under coloured club light the pass invented make-up (maschine_dance s06 glitter eyeshadow,
+# s08 strong eye make-up - 2 of 9 fixes dropped; natural light: 3 of 3 fine)
 NEG_EYES = ("blurry eyes, smeared eyes, asymmetric eyes, crossed eyes, half-closed eyes, heavy eyeliner, heavy make-up, "
-            "deformed face")
+            "eyeshadow, coloured eyeshadow, glitter, glitter make-up, smoky eyes, deformed face")
 _state = {}
 
 

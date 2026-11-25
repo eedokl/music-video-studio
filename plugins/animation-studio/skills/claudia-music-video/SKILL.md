@@ -243,14 +243,16 @@ Every build script checks project.json first (studio-core `project_check.py`, de
 
 ```
 uv run "$S/render_shots.py" <proj>
-uv run "$S/make_film.py" <proj>
+uv run "$S/make_film.py" <proj> [--version]       # --version: also keep the cut as film_vN.* + selection_vN.json
 ```
 render_shots: every shot to `scenes/<shot>/` (clip placed on the song with lead-in, delay and lag; still + depth
 parallax as fallback; grain + vignette; AI label in the last 3 s - set `ai_label`, e.g. "Images and video
 AI-generated (...) - Claudia by anabology"). make_film: lyrics overlay, `film.mp4` / `film_small.mp4` / `film_mail.mp4`
 (0 decode errors), `film_sheet.png`, `film_shots.jpg`, `review.json`. build.py says "look none" on purpose: plan.py
 sets `"look": "none"` because the photographic finish (grain + vignette) is already in the shots; `"look": "standard"`
-adds the paper texture on top.
+adds the paper texture on top. The finish (`"finish": {"grain": 2.5, "vignette": 0.38}`) is written into
+project.json once and printed by both scripts - a later plugin default does not change an existing film's look.
+Every cut the user gets is a version: `make_film.py --version` (V1, V2 ... next to the always-latest `film.mp4`).
 **Checkpoint:** the user watches V1.
 
 ### Cut in code (option)
