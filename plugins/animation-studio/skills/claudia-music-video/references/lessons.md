@@ -337,3 +337,17 @@ Rules taken from it (ai-video `face_pass.py`, `face_fix.py`):
 - **Look at the sheet**: the face can come out a little more made-up (eyeliner, fuller lips), a hair streak next to
   the face can widen in some frames, skin gets more texture - in a profile shot there was little to gain.
 - Better still: frame singing shots so the face is >= ~150 px; the pass is the repair for wide shots that must stay.
+
+**Face tracker: MediaPipe, RetinaFace kept as an option (not built).** The test used RetinaFace (facexlib, MIT,
+from the KEEP venv); the plugin tracks with MediaPipe FaceLandmarker instead:
+- MediaPipe is trained on near faces and misses an 80-px face in the full 1024 frame. `face_pass.py` gets around this:
+  first frame = full frame + a grid of upscaled cut-outs, then each frame a window of ~6x face width around the last
+  position, upscaled to 512 - there the face is "near". Widths matched RetinaFace within 2 px (89/91, 161/160,
+  108/107 px), all nine far shots of the film were tracked in every frame.
+- Why not RetinaFace: it needs PyTorch + CUDA (KEEP venv: py3.10, torch cu128, several GB, hand-repaired, only on one
+  machine) and the GPU while ComfyUI renders; MediaPipe is a small CPU wheel the plugin already uses for the mouth
+  curve, so `face_fix.py --list` measures without touching the GPU.
+- **When to add RetinaFace as a selectable backend** (e.g. `"face_fix": {"tracker": "retinaface"}`, facexlib in its
+  own uv script): faces under ~40 px in the frame, strong profiles, crowds, fast pans where the face jumps out of the
+  search window. Sign that it is needed: `face_pass` reports few tracking hits (`hits` in `<clip>.face.json` well
+  below the frame count) or "no face" on a shot where a face is plainly visible.
