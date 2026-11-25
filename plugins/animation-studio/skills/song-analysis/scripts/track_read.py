@@ -161,10 +161,13 @@ def align_lyrics(rec, lyrics, fps):
     lw = [(li, w) for li, line in enumerate(lines) for w in line.split() if norm(w)]
     a, b = [norm(w) for _, w in lw], [norm(r["word"]) for r in rec]
     times = [None] * len(lw)
+    heard = {}                                          # lyric word index -> (Whisper word, probability) for 1:1 swaps
     for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes():
         if tag in ("equal", "replace"):
             for k in range(min(i2 - i1, j2 - j1)):
                 times[i1 + k] = (rec[j1 + k]["start"], rec[j1 + k]["end"], "recognized" if tag == "equal" else "aligned")
+                if tag == "replace" and i2 - i1 == j2 - j1:
+                    heard[i1 + k] = (rec[j1 + k]["word"], rec[j1 + k].get("prob"))
     known = [i for i, t in enumerate(times) if t]
     if lw and not known:
         # nothing recognized (silent take, VAD dropped everything): placeholder times, 0.3 s per word, all
@@ -184,6 +187,11 @@ def align_lyrics(rec, lyrics, fps):
         times[i] = (max(start, 0), max(start, 0) + (t1 - t0) / (hi - lo), "estimated")
     words = [{"word": w, "t": round(t[0], 3), "end": round(t[1], 3), "frame": int(round(t[0] * fps)),
               "end_frame": int(round(t[1] * fps)), "line": li, "source": t[2]} for (li, w), t in zip(lw, times)]
+    for i, (hw, hp) in heard.items():                   # what Whisper heard instead (analyze.py sung-word check)
+        if words[i]["source"] == "aligned":
+            words[i]["heard"] = hw
+            if hp is not None:
+                words[i]["heard_prob"] = round(float(hp), 3)
     line_list = []
     for li, line in enumerate(lines):
         ws = [w for w in words if w["line"] == li]

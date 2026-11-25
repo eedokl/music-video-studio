@@ -6,7 +6,9 @@
 # ///
 """Listen to the song: exposure sheet, vocal tracks, mouth shapes, male/female track -> <project>/analysis/.
 
-  1 lyrics   lyrics without [markers] -> lyrics_clean.txt, markers with line numbers -> markers.json
+  1 lyrics   lyrics without [markers] -> lyrics_clean.txt, markers with line numbers -> markers.json;
+             `lyric{sung}` per-word overrides (Suno sang "Hey" where the lyrics say "Hi": write Hi{Hey}) -> the sung
+             word goes into lyrics_clean.txt, so alignment, song_sheet and subtitles show it; list in sung_words.json
   2 vocals   stems from project.json (lead/backing) - otherwise Demucs (separate_vocals.py, GPU lock) -> vocals_lead.wav
   3 sheet    track_read.py: beats, bars, accents, words, lines -> song_sheet.json (+ song_sheet.png to look at)
   3b         fix_timing.py repairs word times from the vocal tracks (calls on the backing stem, order errors)
@@ -15,8 +17,13 @@
   4 mouths   Rhubarb per vocal track -> lead_mouth.json, backing_mouth.json
   5 gender   earshot "a man singing" vs "a woman singing" every 0.5 s on the lead vocals -> gender.json
              (skipped with a note when earshot is not installed)
+             project.json "sung_words": "line_start" also takes Whisper's word for a line's FIRST word when it is
+             stable (see line_start_swaps); otherwise such a word is only reported with a ready Hi{Hey} hint
 Finished steps are skipped (--redo recomputes everything, --only 3,5 runs just those steps).
 Usage: uv run analyze.py [<project>] [--redo] [--only 1,2,...]
+       uv run analyze.py [<project>] --quick [--no-words]   CPU only while the GPU is busy (no Demucs, no GPU lock):
+             step 1 + quick_info.py (tempo, beats, sections, loudness per 2 s, jumps, Whisper small on the CPU on the
+             mix or the lead stem) -> analysis/quick.json; song_sheet.json is NOT written (the full run still does it)
 Time: ~1-3 min per 30 s of song (Whisper large-v3 on the GPU waits for the GPU lock; small on the CPU otherwise).
 """
 import json
@@ -30,7 +37,7 @@ import _studio  # noqa: E402
 _studio.use('song-analysis')
 import config
 from media import duration, ffmpeg
-from song_project import Project
+from song_project import Project, sung_text
 
 HERE = Path(__file__).resolve().parent
 MARKER = re.compile(r"^\s*\[(.+)\]\s*$")
@@ -47,7 +54,7 @@ def step_lyrics(P):
         print("1  no lyrics - words from Whisper only, choruses guessed from repeated lines")
         (P.analysis / "lyrics_clean.txt").write_text("", encoding="utf-8")
         return
-    clean, markers = [], []
+    clean, markers, sung = [], [], []
     for row in src.read_text(encoding="utf-8").splitlines():
         if not row.strip():
             continue
@@ -57,11 +64,17 @@ def step_lyrics(P):
         if m:
             markers.append({"line": len(clean), "marker": m.group(1)})
         else:
-            clean.append(row.strip())
+            text, pairs = sung_text(row.strip())
+            sung += [{"line": len(clean), "lyric": a, "sung": b, "source": "lyrics"} for a, b in pairs]
+            if text:
+                clean.append(text)
     (P.analysis / "lyrics_clean.txt").write_text("\n".join(clean) + "\n", encoding="utf-8")
     (P.analysis / "markers.json").write_text(json.dumps(markers, ensure_ascii=False, indent=1), encoding="utf-8")
+    (P.analysis / "sung_words.json").write_text(json.dumps(sung, ensure_ascii=False, indent=1), encoding="utf-8")
     words = sum(len(r.split()) for r in clean)
-    print(f"1  lyrics: {len(clean)} lines, {words} words, {len(markers)} markers")
+    print(f"1  lyrics: {len(clean)} lines, {words} words, {len(markers)} markers"
+          + (f", {len(sung)} sung-word override(s): " + ", ".join(f"{s['lyric'] or '-'} -> {s['sung'] or '-'}"
+                                                                for s in sung) if sung else ""))
     secs = duration(P.song)
     if words > secs * 4:                                # more than ~4 words per second cannot be sung
         print(f"   WARNING: {words} words for {secs:.0f} s of song - trim lyrics.txt to the sung lines first")
@@ -113,8 +126,82 @@ def step_sheet(P):
             subprocess.run(runner(["librosa", "faster-whisper", "numpy", "soxr"]) + [str(HERE / "best_words.py"),
                                                                                 str(P.dir)], check=True)
             sheet = json.loads((P.analysis / "song_sheet.json").read_text(encoding="utf-8"))
+    if P.get("sung_words") == "line_start":
+        done = apply_line_start(P, sheet)
+        if done:
+            print(f"3d sung words from Whisper at line starts (\"sung_words\": \"line_start\"): "
+                  + ", ".join(f"line {d['line']} {d['lyric']} -> {d['sung']}" for d in done))
     for msg in sheet_warnings(sheet):
         print("   WARNING " + msg)
+
+
+LETTERS = re.compile(r"[^\W\d_]+(?:['’-][^\W\d_]+)*")
+MIN_PROB = 0.7          # Whisper's probability for a heard word to count as stable
+
+
+def _core(word):
+    """(leading punctuation, word, trailing punctuation)"""
+    m = re.match(r"^(\W*)(.*?)(\W*)$", word)
+    return m.group(1), m.group(2), m.group(3)
+
+
+def line_start_swaps(sheet, min_prob=MIN_PROB):
+    """Lines whose FIRST word Whisper heard as another word, stably: the lyric word was matched 1:1 to a different
+    heard word ("aligned" with `heard`), Whisper was sure (probability >= min_prob in the pass whose timing is used -
+    best_words.py passes count), the heard word is one plain word and the line's next word was recognized exactly
+    (the line is anchored right behind it; an unlisted call "Hey! Hey!" heard over two lyric words "Out of" fails
+    this). A pause after the word is allowed: "Hey. Ich bin hier ..." (maschine_dance, 0.0 s, mix pass p=0.96).
+    Only line starts: mid-line, Whisper's other word is far more often a mishearing of singing than a real change.
+    -> [(word dict, heard word)]"""
+    by_line = {}
+    for w in sheet.get("words", []):
+        if w.get("t") is not None and w.get("line") is not None:
+            by_line.setdefault(w["line"], []).append(w)
+    out = []
+    for li, ws in sorted(by_line.items()):
+        w0 = ws[0]
+        heard = (w0.get("heard") or "").strip()
+        if (w0.get("source") != "aligned" or not heard or (w0.get("heard_prob") or 0) < min_prob
+                or len(ws) < 2 or ws[1].get("source") != "recognized"):
+            continue
+        core = _core(heard)[1]
+        if not LETTERS.fullmatch(core) or core.lower() == _core(w0["word"])[1].lower():
+            continue
+        out.append((w0, core))
+    return out
+
+
+def apply_line_start(P, sheet, min_prob=MIN_PROB):
+    """Take Whisper's word for stable line-start swaps (project.json "sung_words": "line_start"): the word in
+    song_sheet.json (the lyric word kept as "lyric"), the line text and lyrics_clean.txt; listed in sung_words.json
+    with "source": "whisper". -> [{"line", "lyric", "sung", "source", "t", "prob"}]"""
+    swaps = line_start_swaps(sheet, min_prob)
+    if not swaps:
+        return []
+    lyr_f = P.analysis / "lyrics_clean.txt"
+    rows = lyr_f.read_text(encoding="utf-8").splitlines() if lyr_f.exists() else []
+    done = []
+    for w, core in swaps:
+        lead, old, tail = _core(w["word"])
+        new_core = core[:1].upper() + core[1:] if old[:1].isupper() else core[:1].lower() + core[1:]
+        new = lead + new_core + tail
+        done.append({"line": w["line"], "lyric": w["word"], "sung": new, "source": "whisper", "t": w["t"],
+                     "prob": w.get("heard_prob")})
+        w["lyric"], w["word"] = w["word"], new
+        for l in sheet.get("lines", []):
+            if l.get("line") == w["line"] and l.get("text"):
+                l["text"] = l["text"].replace(w["lyric"], new, 1)
+        if 0 <= w["line"] < len(rows):
+            rows[w["line"]] = rows[w["line"]].replace(w["lyric"], new, 1)
+    (P.analysis / "song_sheet.json").write_text(json.dumps(sheet, ensure_ascii=False, indent=1), encoding="utf-8")
+    if rows:
+        lyr_f.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    sw = P.analysis / "sung_words.json"
+    old = json.loads(sw.read_text(encoding="utf-8")) if sw.exists() else []
+    redone = {d["line"] for d in done}
+    keep = [s for s in old if not (s.get("source") == "whisper" and s.get("line") in redone)]
+    sw.write_text(json.dumps(keep + done, ensure_ascii=False, indent=1), encoding="utf-8")
+    return done
 
 
 def leading_strays(starts):
@@ -135,6 +222,8 @@ def sheet_warnings(sheet):
     (an excerpt that stops before the last line), and a line whose first word sits far before a dense rest (a call
     that is not in the lyrics, "Hey!", heard as that word)."""
     out, end = [], float(sheet.get("duration") or 0)
+    swaps = line_start_swaps(sheet)
+    swapped = {w["line"] for w, _ in swaps}
     by_line = {}
     for w in sheet.get("words", []):
         if w.get("t") is not None:
@@ -147,10 +236,16 @@ def sheet_warnings(sheet):
                        "is sung in this (excerpt of the) song - delete it (or keep only the sung words) and run --redo")
             continue
         k = leading_strays([w["t"] for w in ws])
-        if k:
+        if k and li not in swapped:                     # a stable swapped first word gets its own hint below
             lead = " ".join(w["word"] for w in ws[:k])
             out.append(f"lyric line {li}: '{lead}' ({ws[0]['t']:.2f} s) sits far before the rest of the line - a call "
-                       "that is not in the lyrics (\"Hey!\") heard as it? add the call to the lyrics, or fix the time")
+                       "that is not in the lyrics (\"Hey!\") heard as it? add the call to the lyrics ({Hey!} before "
+                       "the line = sung but not written), or fix the time")
+    for w, core in swaps:
+        out.append(f"lyric line {w['line']}: sung '{core}' where the lyrics say '{w['word']}' ({w['t']:.2f} s, Whisper "
+                   f"p={w.get('heard_prob', 0):.2f}) - the subtitle shows the lyric word: write "
+                   f"{_core(w['word'])[1]}{{{core}}} in lyrics.txt and run --redo, or set project.json "
+                   "\"sung_words\": \"line_start\"")
     return out
 
 
@@ -204,12 +299,36 @@ STEPS = [(1, "lyrics_clean.txt", step_lyrics), (2, "vocals_lead.wav", step_vocal
          (3, "song_sheet.json", step_sheet), (4, "lead_mouth.json", step_mouths), (5, "gender.json", step_gender)]
 
 
+def step_quick(P, words=True):
+    """CPU-only overview while the GPU is busy -> analysis/quick.json (quick_info.py; no Demucs, no GPU lock).
+    Words from the lead stem when project.json has one, else from the mix; aligned to lyrics_clean.txt."""
+    out = P.analysis / "quick.json"
+    cmd = runner(["librosa", "faster-whisper", "soxr"]) + [
+        str(HERE / "quick_info.py"), str(P.song), str(out), "--lang", P.get("language", "de"), "--fps", str(P.fps)]
+    lead = (P.get("stems") or {}).get("lead")
+    if lead and P.path(lead).exists():
+        cmd += ["--vocals", str(P.path(lead))]
+    lyr = P.analysis / "lyrics_clean.txt"
+    if lyr.exists() and lyr.read_text(encoding="utf-8").strip():
+        cmd += ["--lyrics", str(lyr)]
+    if not words:
+        cmd.append("--no-words")
+    import os
+    subprocess.run(cmd, check=True, env=dict(os.environ, WHISPER_CPU="1"))
+    print("Q  quick overview (CPU) -> analysis/quick.json - song_sheet.json still needs the full analyze.py run")
+
+
 def main():
     args = sys.argv[1:]
     only = {int(x) for x in args[args.index("--only") + 1].split(",")} if "--only" in args else None
     rest = [a for i, a in enumerate(args) if not a.startswith("--") and not (i > 0 and args[i - 1] == "--only")]
     P = Project(rest[0] if rest else ".")
     P.check("song-analysis")                 # project.json validated before any long step
+    if "--quick" in args:
+        if "--redo" in args or not (P.analysis / "lyrics_clean.txt").exists():
+            step_lyrics(P)
+        step_quick(P, words="--no-words" not in args)
+        return
     for nr, fname, fn in STEPS:
         if only and nr not in only:
             continue

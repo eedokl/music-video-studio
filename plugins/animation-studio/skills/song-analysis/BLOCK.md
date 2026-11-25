@@ -33,7 +33,7 @@ warns); in talking scenes without a `"recording"` `"voice"` must be a voice of t
 Warnings: unknown keys (did-you-mean), rendered `scenes/<section>/` whose frame count or size no longer fits the
 section. A new project.json key goes into `SCHEMAS` of `project_check.py`.
 
-## Steps (`scripts/analyze.py <folder> [--redo] [--only 3,5]`)
+## Steps (`scripts/analyze.py <folder> [--redo] [--only 3,5] [--quick]`)
 
 1. lyrics → `lyrics_clean.txt` + `markers.json` ([Chorus], [Verse - Tim], [Spoken - narrator] with line numbers);
    warns when there are more words than can be sung in the excerpt
@@ -46,8 +46,35 @@ section. A new project.json key goes into `SCHEMAS` of `project_check.py`.
    (measured on "Prompts!": mean error 0.38 → 0.21 s)
    3c. when lyric lines collapse onto one time (a repeated final chorus) or fewer than 60 % of the words are
    recognised, `best_words.py` runs automatically (`--no-best` skips it)
+   3d. sung word ≠ lyric word (see below)
 4. Rhubarb (phonetic, language independent) per vocal track → `lead_mouth.json`, `backing_mouth.json`
 5. earshot "a man singing" vs "a woman singing" every 0.5 s → `gender.json` (skipped without earshot)
+
+**Quick look while the GPU is busy** – `analyze.py <folder> --quick [--no-words]`: step 1 (when needed) plus
+`quick_info.py` on the CPU only (no Demucs, no GPU lock, `WHISPER_CPU=1`): tempo, beats/bars, accents, rough sections,
+loudness every 2 s, loudness jumps ≥ 6 dB (where a chorus or a break starts) and the sung lines with word times
+(Whisper `small` int8 on the mix, or on the lead stem from project.json; aligned to the lyrics, without lyrics grouped
+at pauses > 0.8 s) → `analysis/quick.json` + a table on the console. It never writes `song_sheet.json`, so the full
+run later is not skipped. About 1 min per 3 min of song.
+
+**Sung word ≠ lyric word** (Suno sang "Hey" where the lyrics say "Hi"; the subtitle showed "Hi"):
+- `lyric{sung}` in `lyrics.txt` – `Hi{Hey}. Ich bin hier ...`: the sung word goes into `lyrics_clean.txt`, so the
+  alignment, `song_sheet.json`, karaoke and subtitles show "Hey". Punctuation outside the braces stays
+  (`Hi{Hey},` → `Hey,`); `word{}` = written but not sung; `{Hey!}` alone = sung but not written. All overrides are
+  listed in `analysis/sung_words.json`. Run `--redo` (or `--only 1,3`) after editing the lyrics.
+- Whisper's word is taken only on request: project.json `"sung_words": "line_start"` replaces a line's FIRST word
+  when Whisper heard another plain word there with probability ≥ 0.7 (in the pass whose timing is used – best_words
+  passes count) and the line's next word was recognized exactly. The replacement goes into the sheet word (old word
+  kept as `"lyric"`), the line text and `lyrics_clean.txt` (`"source": "whisper"` in sung_words.json).
+  Decided against doing it by default and mid-line: Whisper mishears sung words far more often than Suno changes
+  them, and an unlisted call ("Hey! Hey!" over the lyric words "Out of") would replace real lyrics.
+- Without the key such a line start is only reported, with the ready fix:
+  `WARNING lyric line 0: sung 'Hey' where the lyrics say 'Hi.' ... write Hi{Hey} in lyrics.txt ...`
+  (maschine_dance: track_read heard "hey" with p=0.01, the best_words mix pass "Hey," with p=0.96).
+
+**PyAV pitfall:** faster-whisper 1.2.1 with a newer PyAV fails on a file path ("open() got an unexpected keyword
+argument 'metadata_errors'"). Every Whisper call of the plugin passes a 16 kHz float32 numpy array decoded with ffmpeg
+(`track_read.load_audio` + soxr / `media.decode`) – never a path; the normal analyze path was never affected.
 
 More tools, mostly used for lyric videos where every letter must hit the voice (see their docstrings):
 

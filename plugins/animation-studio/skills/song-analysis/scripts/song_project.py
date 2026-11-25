@@ -38,6 +38,21 @@ def word_matches(word, prefix):
     return w.strip(CLEAN) == p.strip(CLEAN) if exact else w.strip(CLEAN).startswith(p.strip(CLEAN))
 
 
+SUNG = re.compile(r"([^\s{}]*)\{([^{}]*)\}")
+
+
+def sung_text(row):
+    """Per-word override in lyrics.txt: `lyric{sung}` - the singer sang another word than the written lyrics
+    (Suno: "Hi{Hey} there"). -> (row with the sung words, [(lyric, sung), ...]). Edge punctuation outside the braces
+    stays ("Hi{Hey}," -> "Hey,"); `word{}` = written but not sung (dropped); `{Hey}` alone = sung but not written."""
+    pairs = []
+
+    def swap(m):
+        pairs.append((m.group(1), m.group(2).strip()))
+        return m.group(2).strip()
+    return " ".join(SUNG.sub(swap, row).split()), pairs
+
+
 def allowed(spec, section):
     """Per-section filter of a rule (gag, sound, screen event ...): "sections": [names] = only there,
     "not_sections": [names] = never there. section = name of the section the event falls into (or None)."""

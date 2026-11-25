@@ -31,6 +31,7 @@ def sung_lines(P):
     if f.exists():
         return [" ".join(r.split()) for r in f.read_text(encoding="utf-8").splitlines() if r.strip()]
     rows = P.path(P.get("lyrics", "lyrics.txt")).read_text(encoding="utf-8").splitlines()
+    rows = [re.sub(r"[^\s{}]*\{([^{}]*)\}", r"\1", r) for r in rows]   # lyric{sung} -> the sung word (song_project.sung_text)
     return [" ".join(r.split()) for r in rows if r.strip() and not re.match(r"^\s*[\[(]", r)]
 
 

@@ -100,6 +100,8 @@ SONG = {**SHARED,                                     # music-video projects (so
         "acting": {"type": (BOOL, DICT), "doc": 'true / false or {"strength": 1.0, "glances": true, "nods": true, "brows": true}'},
         "lyrics_style": {"type": (STR, DICT)}, "lyrics_lines": {"type": (LIST,), "items": DICT},
         "lyrics_skip": {"type": (LIST,)}, "gag_size": {"type": (NUM,)},
+        "sung_words": {"type": (STR, BOOL, NULL), "values": ("line_start",),          # song-analysis analyze.py
+                       "doc": '"line_start" = Whisper\'s stable first word of a line replaces the lyric word; false = only warn'},
         "music_by": {"type": (STR, LIST, NULL)}, "song_title": {"type": (STR, NULL)},
         "bricks": {"type": (DICT,)},                                              # bricks-music-video
         "video": {"type": (STR,)}, "version": {"type": (STR,)}, "brief": {"type": (DICT,)},   # claudia / lyric
