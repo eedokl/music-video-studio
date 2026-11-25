@@ -311,3 +311,29 @@ A music video with 7.3 s takes and a lot of movement was rebuilt with Qwen-Image
 - **A planned change needs its start image picked again** before the clips run - three takes of a re-planned shot
   were rendered on the old picture.
 - **Slow motion is steered by the sound, not by words** (shot key `"speed"`), and only shot by shot.
+
+## Far faces ("Du bist die Maschine", 2026-11-25: smeared eyes in the wide shots)
+
+In wide shots her eyes looked crooked, half-closed and smeared while every start image was clean. Cause: LTX-2.3
+(and 2.5 - same video encoder, only an optional diffusion decoder is new) works on a 32x smaller latent grid; a face of
+40-90 px at 1024x576 lies on 1-3 grid cells and is invented anew in every frame. Five ways were compared on two shots
+(runway 42->96 px, gallery 32->116 px), all on the same face crop pasted back with a soft ellipse:
+
+| way | result | lips r (orig 0.65) | time per 7-s take |
+|---|---|---|---|
+| LTX video-to-video on the crop, denoise 0.5 / 0.3 | too weak, softer - LTX keeps the broken shape | 0.65 | ~1 min |
+| KEEP video face restoration | sharp, but the worst frames stay crooked, "restored" look; weights non-commercial only | 0.60 | ~1 min |
+| image detailer per frame (FLUX, denoise 0.2 / 0.35, like the CivitAI LTX face detailer) | almost no effect at 0.2, a little at 0.35; no time link | 0.62-0.68 | ~34 min |
+| Lightricks pixel upscaler IC-LoRA x2 on the crop | clean, the gallery shot still crooked at the start | 0.66 | 4-6 min |
+| **same + the start image's face as anchor on frame 0** | **clean in every frame, both shots** | **0.68** | 4-6 min |
+
+Rules taken from it (ai-video `face_pass.py`, `face_fix.py`):
+- **Fix only the picked take, after the pick**: ~1.6 s GPU per frame; a film had 8-9 far takes of 38 (~40 min).
+- **"Far" is the small part of the take** (10th percentile of the face width < 85 px at 1024 wide), not the median:
+  a take that zooms in from far (one shot 32 -> 116 px, another 78 -> 225 px) breaks in its first second.
+- **Only where the face is small**: on a take zooming in from 78 to 225 px the pass made the near part worse
+  (freckles, reddened lids, harder features) where the original was fine - the pass fades out between 85 and 130 px.
+- **The crop needs head context**: crop side = 3.4 x face width. At 2.6 the pass squeezed the face in one shot.
+- **Look at the sheet**: the face can come out a little more made-up (eyeliner, fuller lips), a hair streak next to
+  the face can widen in some frames, skin gets more texture - in a profile shot there was little to gain.
+- Better still: frame singing shots so the face is >= ~150 px; the pass is the repair for wide shots that must stay.

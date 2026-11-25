@@ -13,6 +13,7 @@
 | background motion without sound | Wan 2.2 TI2V 5B | ~400 s per 4 s | do not animate characters with it |
 | rescue: plosive-heavy line where LTX measures ~0 | HuMo 1.7B (`humo.py`) or MiniMax H3 local (`minimax.py`) | ~130 s / ~42 s per second of video | rejected as default (static face / robotic body) but kept as rescue engines next to an LTX seed; H3 renders >= 124 frames |
 | repair a start image with two mics | `mic_repair.py`: OpenCV fill + FLUX schnell masked refine, else Qwen-Image-Edit | ~10 s (+ model load) | only the masked pixels change in the retouch; canon.py re-check |
+| smeared small face in a wide take | LTX-2.3 + Lightricks pixel spatial upscaler IC-LoRA x2 on the face crop, start-image face as anchor (`face_pass.py`) | ~1.6 s per frame (4-6 min per 7-s take) | only the face ellipse changes; LTX-2.5 does not help (same encoder); KEEP / per-frame FLUX detailer / low-denoise v2v compared and weaker |
 | depth for parallax | Depth Anything V2 Small | ~1 s per image | Apache-2.0; Base/Large are non-commercial |
 
 Rejected as default (user decision, lip-sync comparison 2026-11-12; HuMo 1.7B and H3 have wrappers as rescue engines): LatentSync and MuseTalk (not usable for singing),

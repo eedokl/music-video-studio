@@ -213,6 +213,16 @@ Offer it to the user before the cut, and let the user choose - do not pre-choose
 run the eye preferred natural movement over the highest lip score (V3 took the V1 take in 11 of 17 singing shots), in
 claudia3 the user took LTX in 3 of 4 shots where S2V measured (and looked to the tester) better. Previews take ~0.2 s
 each (CPU); the page is local only (127.0.0.1).
+**Far faces (after the choice, before the cut):** in wide shots LTX smears a small face (crooked, half-closed eyes,
+changing every frame). `uv run "$S/face_fix.py" <proj> --list` measures the picked sung takes (CPU) and names the
+"far" ones (face under 85 px at 1024 wide in the take's small part); without `--list` it rebuilds only their face
+(ai-video `face_pass.py`: LTX-2.3 + Lightricks pixel upscaler IC-LoRA on the face crop, the start image's face as
+anchor, vocals riding along; ~5 min GPU per take; where the take comes close it fades back to the original between
+85 and 130 px) -> `<clip>_g.mp4` + `<clip>_g.sheet.jpg` (top original, bottom fixed) and the fixed clip as the shot's
+manual clip; the generated face stays in `ai/lipsync/face_pass/`, so `--blend` re-blends without GPU. Tell the user the cost and show the sheets; a shot where the face
+looks more made-up or a streak widened goes back to its original clip. Opt out: project `"face_fix": false`, shot
+`"face_fix": false`; several faces in the frame: shot `"face_hint": [x, y]`. Why and the compared ways:
+`references/lessons.md` "Far faces".
 **More takes later:** project.json shot `"seed"` (moving clip) or `"s2v_seed"` / `"s2v_seeds": 2` (S2V) - a seed
 other than the default goes into the file name (`<shot>_<img>_sd<seed>.mp4`), so the old take stays and the night
 run does not skip the job as done; `jobs.py --only s01,s08` replaces only those shots' jobs in jobs.json / prompts.json.

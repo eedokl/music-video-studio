@@ -118,8 +118,9 @@ from pathlib import Path
 scripts, out = sys.argv[1], sys.argv[2]
 sys.path.insert(0, scripts)
 import numpy as np
-import comfy, comfy_image, comfy_video, ltx, ltx25, s2v, infinitetalk, humo, minimax, qwen_edit, mic_repair
+import comfy, comfy_image, comfy_video, ltx, ltx25, s2v, infinitetalk, humo, minimax, qwen_edit, mic_repair, face_pass
 R = {
+ "face_pass": [face_pass.workflow("c.mp4", "i.png", "a.wav", 169, "p", "n", 7, "x")],
  "flux": [comfy_image.workflow("p", 1280, 720, 5)],
  "flux_repaint": [comfy_image.workflow("p", 1280, 720, 5, init="in.png", denoise=0.4)],
  "sdxl": [comfy_image.workflow("p", 1024, 1024, 6, model="sdxl")],
@@ -197,8 +198,10 @@ def run_preflight(ctx):
     f2 = files_of(built2["ltx23"])
     expect(set(f2) == {"video/ltx23-renamed.safetensors", models["files"]["gemma3_te"]["file"]} and
            len(f2["video/ltx23-renamed.safetensors"]) == 3, f"override not applied to all three LTX loaders: {f2}")
-    expect({k: v for k, v in built2.items() if k != "ltx23"} == {k: v for k, v in built.items() if k != "ltx23"},
-           "the ltx23 override changed other workflows")
+    uses = {k for k, w in models["workflows"].items() if "ltx23" in w["files"]}       # ltx23, face_pass
+    expect({k: v for k, v in built2.items() if k not in uses} == {k: v for k, v in built.items() if k not in uses},
+           "the ltx23 override changed workflows that do not use it")
+    expect("video/ltx23-renamed.safetensors" in files_of(built2["face_pass"]), "override not applied to face_pass")
 
     # 2 preflight against a fake ComfyUI
     fake = Fake(object_info(models))
