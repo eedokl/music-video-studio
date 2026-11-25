@@ -230,7 +230,10 @@ def build(P, only=None, rebuild=False, quiet=False):
                 preview(P, c, s, lag, pv)
             tag = image_tag(P, c)
             warn = [w for w in [li.get("warn", "")] if w]
-            if s.get("technique") != "broll" and tag and chosen_tag and tag != chosen_tag:
+            orig = (clips.read_meta(c) if clips.meta_path(c).exists() else {}).get("original")
+            if orig:                                       # relight.py: the take of the source film, old light
+                warn.append(f"original take ({orig.get('note') or 'before the relight'})")
+            elif s.get("technique") != "broll" and tag and chosen_tag and tag != chosen_tag:
                 # claudia3: a take on the discarded s08_v2 (two mics) was chosen and the second mic was in the film
                 warn.append(f"made on start image {tag}, not the chosen {chosen_tag} - check mic / streak")
             if tag and tag.endswith("m"):

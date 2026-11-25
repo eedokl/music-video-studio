@@ -36,6 +36,9 @@ A figure used in several films comes from the shared figure library: "characters
 More takes of a shot: --only s05 --all-starts makes clips from EVERY start image variant (not only the picked one), so
 the takes page offers them side by side; add --start 3 for one more start image, --seeds 4 for more seeds.
 Direction hints (hand at the hair, raised eyebrows, laptops, people in B-roll, repeated poses) are printed, not fatal.
+A shot with "relight" (relight.py: a new project from a finished one in another light) gets Qwen-Image-Edit jobs that
+re-light its original start image (ai/relight_src/) instead of new identity start images - no canon check on them -;
+a shot with "relight": {"keep": true} keeps its original take (no jobs).
 A rewritten shot (new action, no waving ...): --only s17 --keep-old wink keeps its finished takes on the takes page as
 s17_wink_<img>_s<k>.mp4 (start image copied to ai/start_alt/) - without it the night run moves them to replaced/.
 Usage: uv run jobs.py [<project>] [--start 2] [--seeds 2] [--broll 2] [--no-depth] [--only s02,s05] [--all-starts]
@@ -265,6 +268,21 @@ def main():
             bare_refs[ref] = out
         return bare_refs[ref]
 
+    def relight_jobs(s, rl, folder, prompt):
+        """Qwen-Image-Edit jobs that change only the light of the shot's original picture -> candidate paths
+        (ai/start|broll/<shot>_v<k>.png, so pick / sheets / takes treat them like any variant)."""
+        src = rl.get("src")
+        if not src or not P.path(src).exists():
+            raise SystemExit(f'shot {s["name"]}: "relight" needs "src" (the original start image, copied by relight.py '
+                             f'into ai/relight_src/) - {src!r} is missing')
+        wh = dict(zip(("w", "h"), rl["size"])) if rl.get("size") else {}
+        out = []
+        for k, sd in enumerate(rl.get("seeds") or [11, 23], 1):
+            o = f"ai/{folder}/{s['name']}_v{k}.png"
+            out.append(o)
+            add("qwen_edit", f"{s['name']}/relight_v{k}", o, refs=[rel(P, P.path(src))], prompt=prompt, seed=int(sd), **wh)
+        return out
+
     mic_tries = max(1, min(3, int(P.get("mic_tries", 2))))
     n_added = 0
     sf = P.dir / "selection.json"
@@ -281,14 +299,24 @@ def main():
         pr = prompts[name] = {"technique": tech}
         if tech in ("typo", "placed"):
             continue                                  # typo: drawn by render_shots; placed: an existing clip (pick.py)
+        rl = s.get("relight") or {}
+        if rl.get("keep"):                            # relight.py: the original take stays (selection.json manual)
+            pr["kept"] = "original take of " + str((P.get("relit_from") or {}).get("project", "the source film"))
+            continue
+        if rl and not s.get("start_image"):
+            pr["relight"] = claudia.relight_prompt(s, rl["light"], rl.get("what"))
         if tech in ("lipsync", "claudia_moving"):
-            sp = claudia.start_image_prompt(s, wardrobe, look_img, version)
-            pr["start_image"] = sp
-            problems += [f"{name} start image: {e}" for e in claudia.check(sp, "image", s)]
-            use_refs = [] if s.get("start_image") else claudia.shot_refs(s, default_refs, P.path)
+            relit = bool(rl) and not s.get("start_image")
+            if not relit:
+                sp = claudia.start_image_prompt(s, wardrobe, look_img, version)
+                pr["start_image"] = sp
+                problems += [f"{name} start image: {e}" for e in claudia.check(sp, "image", s)]
+            use_refs = [] if s.get("start_image") or relit else claudia.shot_refs(s, default_refs, P.path)
             cands = []
             if s.get("start_image"):                 # a given start image (re-shoot of an earlier film's shot)
                 cands = [rel(P, P.path(s["start_image"]))]
+            elif relit:                               # the original start image in another light (relight.py)
+                cands = relight_jobs(s, rl, "start", pr["relight"])
             added = claudia.mic_added(s)
             if added:                                 # two steps: the picture without a headset, then only the headset
                 n_added += 1
@@ -440,6 +468,8 @@ def main():
             bp = claudia.broll_still_prompt(s.get("subject") or s.get("idea") or "an empty city street at dawn", look_img)
             pr["still"] = bp
             cands = [rel(P, P.path(s["start_image"]))] if s.get("start_image") else []
+            if rl and not cands:                      # the original B-roll picture in another light (relight.py)
+                cands = relight_jobs(s, rl, "broll", pr["relight"])
             for k in range(1, (0 if cands else nbr) + 1):
                 out = f"ai/broll/{name}_v{k}.png"
                 cands.append(out)

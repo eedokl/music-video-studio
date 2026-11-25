@@ -589,15 +589,39 @@ def cast_of(s):
 
 def mic_added(s):
     """True = this shot's headset is added by a second edit: project.json "mic": "added" (a shot may say "mic":
-    "painted" / "added" itself), Claudia alone with her canon, not seen from behind, no given start image."""
+    "painted" / "added" itself), Claudia alone with her canon, not seen from behind, no given or relit start image."""
     mode = str((s or {}).get("mic") or MIC_MODE).lower()
-    return (mode == "added" and cast_of(s) is None and not (s or {}).get("start_image")
+    return (mode == "added" and cast_of(s) is None and not (s or {}).get("start_image") and not (s or {}).get("relight")
             and "behind" not in ((s or {}).get("framing") or "").lower())
 
 
 def has_canon(s):
     """True = Claudia's measured canon (streak side, one headset boom) and the mic repair apply to this shot."""
     return cast_of(s) is None
+
+
+# Relight (relight.py, shot "relight"): the start image of a finished film edited by Qwen-Image-Edit with ONE
+# reference - the original picture - and an instruction that changes only the light. Du bist die Maschine ->
+# "Nachtschicht" (maschine_dance, 2026-11-24, seeds 11 / 23): faces, Oliver, places, clothes and the headset stayed,
+# so the canon check is not run on relit pictures (the original passed it; look at the sheet instead).
+RELIGHT = ("Change only {what} of this photo: {light}. Keep everything else exactly as it is: {who}the same pose, "
+           "clothes, people, place and framing. Photographic film still, fine film grain.")
+RELIGHT_WHAT = "the light and the time of day"
+
+
+def relight_prompt(s, light, what=None):
+    """Qwen-Image-Edit prompt that changes only the light of the shot's original start image (refs = [that image])."""
+    who = ""
+    if s.get("technique") != "broll":
+        cast = cast_of(s)
+        claudia_in = cast is None or any("streak" in str(c.get("full", "")) for c in cast)
+        who = "the same people with the same faces and hair"
+        if claudia_in:
+            who = ("the same woman with the same face, glossy black blunt bob, one clay-orange streak and star hair clip"
+                   + (", the same small beige headset microphone" if cast is None else "")
+                   + ("" if cast is None or len(cast) == 1 else ", the other person with the same face and hair"))
+        who += ", "
+    return RELIGHT.format(what=what or RELIGHT_WHAT, light=str(light).strip().rstrip("."), who=who)
 
 
 def shot_refs(s, default_refs, path=lambda r: r):

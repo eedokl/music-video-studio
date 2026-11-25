@@ -20,6 +20,9 @@
          the best variant with a correct streak is repaired (ai-video mic_repair.py: retouch the wrong boom, FLUX
          texture refine; else Qwen-Edit "change only the microphone") -> ai/start/<shot>_v<k>m.png, which is then
          measured and picked like any variant (GPU lock taken and released by the repair).
+         Relit start images (shot "relight", relight.py: the original start image of a finished film in another
+         light): no canon check - the original passed it and the edit changes only the light (Nachtschicht test);
+         the first variant is taken unless chosen by hand or picked before; the sheet says "check by eye".
   broll  B-roll stills: the first variant without letterbox bars, unless chosen by hand (look at sheet_broll.jpg:
          FLUX invents lettering on charts, screens and signs - pick another variant by hand)
   clips  lip-sync shots: every LTX seed (and S2V) with the chosen start image is measured against the vocals
@@ -194,6 +197,14 @@ def pick_start(P, sel, log, rows, repair_mic=False):
             continue
         cands = done(sorted((P.dir / "ai" / "start").glob(f"{name}_v*.png")))
         if not cands:
+            continue
+        if s.get("relight"):                         # relit original (relight.py): only the light changed
+            rows += [(c, "relit original - no canon check: look at face, mic, streak and the light") for c in cands]
+            cur = out.get(name) if out.get(name) and P.path(out[name]).exists() else None
+            out[name] = man.get(name) or cur or relp(P, cands[0])
+            log.append(f"start {name}: {out[name]}  ({'by hand' if name in man else 'relit from ' + str(s['relight'].get('src'))}"
+                       ", no canon check - look at sheet_start.jpg)")
+            save(P, sel)
             continue
         if not claudia.has_canon(s):                 # another character: Claudia's streak / mic canon is not his
             cast = claudia.cast_of(s)

@@ -54,7 +54,8 @@ SECTION_FIELDS = {"name": {"type": (STR,)}, "from": {"type": (NUM,)}, "to": {"ty
                   "figures": {"type": (LIST,), "items": STR}, "set": {"type": (STR,)}, "lyrics": {"type": (BOOL,)},
                   "dance": {"type": (STR,), "values": ("chorus", "always", "never")}, "kind": {"type": (STR,)},
                   "acting": {"type": (BOOL, DICT)},
-                  "face_fix": {"type": (BOOL,)}, "face_hint": {"type": (LIST,)}}   # claudia face_fix.py
+                  "face_fix": {"type": (BOOL,)}, "face_hint": {"type": (LIST,)},   # claudia face_fix.py
+                  "relight": {"type": (DICT,), "doc": 'claudia relight.py: {"src", "light", "seeds", "size"} or {"keep": true}'}}
 
 SHARED = {                                            # every project.json read by song_project.Project
     "name": {"type": (STR,)},
@@ -112,6 +113,7 @@ SONG = {**SHARED,                                     # music-video projects (so
         "takes": {"type": (STR,), "values": ("short", "long"),         # claudia: sung takes of 6-9 s at 1024x576
                   "doc": '"long" = one take per two to four sung lines (plan.py --takes long)'},
         "pick_by": {"type": (STR,), "values": ("lips", "motion")},     # claudia pick.py: the automatic take
+        "relit_from": {"type": (DICT,), "doc": 'claudia relight.py: {"project", "light", "shots": {shot: {...}}}'},
         "identity": {"type": (STR,)}, "tempo": {"type": (DICT,)}, "word_passes": {"type": (LIST,)},   # lyric-music-video
         "flight": {"type": (STR,), "doc": "folder of the portal flight inside the project (new_flight.py)"},   # portal-music-video
         "held_max": {"type": (NUM,)}, "held_stretch": {"type": (BOOL, NUM, DICT)}, "held_style": {"type": (STR, DICT)},

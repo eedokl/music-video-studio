@@ -423,3 +423,18 @@ ai-video `face_track_retina.py`, CPU PyTorch in its own uv environment - not the
   library; jobs.py wrote byte-identical prompts.json, jobs.json differed only in the refs' folders, and
   `night_run.py --dry-run` showed 181 jobs, 0 redo. Proof done on a hard-linked copy of the project (JSON files copied),
   so the real jobs.json was never rewritten while another session worked in it.
+
+## Another light from a finished film ("Nachtschicht", Du bist die Maschine -> maschine_dance, 2026-11-24)
+
+- **Re-lighting beats re-making**: Qwen-Image-Edit with ONE reference - the film's picked start image - and "Change only
+  the light and the time of day of this photo: <night light>. Keep everything else exactly as it is: the same woman
+  ..., the same pose, clothes, people, place and framing" (seeds 11 / 23) kept Claudia's face, the headset, Oliver and
+  the places in the dance version; new identity start images would have needed the canon check, mic repairs and new
+  choices. The canon check was not needed - relight.py (0.32.0) therefore skips it on relit pictures.
+- **One light per place** read better than one night for all (server hall red, office magenta / cyan, bathroom pink
+  neon, kitchen disco dots); `--looks` carries that per source look.
+- **Calmer light on the face**: of two variants the user took the second in 7 shots because the first threw
+  colour onto her face - pick.py takes v1 automatically, so look at the sheet.
+- **A black break stays**: the shot against pure black had nothing to re-light (`--keep`, or an empty instruction).
+- **The LTX prompt needs a light word**: a night sentence without "light" ("lit by lamps") failed jobs.py's check
+  (LTX jumps scenes without one) - relight.py refuses such a short sentence up front.

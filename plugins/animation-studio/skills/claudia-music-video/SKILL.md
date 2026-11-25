@@ -164,6 +164,30 @@ default stays the short plan.
   for every film (and for a reference video's own numbers).
 What held and what did not, the speed test, the mirror and back-view tricks: `references/long-takes.md`.
 
+### The same film in another light (option, "Nachtschicht")
+
+From a FINISHED film (picked, selection.json): a new project with the same song, the same shots and places and people,
+the start images re-lit, new LTX takes on them - e.g. the film one night later, at dusk, in the rain:
+```
+uv run "$S/relight.py" <finished> <new> --light night|club|dusk|dawn|golden|rain|fog [--looks looks.json]
+       [--text "..." --short "..."] [--variants 2] [--keep s27] [--only s02,s05] [--no-originals]
+```
+- No GPU, seconds: song, lyrics, analysis/, the Demucs instrumental and every file project.json names are copied;
+  the picked start image of each shot (a hand choice first) becomes the reference of Qwen-Image-Edit jobs
+  "Change only the light and the time of day of this photo: <light>. Keep everything else exactly as it is ..."
+  (shot `"relight"`, seeds 11 / 23, the source size); the light also goes into `set` / `set_short` and a look
+  `<look>_<light>` for the LTX prompts. Then the normal way: `jobs.py`, `night_run.py --phases qwen_edit`, sheets,
+  the clips, `pick.py all`, `takes.py --serve`, the cut.
+- `--looks` = one light per place, `{"<source look>": ["<instruction for the picture>", "<short sentence with a light
+  word for LTX>"]}` (the Nachtschicht brief: red club light in the server hall, magenta and cyan in the office ...);
+  an empty instruction keeps that look's shots. `--keep` / shots outside `--only`: the shot keeps its original take.
+- **No canon check on relit start images** - tell the user: the original passed it and only the light changes
+  (Nachtschicht: faces, headset, Oliver and places stayed); pick.py takes v1 and the sheet says "check by eye". Look at
+  `sheet_start.jpg` anyway - strong coloured light can hide the streak; pick a calmer variant by hand.
+- The original takes come along as `<shot>_orig_*.mp4` (takes page: "original take", never the automatic pick), so
+  the user can keep the old light for a shot. project.json `"relit_from"` maps every new shot to the old shot, start
+  image, take and lag; names, times and lead-ins stay, so the new cut lines up with the old one.
+
 ## 4. Prompts and night run
 
 ```
