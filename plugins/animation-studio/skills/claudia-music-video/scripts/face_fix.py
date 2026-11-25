@@ -18,6 +18,8 @@ references/lessons.md ("Far faces").
   --no-select   fix but leave selection.json alone;  --redo   render the face again (GPU, e.g. another --seed)
   --blend       blend the kept pass (ai/lipsync/face_pass/<clip>/) in again - no GPU
   --max-face N  threshold in px (default 85; project.json "face_fix": {"max_face": N})
+  --tracker retinaface   track with RetinaFace (CPU PyTorch, own uv env; project.json "face_fix": {"tracker": ...}) -
+                for faces under ~40 px, profiles, crowds, fast pans; sign it is needed: few frames found in --list
 Project keys: "face_fix": false = never; shot "face_fix": true / false = always / never for that shot (true also
 fixes a face above the threshold); shot "face_hint": [x, y] (0-1) = which face in the first frame when several are seen
 (default: the large face nearest the middle). Moving B-roll clips (no vocals) are not fixed.
@@ -49,6 +51,7 @@ def main():
     ap.add_argument("--only", help="comma-separated shot names")
     ap.add_argument("--list", action="store_true", help="measure only, no GPU")
     ap.add_argument("--max-face", type=float)
+    ap.add_argument("--tracker", choices=face_pass.TRACKERS)
     ap.add_argument("--seed", type=int, default=face_pass.SEED)
     ap.add_argument("--no-select", action="store_true")
     ap.add_argument("--redo", action="store_true", help="render the face again (GPU; with another --seed)")
@@ -59,6 +62,9 @@ def main():
     if cfg is False:
         raise SystemExit('project.json "face_fix": false - nothing to do')
     limit = a.max_face or (cfg.get("max_face") if isinstance(cfg, dict) else None) or face_pass.SMALL
+    tracker = a.tracker or (cfg.get("tracker") if isinstance(cfg, dict) else None) or "mediapipe"
+    if tracker not in face_pass.TRACKERS:
+        raise SystemExit(f'project.json "face_fix": unknown tracker {tracker!r} - one of {", ".join(face_pass.TRACKERS)}')
     only = set(a.only.split(",")) if a.only else None
     sel = pick.load(P)
     todo, rows = [], []
@@ -83,18 +89,19 @@ def main():
             rows.append((name, rel, "off (shot)", ""))
             continue
         hint = s.get("face_hint")
-        m = face_pass.measure(clip, hint)
+        m = face_pass.measure(clip, hint, tracker)
         if m["face"] is None:
             rows.append((name, rel, "no face", ""))
             continue
         far = m["low"] < limit or s.get("face_fix") is True
-        size = f"median {m['face']:.0f} px, small part {m['low']:.0f} px"
+        size = f"median {m['face']:.0f} px, small part {m['low']:.0f} px" + (
+            f", {m['hits']}/{m['frames']} frames" if m.get("frames") and m["hits"] < 0.9 * m["frames"] else "")
         rows.append((name, rel, "FAR" if far else "ok", size))
         if far:
             todo.append((name, clip, lag, hint))
     for name, rel, state, size in rows:
         print(f"{name:6s} {state:10s} {size:34s} {rel}")
-    print(f"{len(todo)} far take(s) (threshold {limit:.0f} px): {', '.join(t[0] for t in todo) or '-'}"
+    print(f"{len(todo)} far take(s) (threshold {limit:.0f} px, tracker {tracker}): {', '.join(t[0] for t in todo) or '-'}"
           + (f" - about {len(todo) * 5} min GPU" if todo else ""))
     if a.list or not todo:
         return
@@ -104,7 +111,7 @@ def main():
         if out.exists() and not (a.redo or a.blend):
             print(f"  {name}: {out.name} exists - kept (--blend blends the kept pass again, --redo renders it again)")
         else:
-            face_pass.fix(clip, out, hint=hint, seed=a.seed, redo=a.redo)
+            face_pass.fix(clip, out, hint=hint, seed=a.seed, redo=a.redo, tracker=tracker)
         done.append((name, out, lag))
     if a.no_select:
         print("selection.json left alone (--no-select)")

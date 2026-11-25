@@ -107,7 +107,7 @@ SONG = {**SHARED,                                     # music-video projects (so
         "mic": {"type": (STR,), "values": ("painted", "added"),       # claudia: headset painted with the start image, or
                 "doc": '"added" = start image without a headset, the headset added by a second edit'},   # added after it
         "mic_tries": {"type": (INT,)}, "mic_repair": {"type": (BOOL,)},
-        "face_fix": {"type": (BOOL, DICT), "doc": 'claudia face_fix.py: false = never, {"max_face": 85} = threshold px'},
+        "face_fix": {"type": (BOOL, DICT), "doc": 'claudia face_fix.py: false = never, {"max_face": 85, "tracker": "retinaface"}'},
         "pace": {"type": (STR,), "values": ("calm", "medium", "fast")}, "code_layer": {"type": (DICT,)},   # claudia code_film.py
         "takes": {"type": (STR,), "values": ("short", "long"),         # claudia: sung takes of 6-9 s at 1024x576
                   "doc": '"long" = one take per two to four sung lines (plan.py --takes long)'},

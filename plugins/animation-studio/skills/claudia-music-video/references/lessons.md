@@ -338,16 +338,32 @@ Rules taken from it (ai-video `face_pass.py`, `face_fix.py`):
   the face can widen in some frames, skin gets more texture - in a profile shot there was little to gain.
 - Better still: frame singing shots so the face is >= ~150 px; the pass is the repair for wide shots that must stay.
 
-**Face tracker: MediaPipe, RetinaFace kept as an option (not built).** The test used RetinaFace (facexlib, MIT,
-from the KEEP venv); the plugin tracks with MediaPipe FaceLandmarker instead:
+**Face tracker: MediaPipe by default, RetinaFace as an option.** The test used RetinaFace (facexlib, MIT, from the
+KEEP venv); the plugin tracks with MediaPipe FaceLandmarker and has RetinaFace as a switch (`--tracker retinaface`,
+ai-video `face_track_retina.py`, CPU PyTorch in its own uv environment - not the KEEP venv):
 - MediaPipe is trained on near faces and misses an 80-px face in the full 1024 frame. `face_pass.py` gets around this:
   first frame = full frame + a grid of upscaled cut-outs, then each frame a window of ~6x face width around the last
-  position, upscaled to 512 - there the face is "near". Widths matched RetinaFace within 2 px (89/91, 161/160,
-  108/107 px), all nine far shots of the film were tracked in every frame.
-- Why not RetinaFace: it needs PyTorch + CUDA (KEEP venv: py3.10, torch cu128, several GB, hand-repaired, only on one
-  machine) and the GPU while ComfyUI renders; MediaPipe is a small CPU wheel the plugin already uses for the mouth
-  curve, so `face_fix.py --list` measures without touching the GPU.
-- **When to add RetinaFace as a selectable backend** (e.g. `"face_fix": {"tracker": "retinaface"}`, facexlib in its
-  own uv script): faces under ~40 px in the frame, strong profiles, crowds, fast pans where the face jumps out of the
-  search window. Sign that it is needed: `face_pass` reports few tracking hits (`hits` in `<clip>.face.json` well
-  below the frame count) or "no face" on a shot where a face is plainly visible.
+  position, upscaled to 512 - there the face is "near". Both trackers on the ten wide takes of the film (median /
+  small part px, frames with a face):
+
+  | take | MediaPipe | RetinaFace |
+  |---|---|---|
+  | runway, far | 89 / 73, all | 91 / 74, all |
+  | gallery 32->116 px | 84 / 38, all | 84 / 37, all |
+  | stage, zoom 78->225 px | 225 / 78, all | 208 / 76, all |
+  | two men + Claudia | 120 / 106, all | 117 / 100, all |
+  | head turning away | 161 / 83, 153 of 161 | 157 / 75, 160 of 161 |
+  | **man in profile** | 94 / 81, **77 of 161** | 96 / 93, **161 of 161** |
+
+  Widths agree within ~5 px on frontal faces (RetinaFace measures the box, a little smaller on a near face).
+  MediaPipe loses a strong profile (half the frames, bridged by interpolation); RetinaFace keeps it and there the
+  profile face counts as not far (93 px) - the pass gained little on it anyway.
+- Why not RetinaFace by default: in the KEEP venv it needed PyTorch + CUDA (py3.10, torch cu128, several GB,
+  hand-repaired, only on one machine) and the GPU while ComfyUI renders; MediaPipe is a small CPU wheel the plugin
+  already uses for the mouth curve. The optional tracker therefore runs CPU PyTorch in its own uv environment.
+- **When to switch to RetinaFace** (`"face_fix": {"tracker": "retinaface"}`): faces under ~40 px in the frame,
+  strong profiles, crowds, fast pans where the face jumps out of the search window. Sign that it is needed:
+  `face_fix.py --list` shows "no face" on a shot where a face is plainly visible, or "n/N frames" after the size
+  (the face was found in under 90 % of the frames). RetinaFace sees every face of the whole frame (no search window),
+  ~0.5-0.8 s per frame on the CPU; first use installs ~250 MB (CPU torch) and downloads detection_Resnet50_Final.pth
+  (~105 MB).

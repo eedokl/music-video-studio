@@ -10,7 +10,8 @@ LTX-2.3 (and 2.5, same encoder) works on a 32x smaller latent grid. A face under
 cells and is invented anew in every frame: smeared, half-closed, crooked eyes, while the start image was clean. This
 pass (test "D2" of "Du bist die Maschine", 2026-11-25; five ways compared, see claudia-music-video lessons.md):
   1. track the face (MediaPipe, also in cut-outs around the last position - its detector misses faces under ~1/10 of
-     the picture width), smooth it, a square crop that follows the face size (face ~ 1/FACTOR of the crop) -> 512 px
+     the picture width; optional tracker="retinaface": face_track_retina.py, CPU PyTorch in its own uv environment,
+     for faces under ~40 px, profiles, crowds, fast pans), smooth it, a square crop that follows the face size (face ~ 1/FACTOR of the crop) -> 512 px
   2. LTX-2.3 generates the crop anew at 1024 px from full noise, guided by the crop itself (IC-LoRA "pixel spatial
      upscaler x2", 8 distilled steps), with the clean face of the START IMAGE pinned on frame 0 (identity anchor) and
      the shot's vocals riding along (the lips stay in time: r 0.68 against 0.65 on the test shot)
@@ -24,8 +25,8 @@ made-up (eyeliner, fuller lips), a hair streak near the face can widen, more ski
 Needs: ComfyUI with the LTX-2.3 checkpoint (role ltx23) and the LoRA file of role ltx23_upscale_x2 (assets/models.json,
 models/loras), the clip's json (image = start image, audio = vocals, prompt), config face_landmarker, ffmpeg.
 
-  uv run face_pass.py measure <clip.mp4> [...]          median face width (px, scaled to a 1024-wide picture)
-  uv run face_pass.py fix <clip.mp4> [-o out.mp4] [--hint x y] [--seed 7] [--redo]
+  uv run face_pass.py measure <clip.mp4> [...] [--tracker retinaface]   face width (px, scaled to a 1024-wide picture)
+  uv run face_pass.py fix <clip.mp4> [-o out.mp4] [--hint x y] [--seed 7] [--redo] [--tracker retinaface]
         -> <clip>_g.mp4 + json (the clip's json plus "face_fix") + <clip>_g.sheet.jpg (top original, bottom fixed);
            the generated crop is kept in <clip dir>/face_pass/<clip stem>/pass_<seed>.mp4 - a second call only
            blends it in again (no GPU) unless --redo
@@ -52,7 +53,8 @@ FACTOR = 3.4           # crop side = face width x FACTOR: the head needs context
 SMALL = 85             # face width (px at 1024 wide, 10th percentile of the take) below which a face counts as "far"
 FADE_TO = 130          # face width from which the original clip is shown again (soft blend between SMALL and this)
 SEED = 7
-MEASURE_V = 1          # bump when the tracking changes: cached <clip>.face.json files are measured again
+TRACKERS = ("mediapipe", "retinaface")
+MEASURE_V = 2          # bump when the tracking changes: cached <clip>.face.json files are measured again
 CKPT, GEMMA, UPSCALER = "ltx23", "gemma3_te", "ltx23_upscale_x2"
 SIGMAS = "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0"
 EYES = ("Sharp, detailed, symmetric eyes with clear irises and natural eyelids, steady gaze, natural skin texture, "
@@ -123,6 +125,11 @@ def _first(bgr, hint=None):
             for c in _faces(bgr, int(x), int(y), side):
                 if all(abs(c[0] - o[0]) + abs(c[1] - o[1]) > 0.5 * max(c[2], o[2]) for o in found):
                     found.append(c)
+    return _choose(found, hint, W, H)
+
+
+def _choose(found, hint, W, H):
+    """(the lead face, number of faces) among the faces of the first frame."""
     if not found:
         return None, 0
     if hint is None:                     # several faces: the lead is framed near the middle (two-shots, people around)
@@ -131,6 +138,18 @@ def _first(bgr, hint=None):
         hint = (0.5, 0.35)
     hx, hy = hint[0] * W, hint[1] * H
     return min(found, key=lambda c: abs(c[0] - hx) + abs(c[1] - hy)), len(found)
+
+
+def retina_faces(clip):
+    """All faces of every frame from RetinaFace (face_track_retina.py in its own uv environment, CPU):
+    [[(cx, cy, width), ...] per frame]. Cached next to the clip (<clip>.retina.json)."""
+    import config
+    clip = Path(clip)
+    cf = clip.with_suffix(".retina.json")
+    if not (cf.exists() and cf.stat().st_mtime >= clip.stat().st_mtime):
+        script = Path(__file__).resolve().parent / "face_track_retina.py"
+        subprocess.run(config.script_cmd(script) + [str(clip), "-o", str(cf)], check=True)
+    return [[tuple(d[:3]) for d in f] for f in json.loads(cf.read_text(encoding="utf-8"))["frames"]]
 
 
 def _smooth(boxes, win):
@@ -146,22 +165,27 @@ def _smooth(boxes, win):
     return np.stack([np.convolve(pad[:, j], k, mode="valid") for j in range(3)], 1)
 
 
-def track(frames, hint=None, factor=FACTOR):
+def track(frames, hint=None, factor=FACTOR, dets=None):
     """Per frame {x0, y0, side, face} of a square crop around the face; None when no face is found at all.
-    The search window follows the last position (6 face widths, at least 160 px), so a small face is found at 512 px."""
+    MediaPipe: the search window follows the last position (6 face widths, at least 160 px), so a small face is found
+    at 512 px. dets = all faces per frame from another tracker (retina_faces) instead - same choice and smoothing."""
     H, W = frames[0].shape[:2]
-    prev, n_first = _first(frames[0], hint)
+    first = (lambda i: _choose(dets[i], hint, W, H)) if dets else (lambda i: _first(frames[i], hint))
+    prev, n_first = first(0)
     if prev is None:
-        for f in frames[1:12]:                                  # face hidden at the very start: try a few frames
-            prev, n_first = _first(f, hint)
+        for i in range(1, min(12, len(frames))):                # face hidden at the very start: try a few frames
+            prev, n_first = first(i)
             if prev:
                 break
     if prev is None:
         return None
     boxes = []
-    for f in frames:
-        x, y, s = _window(prev[0], prev[1], max(6 * prev[2], 160), W, H)
-        found = _faces(f, x, y, s)
+    for i, f in enumerate(frames):
+        if dets:
+            found = dets[i] if i < len(dets) else []
+        else:
+            x, y, s = _window(prev[0], prev[1], max(6 * prev[2], 160), W, H)
+            found = _faces(f, x, y, s)
         best = min(found, key=lambda c: abs(c[0] - prev[0]) + abs(c[1] - prev[1])) if found else None
         if best and abs(best[0] - prev[0]) + abs(best[1] - prev[1]) > max(60, 1.2 * prev[2]):
             best = None                                         # someone else's face
@@ -183,19 +207,26 @@ def track(frames, hint=None, factor=FACTOR):
                 face=round(float(np.median(fw)) * 1024 / W, 1), low=round(float(np.percentile(fw, 10)) * 1024 / W, 1))
 
 
-def measure(clip, hint=None):
+def _track(clip, frames, hint, tracker):
+    if tracker not in TRACKERS:
+        raise SystemExit(f"unknown face tracker {tracker!r} - one of {', '.join(TRACKERS)}")
+    return track(frames, hint, dets=retina_faces(clip) if tracker == "retinaface" else None)
+
+
+def measure(clip, hint=None, tracker="mediapipe"):
     """{"face": median face width, "low": 10th percentile (px scaled to a 1024-wide picture; None = no face found),
     "hits": frames with a face, "far": low < SMALL}. A face that grows during the take counts by its small part.
-    Cached next to the clip (<clip>.face.json)."""
+    Cached next to the clip (<clip>.face.json, other trackers <clip>.face.<tracker>.json)."""
     clip = Path(clip)
-    cf = clip.with_suffix(".face.json")
+    cf = clip.with_suffix(".face.json" if tracker == "mediapipe" else f".face.{tracker}.json")
     if cf.exists() and cf.stat().st_mtime >= clip.stat().st_mtime:
         r = json.loads(cf.read_text(encoding="utf-8"))
-        if r.get("v") == MEASURE_V and r.get("hint") == hint:
+        if r.get("v") == MEASURE_V and r.get("hint") == hint and r.get("tracker", "mediapipe") == tracker:
             return r
-    t = track(read_frames(clip), hint)
+    frames = read_frames(clip)
+    t = _track(clip, frames, hint, tracker)
     r = dict(v=MEASURE_V, face=t["face"] if t else None, low=t["low"] if t else None, hits=t["hits"] if t else 0,
-             hint=hint)
+             frames=len(frames), hint=hint, tracker=tracker)
     r["far"] = r["low"] is not None and r["low"] < SMALL
     cf.write_text(json.dumps(r), encoding="utf-8")
     return r
@@ -378,7 +409,7 @@ def workflow(video, img, wav, frames, prompt, neg, seed, prefix, lora_strength=1
     return wf
 
 
-def fix(clip, out=None, hint=None, seed=SEED, redo=False, prompt=None, log=print):
+def fix(clip, out=None, hint=None, seed=SEED, redo=False, prompt=None, log=print, tracker="mediapipe"):
     """Run the pass on one clip -> out (default <clip>_g.mp4) + json + sheet. The generated face crop is kept in
     <clip dir>/face_pass/<clip stem>/pass_<seed>.mp4: a second call only blends again (no GPU) unless redo=True."""
     import cv2
@@ -393,7 +424,7 @@ def fix(clip, out=None, hint=None, seed=SEED, redo=False, prompt=None, log=print
     work.mkdir(parents=True, exist_ok=True)
     frames = read_frames(clip)
     fps = int(meta.get("fps", clips.LTX_FPS))
-    t = track(frames, hint)
+    t = _track(clip, frames, hint, tracker)
     if t is None:
         raise SystemExit(f"{clip.name}: no face found to track")
     if t["faces_first"] > 1 and hint is None:
@@ -423,7 +454,7 @@ def fix(clip, out=None, hint=None, seed=SEED, redo=False, prompt=None, log=print
     n = paste(clip, frames, t["rows"], read_frames(done), out, fps)
     sheet(frames, read_frames(out), t["rows"], out.with_suffix(".sheet.jpg"))
     shown = sum(weight(r["face"] * 1024 / t["W"]) > 0 for r in t["rows"][:n])
-    meta.update(face_fix=dict(method="ltx23 ic-lora upscale x2 + start-face anchor", seed=seed, face=t["face"],
+    meta.update(face_fix=dict(method="ltx23 ic-lora upscale x2 + start-face anchor", seed=seed, tracker=tracker, face=t["face"],
                               low=t["low"], frames=n, frames_changed=shown, fade=[SMALL, FADE_TO], gpu_s=gpu),
                 face_fix_from=clip.name)
     clips.meta_path(out).write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -437,20 +468,24 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
     m = sub.add_parser("measure")
     m.add_argument("clips", nargs="+")
+    m.add_argument("--tracker", choices=TRACKERS, default="mediapipe")
     f = sub.add_parser("fix")
     f.add_argument("clip")
     f.add_argument("-o", "--out")
     f.add_argument("--hint", type=float, nargs=2, help="face position in the first frame (x y as 0-1)")
     f.add_argument("--seed", type=int, default=SEED)
     f.add_argument("--redo", action="store_true", help="generate the face again (else a kept pass is only re-blended)")
+    f.add_argument("--tracker", choices=TRACKERS, default="mediapipe",
+                   help="retinaface: CPU PyTorch tracker for tiny faces / profiles / crowds (face_track_retina.py)")
     a = ap.parse_args()
     if a.cmd == "measure":
         for c in a.clips:
-            r = measure(c)
-            v = "no face" if r["face"] is None else f"median {r['face']:5.0f} px, small part {r['low']:5.0f} px"
+            r = measure(c, tracker=a.tracker)
+            v = "no face" if r["face"] is None else (f"median {r['face']:5.0f} px, small part {r['low']:5.0f} px, "
+                                                      f"{r['hits']}/{r.get('frames', '?')} frames")
             print(f"{v:38s}{'far' if r['far'] else '':5s}{c}")
     else:
-        fix(a.clip, a.out, a.hint, a.seed, a.redo)
+        fix(a.clip, a.out, a.hint, a.seed, a.redo, tracker=a.tracker)
 
 
 if __name__ == "__main__":
