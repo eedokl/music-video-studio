@@ -55,6 +55,7 @@ SECTION_FIELDS = {"name": {"type": (STR,)}, "from": {"type": (NUM,)}, "to": {"ty
                   "dance": {"type": (STR,), "values": ("chorus", "always", "never")}, "kind": {"type": (STR,)},
                   "acting": {"type": (BOOL, DICT)},
                   "face_fix": {"type": (BOOL,)}, "face_hint": {"type": (LIST,)},   # claudia face_fix.py
+                  "take": {"type": (STR,), "values": ("short", "long")},   # claudia "takes": "mixed"
                   "relight": {"type": (DICT,), "doc": 'claudia relight.py: {"src", "light", "seeds", "size"} or {"keep": true}'}}
 
 SHARED = {                                            # every project.json read by song_project.Project
@@ -112,8 +113,11 @@ SONG = {**SHARED,                                     # music-video projects (so
         "mic_tries": {"type": (INT,)}, "mic_repair": {"type": (BOOL,)},
         "face_fix": {"type": (BOOL, DICT), "doc": 'claudia face_fix.py: false = never, {"max_face": 85, "tracker": "auto"|"mediapipe"|"retinaface"}'},
         "pace": {"type": (STR,), "values": ("calm", "medium", "fast")}, "code_layer": {"type": (DICT,)},   # claudia code_film.py
-        "takes": {"type": (STR,), "values": ("short", "long"),         # claudia: sung takes of 6-9 s at 1024x576
-                  "doc": '"long" = one take per two to four sung lines (plan.py --takes long)'},
+        "takes": {"type": (STR,), "values": ("short", "long", "mixed"),         # claudia: sung takes of 6-9 s at 1024x576
+                  "doc": '"long" = one take per two to four sung lines (plan.py --takes long); "mixed" = verses long, '
+                         'chorus / hook short (shot "take": "long"|"short")'},
+        "short_markers": {"type": (LIST,), "items": STR,              # claudia "takes": "mixed": parts cut short
+                          "doc": 'marker words cut as short shots in "mixed" (default chorus, refrain, hook, drop)'},
         "pick_by": {"type": (STR,), "values": ("lips", "motion")},     # claudia pick.py: the automatic take
         "relit_from": {"type": (DICT,), "doc": 'claudia relight.py: {"project", "light", "shots": {shot: {...}}}'},
         "identity": {"type": (STR,)}, "tempo": {"type": (DICT,)}, "word_passes": {"type": (LIST,)},   # lyric-music-video

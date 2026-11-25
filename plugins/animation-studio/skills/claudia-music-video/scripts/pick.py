@@ -434,7 +434,7 @@ def pick_clips(P, sel, log, rows, curve):
             # the plan says LTX (test: after an engine switch the old S2V take won the automatic pick)
             open_ = [x for x in open_ if x[1].parent.name == "lipsync"]
         best = max(open_, key=lambda x: x[0])
-        by = P.get("pick_by") or ("motion" if P.get("takes") == "long" else "lips")
+        by = P.get("pick_by") or ("motion" if claudia.is_long(P, s) else "lips")
         if by == "motion":      # long takes: of the takes whose lips are about as good, the one that moves most
             near = [x for x in open_ if x[0] >= best[0] - MOTION_SLACK]
             most = max(near, key=lambda x: x[6])

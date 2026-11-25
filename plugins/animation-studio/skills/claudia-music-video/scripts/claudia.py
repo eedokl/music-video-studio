@@ -177,6 +177,17 @@ LONG_MOVES = [
 LONG_MANNER = "clearly and articulates every syllable with a wide moving mouth"
 
 
+TAKES = ("short", "long", "mixed")
+# "takes": "mixed": verses / bridge / intro as long takes, these parts (marker names, lower case) as short shots
+SHORT_MARKERS = ("chorus", "refrain", "hook", "drop", "post-chorus")
+
+
+def is_long(P, s):
+    """A shot rendered and picked as a long take: project "takes": "long", or "mixed" and the shot's "take": "long"."""
+    t = P.get("takes")
+    return t == "long" or (t == "mixed" and s.get("take") == "long")
+
+
 def long_move(rng, used):
     """(action, camera) for a long take, none twice in a row while there are others."""
     fresh = [m for m in LONG_MOVES if m[0] not in used[-2:]] or LONG_MOVES

@@ -46,6 +46,18 @@ pick.py scores of 6-9 s takes with a camera move lie lower than those of short t
 higher. Do not render more seeds because of a low score alone: twelve more seeds of three such takes all stayed
 between -0.37 and +0.09. Look at the mouth on the word starts instead.
 
+## Three films of long takes ("Du bist die Maschine": main, Dance, Hymne, 2026-11-24/25)
+
+- **Far faces are the rule, not the exception**: she walks and the camera travels, so the face is small for part of
+  the take - main film 9 of 38 takes under 85 px, Dance 9, Hymne (calmer) 3 of 47. Plan the face pass (`face_fix.py`,
+  ~5 min GPU per take) and look at each `_g` take next to its original (Dance: 2 of 9 dropped).
+- **Pick by eye**: the user re-picked 8 of 31 sung takes of the main film in one round on the takes page. Two people in a take make
+  the lip measure read the wrong mouth ("mouth closed" on 4 of 6 car takes where she plainly sings).
+- **The last second**: in 8-9 s clips LTX likes to end on a jump to a close-up (a hidden cut the measure flagged in 1
+  of 2 takes) or a gesture nobody asked for (a wave in 1 of 6 takes) - look at the ends.
+- **A second person** in a long take waves into the camera or looks into the lens unless the prompt places their gaze
+  (lessons.md, "Rewriting a shot after the cut").
+
 ## More happening in a take (`timeline`)
 
 A take gains from two or three things happening one after the other - she flips her jacket open, points back at

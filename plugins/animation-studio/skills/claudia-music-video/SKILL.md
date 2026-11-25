@@ -146,13 +146,28 @@ Reference shots (Europe 2031: projector screens, paper stacks, storms, server ha
 new pictures. A new seed (`project.json "seed"`) gives a new take of plan, wardrobe, seeds and camera moves.
 **Checkpoint:** show the shot list (time, line, technique, idea) and ask for changes before any GPU time.
 
+### Short, long or mixed takes - offer the choice
+
+On a new film, show the user this choice at the plan checkpoint (before `plan.py`, or re-plan with `--force`) instead
+of taking the short plan silently. All three "Du bist die Maschine" films (main, Dance, Hymne) were long takes.
+
+| | short (default) | long (`--takes long`) | mixed (`--takes mixed`) |
+|---|---|---|---|
+| shot | one line, 2-5 s, many cuts, B-roll between | 2-4 lines, 6-9 s, one place, she moves | verses / bridge long, chorus / hook short |
+| strength | lips and face, classic music video; S2V for held notes | walking, dancing, camera travel | movement in the story, punch on the hook |
+| faces | mostly large | ~1 take in 4 far (main 9 of 38, Dance 9, Hymne 3 of 47): face pass ~5 min GPU each | far faces only in the long parts |
+| picking | the lip score is a good guide | by eye on the takes page (main film: 8 of 31 re-picked in one round) | both |
+| suits | rap / spoken lines, punchlines, dialogue songs | hymns, dance, travel, story songs | songs with a strong chorus |
+
+`mixed` is new (0.34.0, untested on a real film): every sung shot gets `"take": "long" | "short"`, only the long ones
+render at 1024x576; project `"short_markers"` (default chorus, refrain, hook, drop) names the parts cut short.
+
 ### Long takes with movement (option)
 
 `uv run "$S/plan.py" <proj> --takes long` (project.json `"takes": "long"`) plans the film in takes of 6-9 s instead
 of one shot per line: one take = one place = two to four sung lines, she walks, dances or gestures through it and
-the camera travels; every sung take is LTX lip-sync, rendered at 1024x576 with up to 217 frames. Offer it when the
-user wants more movement or longer scenes, or names a video of that kind as the model. Ask, do not assume: the
-default stays the short plan.
+the camera travels; every sung take is LTX lip-sync, rendered at 1024x576 with up to 217 frames. Ask, do not assume
+(the table above); the default stays the short plan.
 - **`"speed": 1.18`** on a shot whose take reads as slow motion: the vocals are slowed for the render and the cut
   shows the clip that much faster (lips in real time, body faster). Shot by shot, after looking at the takes - some
   takes look unnatural faster, and slow motion suits others. A faster take is shorter (7.6 s at 1.18).

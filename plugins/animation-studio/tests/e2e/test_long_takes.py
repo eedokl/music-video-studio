@@ -97,6 +97,43 @@ def run_long(ctx):
     expect(r.returncode != 0 and '"speed"' in (r.stdout + r.stderr), "speed 2.5 was not refused")
     write_json(d / "project.json", P)
 
+    # 2b. "takes": "mixed": the verse (lines 0-3) as long takes, the chorus (lines 4-5) one shot per line; jobs.py
+    # renders only the long ones at 1024x576; plan.py names the face pass for long takes
+    m = ctx.dir / "mixed"
+    ctx.uv(NEW, m, "--song", song, "--lyrics", lyr, "--language", "en")
+    write_json(m / "analysis" / "song_sheet.json", song_sheet(SONG, words()))
+    write_json(m / "analysis" / "markers.json", [{"line": 0, "marker": "Verse 1"}, {"line": 4, "marker": "Chorus"}])
+    (m / "analysis" / "vocals_lead.wav").write_bytes(song.read_bytes())
+    for n in ("a.png", "b.png"):
+        (m / n).write_bytes((d / n).read_bytes())
+    PM = read_json(m / "project.json")
+    PM.update({"seed": 7, "character_refs": ["a.png", "b.png"]})
+    write_json(m / "project.json", PM)
+    out = ctx.uv(PLAN, m, "--takes", "mixed", "--no-s2v", "--lipsync", "1")
+    PM = read_json(m / "project.json")
+    ms = [s for s in PM["sections"] if s["lyrics"]]
+    verse = [s for s in ms if s["marker"].startswith("Verse")]
+    chorus = [s for s in ms if s["marker"] == "Chorus"]
+    expect(PM.get("takes") == "mixed" and len(verse) == 2 and all(s["take"] == "long" and 6.0 <= s["to"] - s["from"] <= 8.9
+                                                                   and s["technique"] == "lipsync" for s in verse),
+           f"mixed: verse not as long takes: {[(s['name'], s['marker'], s.get('take'), round(s['to'] - s['from'], 1)) for s in ms]}")
+    expect(len(chorus) == 2 and all(s["take"] == "short" and s["to"] - s["from"] <= 5.0 for s in chorus),
+           f"mixed: chorus not one short shot per line: {[(s['name'], s.get('take'), round(s['to'] - s['from'], 1)) for s in chorus]}")
+    expect(abs(PM["sections"][-1]["to"] - SONG) < 0.01 and
+           all(abs(a["to"] - b["from"]) < 1e-6 for a, b in zip(PM["sections"], PM["sections"][1:])), "mixed shots do not tile the song")
+    expect("face pass" in out.stdout, f"plan.py names no face pass for long takes:\n{out.stdout[-500:]}")
+    for s in PM["sections"]:
+        s.update(idea="test", set="in a glass corridor", set_short="in a glass corridor",
+                 subject="an empty glass corridor", motion="light moves over the floor")
+    PM["brief"] = dict(PM.get("brief") or {}, wardrobe="a grey blazer over a white top")
+    write_json(m / "project.json", PM)
+    ctx.uv(JOBS, m, "--seeds", "1", "--start", "1", "--no-depth")
+    mj = {j["id"]: j["args"] for j in read_json(m / "jobs.json")["jobs"]}
+    for s in verse + [c for c in chorus if c["technique"] == "lipsync"]:
+        a = mj[f"{s['name']}/ltx_s1"]
+        want = (1024, 576) if s["take"] == "long" else (None, None)
+        expect((a.get("w"), a.get("h")) == want, f"mixed jobs {s['name']} ({s['take']}): size {a.get('w')}x{a.get('h')}")
+
     # 3. clips: frames for a speed, the slowed sound, the placement of a clip with "tempo"; pick.py's motion rule
     drv = "\n".join([
         f"import sys, wave; sys.path.insert(0, r'{CLIPS.parent}'); sys.path.insert(0, r'{PICK.parent}')",
@@ -126,7 +163,8 @@ def run_long(ctx):
     expect(m["still_share"] >= 0.4 and "shots" in m, f"film_motion still share / shots: {m}")
     ctx.note(f"3 takes of two lines ({', '.join(str(round(s['to'] - s['from'], 1)) for s in sung)} s), LTX jobs at "
              f"1024x576 up to 217 frames, speed 1.1 lengthens the clip, short-take hint, speed 2.5 refused, "
-             f"stretch_audio + frame_index tempo, film_motion 2 takes")
+             f"stretch_audio + frame_index tempo, film_motion 2 takes; mixed: verse {len(verse)} long, chorus "
+             f"{len(chorus)} short")
 
 
 TESTS = [Test("claudia-long-takes", run_long, about="plan.py --takes long -> jobs.py (1024x576, 217 frames, shot speed) -> clips tempo -> film_motion.py")]

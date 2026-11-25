@@ -218,9 +218,12 @@ def main():
         raise SystemExit("--keep-old needs --only <shots> (the shots you rewrote)")
     ref_cache = []
     # "takes": "long" - LTX clips at 1024x576, up to 217 frames (9 s) in one clip instead of 121 (5 s) at 1280x704
-    long_takes = P.get("takes") == "long"
-    max_frames = clips.ltx_max_frames(*clips.LTX_LONG_SIZE) if long_takes else clips.LTX_MAX_FRAMES
-    size = dict(w=clips.LTX_LONG_SIZE[0], h=clips.LTX_LONG_SIZE[1], max_frames=max_frames) if long_takes else {}
+    # "takes": "mixed" - only the shots with "take": "long" (claudia.is_long)
+    def shot_size(s):
+        if claudia.is_long(P, s):
+            mf = clips.ltx_max_frames(*clips.LTX_LONG_SIZE)
+            return mf, dict(w=clips.LTX_LONG_SIZE[0], h=clips.LTX_LONG_SIZE[1], max_frames=mf)
+        return clips.LTX_MAX_FRAMES, {}
     fit_notes = []
 
     def fit(s, dur):
@@ -231,12 +234,13 @@ def main():
             raise SystemExit(f'shot {s["name"]}: "speed" must be a number such as 1.18, not {s.get("speed")!r}')
         if not 1 <= speed <= clips.SPEED_MAX:
             raise SystemExit(f'shot {s["name"]}: "speed" {speed} - use 1 (as rendered) up to {clips.SPEED_MAX}')
+        max_frames, _ = shot_size(s)
         frames, lead = clips.ltx_fit(dur, max_frames=max_frames, speed=speed)
         if clips.ltx_frames(dur, lead, speed) > max_frames:
             most = clips.ltx_seconds(max_frames, speed)
             fit_notes.append(f'{s["name"]}: {dur:.1f} s' + (f' at speed {speed:g}' if speed != 1 else '') +
                              f' is longer than one LTX clip covers ({most:.1f} s) - the cut holds the last frame for '
-                             f'the rest; ' + ('lower "speed" or split the shot' if long_takes else
+                             f'the rest; ' + ('lower "speed" or split the shot' if claudia.is_long(P, s) else
                                               'set project.json "takes": "long" (9 s at 1024x576) or split the shot'))
         return frames, lead, speed
 
@@ -295,6 +299,7 @@ def main():
         rng = creative.rng(P, f"seeds:{name}")
         base = rng.randrange(1000, 900000)
         dur = s["to"] - s["from"]
+        max_frames, size = shot_size(s)
         look_img, look_vid = claudia.look(brief, s.get("look"), version)
         pr = prompts[name] = {"technique": tech}
         if tech in ("typo", "placed"):
