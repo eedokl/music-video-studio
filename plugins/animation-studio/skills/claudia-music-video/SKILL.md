@@ -162,6 +162,14 @@ of taking the short plan silently. All three "Du bist die Maschine" films (main,
 `mixed` is new (0.34.0, untested on a real film): every sung shot gets `"take": "long" | "short"`, only the long ones
 render at 1024x576; project `"short_markers"` (default chorus, refrain, hook, drop) names the parts cut short.
 
+### A spoken film (option, `"delivery": "speech"`)
+
+Not a song but a dialogue (a sketch): voices with the voice block, the lines on a timeline as the "song", the
+voices-only track as `analysis/vocals_lead.wav`, a background bed as `stems.instrumental`; `"delivery": "speech"` turns
+"sings the words" into "says the words" in every prompt and lets the speaker look just past the lens. One speaker per
+shot (shot / reverse shot). Use InfiniteTalk for a figure whose start images smile with closed lips. The worked
+example and its numbers: `references/lessons.md`, "A spoken film instead of a song".
+
 ### Long takes with movement (option)
 
 `uv run "$S/plan.py" <proj> --takes long` (project.json `"takes": "long"`) plans the film in takes of 6-9 s instead

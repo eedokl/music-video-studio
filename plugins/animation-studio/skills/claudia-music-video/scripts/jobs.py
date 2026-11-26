@@ -503,6 +503,11 @@ def main():
                     prompt=mp, neg=claudia.neg_moving(s), frames=frames, **size, seed=sd,
                     compression=s.get("compression", 42 if crowd else 18),
                     meta={"song_start": round(s["from"] - lead, 3), "lead_in": lead, "shot": name})
+    if P.get("delivery") == "speech":                 # a spoken film: "says the words", a conversational mouth
+        for j in jobs:
+            if "prompt" in j["args"]:
+                j["args"]["prompt"] = claudia.speech(j["args"]["prompt"])
+        prompts = {k: {f: claudia.speech(v) for f, v in d.items()} for k, d in prompts.items()}
     prompts = merged(P.dir / "prompts.json", prompts, only, None)
     (P.dir / "prompts.json").write_text(json.dumps(prompts, ensure_ascii=False, indent=1), encoding="utf-8")
     for h in claudia.hints([s for s in P.sections() if not only or s["name"] in only]) + fit_notes:

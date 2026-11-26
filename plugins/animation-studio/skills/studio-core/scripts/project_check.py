@@ -118,7 +118,9 @@ SONG = {**SHARED,                                     # music-video projects (so
                          'chorus / hook short (shot "take": "long"|"short")'},
         "short_markers": {"type": (LIST,), "items": STR,              # claudia "takes": "mixed": parts cut short
                           "doc": 'marker words cut as short shots in "mixed" (default chorus, refrain, hook, drop)'},
-        "pick_by": {"type": (STR,), "values": ("lips", "motion")},     # claudia pick.py: the automatic take
+        "pick_by": {"type": (STR,), "values": ("lips", "motion")},
+        "delivery": {"type": (STR,), "values": ("song", "speech"),       # claudia: a spoken film -> "says the words"
+                     "doc": '"speech" = the lip-sync prompts speak instead of sing (a sketch / dialogue film)'},     # claudia pick.py: the automatic take
         "relit_from": {"type": (DICT,), "doc": 'claudia relight.py: {"project", "light", "shots": {shot: {...}}}'},
         "identity": {"type": (STR,)}, "tempo": {"type": (DICT,)}, "word_passes": {"type": (LIST,)},   # lyric-music-video
         "flight": {"type": (STR,), "doc": "folder of the portal flight inside the project (new_flight.py)"},   # portal-music-video

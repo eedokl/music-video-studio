@@ -162,6 +162,12 @@ def run_claudia(ctx):
         "                   dict(name='d', technique='lipsync', action='her hair falls in soft waves'),",
         "                   dict(name='e', technique='broll', subject='waves crash at the shore')])",
         "assert sorted(x.split(':')[0] for x in h if 'a wave in the text' in x) == ['a', 'b'], h",
+        # "delivery": "speech": speaking instead of singing, a conversational mouth, the gaze just past the lens
+        "sp = claudia.speech('she sings calmly, turns. She sings the words \"Hallo\". ' + claudia.MOUTH + "
+        "' His lips clearly form every word, the mouth opens wide on the vowels and the lips close fully on m, b and p. '"
+        "' about to sing the next word, turned to the camera, eyes open.')",
+        "assert 'sings' not in sp and 'says the words' in sp and 'opens wide on the vowels' in sp, sp",
+        "assert 'looking just past the lens' in sp and 'about to say the next word' in sp, sp",
         "print('keep old ok')", ""])
     out = ctx.py(drv, deps_from=[JOBS], name="keep_old.py")
     expect("keep old ok" in out.stdout, f"jobs.keep_old / wave hint:\n{out.stdout}")

@@ -781,6 +781,26 @@ def finish_line(fin):
             f"fade in {fin['fade_in']} s / out {fin['fade_out']} s")
 
 
+# the singing mouth sentence stays (Autopilot sketch 2026-11-26: a soft "natural conversational speech" mouth sentence
+# plus "calmly" kept the mouth shut in 7 of 12 takes) - only "sing" becomes "say"
+_SPEECH = [("about to sing the next word", "about to say the next word"), ("sings the words", "says the words"),
+           ("holds the last word as one long open note", "ends the sentence")]
+
+
+def speech(p):
+    """project.json "delivery": "speech" (a spoken film, no song): the same prompts with speaking instead of singing -
+    "sings the words" -> "says the words", "sings <manner>" -> "speaks <manner>"; the strong mouth sentence (wide on the
+    vowels, closed on m/b/p) stays - a softer one kept the mouths shut. Applied by jobs.py to every prompt of the project (Autopilot sketch, 2026-11-26)."""
+    if not isinstance(p, str):
+        return p
+    for a, b in _SPEECH:
+        p = p.replace(a, b)
+    # a dialogue: the speaker looks just past the lens at the other person, not into the camera
+    p = p.replace("turned to the camera, eyes open", "turned three-quarters toward the camera, eyes open, looking just "
+                  "past the lens at the other person")
+    return re.sub(r"\b(she|he|She|He) sings\b", lambda m: f"{m.group(1)} speaks", p).replace(", sings ", ", speaks ")
+
+
 def hints(shots):
     """Direction advice that is not an error (printed by jobs.py). Lessons of Das Warum (2026-11-20):
     a hand named in the hair text became a hand in the hair in a third of the shots; "raises his eyebrows" gave a

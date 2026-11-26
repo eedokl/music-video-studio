@@ -438,3 +438,25 @@ ai-video `face_track_retina.py`, CPU PyTorch in its own uv environment - not the
 - **A black break stays**: the shot against pure black had nothing to re-light (`--keep`, or an empty instruction).
 - **The LTX prompt needs a light word**: a night sentence without "light" ("lit by lamps") failed jobs.py's check
   (LTX jumps scenes without one) - relight.py refuses such a short sentence up front.
+
+## A spoken film instead of a song ("Autopilot" sketch, 2026-11-26: Claudia + Oliver in a car, 43 s, 12 shots)
+
+- **Set-up**: voices with the voice block (Qwen3-TTS, one fixed voice per figure, Whisper check), the dialogue laid out
+  on a timeline with the pauses of the script = the "song"; the voices-only track is `analysis/vocals_lead.wav`
+  (lip-sync input), the car bed is `stems.instrumental` (silent shots); `analysis/song_sheet.json` built from the
+  Whisper word times; `analyze.py --only 4` (Rhubarb) for the lip score. Project `"delivery": "speech"`.
+- **Claudia's speaking voice from her songs**: a Qwen Base clone of the SPOKEN intro line of "Du bist die Maschine"
+  (under 3 s) was the user's pick over the designed voice and over clones of sung verses (those spoke faster and ran
+  the sentences together). A clone of a man's sung verse ("Das Warum") sounded sung; Oliver got a designed voice.
+- **Keep the strong mouth sentence**: a softer "natural conversational speech" mouth sentence plus "calmly" in the
+  manner kept the mouth shut in 7 of 12 LTX takes; with the singing mouth sentence (only "sings" -> "says") Claudia's
+  close-up went from "mouth closed" to 0.73.
+- **Oliver's mouth stayed shut in LTX** in every take of four shots (8 takes): his start images smile with closed lips.
+  InfiniteTalk moved it (0.16-0.48) - use it for a figure whose start images smile; Claudia's two long shots measured
+  better with InfiniteTalk too (0.31 / 0.58 against 0.20 / 0.35).
+- **A camera in front**: "he points ahead" became pointing at the viewer again, and the steering wheel landed in front
+  of the passenger - say which seat has the wheel ("she sits on the left behind the steering wheel, he sits on the
+  right with no steering wheel in front of him").
+- **Moving clips with a fast background** (car windows, a tracking shot) are flagged "hidden cut" by the measure
+  although they have none: look before taking the still.
+- GPU: voices ~10 min, start images ~15 min, LTX + InfiniteTalk ~80 min for 12 shots.
