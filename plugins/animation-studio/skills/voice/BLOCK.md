@@ -12,7 +12,7 @@ Scripts: `<plugin>/skills/voice/scripts/` – run with
 
 | file | what |
 |---|---|
-| `voice.py` | API + CLI: `speak()`, `cast()`, `design()`, `hear()`, `spoken()`; `say`, `design`, `pick`, `list`, `tempo` |
+| `voice.py` | API + CLI: `speak()` (item key `"direction"` = a directed line), `cast()`, `design()`, `hear()`, `spoken()`, `dialogue()`; `say`, `design`, `pick`, `list`, `tempo`, `dialogue` |
 | `tempo.py` | pitch-neutral tempo change of a spoken line to fit a slot: pauses > 0.40 s → 0.30 s (only when it must get shorter), ffmpeg atempo with a factor clamped to 0.80–1.35 (`fits: false` when the clamp hit), optional tail silence and words-per-minute cap, Whisper word times re-mapped. CLI `voice.py tempo line.wav -o fit.wav --slot 2.4` (or `--factor 1.08`), `voice.py say ... --slot 2.4`; API: item keys `"slot"` / `"tempo"` / `"tail"` in `speak()` → result gets `"tempo": {factor, before, after, fits}` |
 | `tts_worker.py` | runs inside the Qwen3-TTS venv (`tts_python`), started by voice.py; takes the GPU lock |
 | `hear.py` | Whisper check + word times (GPU python or uv/CPU); Whisper takes the GPU lock itself |
@@ -42,6 +42,32 @@ Force one with `--engine` or the environment variable `TTS_ENGINE=system`.
    characters get their reference designed on first use (needs Qwen3-TTS; otherwise the fallback engines speak).
 3. **Every line is cloned** from that reference with the Base model (seeded: same seed = same take). The project
    folder's `voices/<who>.wav` wins over the skill's; the skill ships tim, lia and computer.
+
+## A direction per line (livelier speech)
+
+A clone of the neutral reference says every line the same way - in a dialogue that sounded "choppy, badly stressed,
+artificial". Give the line a direction, in English: item key `"direction"` in `speak()` or
+`voice.py say oliver "Und du?" --direction "Amused counterattack, strong stress on the last word." -o line.wav`.
+Qwen VoiceDesign then speaks the line itself (the character's `design` + "natural conversation" + the direction);
+the reference sample is not used, so the entry needs a `design`.
+
+- The voice is designed anew for every line and wanders (one man: 103-168 Hz over six lines). One seed per character
+  keeps it closer. The result carries `pitch_hz`; lines more than 15 % off the character's median are reported
+  (`pitch_outlier`) - one such line was taken for another speaker.
+- Fix for an outlier: another seed or direction, or speak it with the sentence before it as ONE item and split at
+  the pause (word times in the result).
+- A direction names the attitude and, where needed, the stressed word. "A short firm instruction" came out as an
+  announcement; "said to him in passing, a person talking, not an announcement" did not.
+- Between two turns of a dialogue leave ~0.25 s, not the 0.6-0.8 s of read-aloud lines.
+
+## A whole dialogue as one take (ElevenLabs, cloud, opt-in)
+
+`voice.py dialogue turns.json -o take.mp3 --project . [--split lines/] [--dry-run]` sends all turns as ONE request
+(Text to Dialogue, model `eleven_v3`): the model plays the exchange with its own pauses; stage tags go into the text
+in square brackets (`"[deadpan] ..."`). `turns.json`: `[{"who", "text", "name"}]`, every speaker's entry needs a
+`voice_id`. `take.json` gets the time of every turn; `--split` writes one wav per turn with the pauses inside, so the
+pieces played back to back are the take. Same rules as the engine: key from `ELEVENLABS_API_KEY` only, ask the user
+first, library or designed voices only. In the one comparison so far the user preferred the local directed voices.
 
 ## Post-processing and the Whisper check
 

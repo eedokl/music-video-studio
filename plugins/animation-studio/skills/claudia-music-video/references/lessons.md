@@ -460,3 +460,36 @@ ai-video `face_track_retina.py`, CPU PyTorch in its own uv environment - not the
 - **Moving clips with a fast background** (car windows, a tracking shot) are flagged "hidden cut" by the measure
   although they have none: look before taking the still.
 - GPU: voices ~10 min, start images ~15 min, LTX + InfiniteTalk ~80 min for 12 shots.
+
+## Two people who talk ("Autopilot" V3-V5, 2026-11-26/27: five versions until the user said "way better")
+
+The method that came out of it is `references/dialogue.md`; these are the findings behind it.
+
+- **Start images made shot by shot do not agree** (V2: the passenger behind a steering wheel, then on the back seat).
+  ONE master picture of both, every single a crop of it, Qwen-Image-Edit changes only mouth and gaze
+  (`ai-video master_crops.py`). From then on no seat was wrong.
+- **A driving car does not work** with these models: the landscape behind the windows was frozen (InfiniteTalk) or
+  wrong (LTX). The car stands in a traffic jam since V3. Ask for a place where the background may stand still.
+- **InfiniteTalk stays right for one case**: a single person in a calm framing with a background that stands still,
+  when LTX does not move the mouth. With an open-mouth start image LTX-2.3 held Oliver's mouth half open and still in
+  4 of 7 takes (range ~0.005); InfiniteTalk spoke. Its frozen background is what the standing car needs - and why it
+  failed in the driving car of V1.
+- **LTX-2.5 with a cut inside holds two people**: the clip opens on the two-shot with the first speaker and cuts to
+  the second (`dialogue_clips.py`). 21 of 21 clips kept seats, car and the car behind; with one singing person
+  1 of 10 had been usable. Two speakers in one shot without a cut worked in 4 of 4.
+- **Dissolves instead of cuts**: 4 of the first 9 takes with a cut (one through black), 0 of the next 8 - the sound
+  and the opening sentences had changed in between, the cut sentence not. The 2 fps strip hid a 9-frame dissolve;
+  `ai-video cut_check.py` measures it and `--harden` repairs it.
+- **The voices were the next complaint** ("choppy, not nicely stressed, artificial"): plain clones of a neutral
+  reference, 0.6-0.8 s between the turns. A direction per line (VoiceDesign) plus ~0.25 s gaps was the user's pick
+  over the clones and over two ElevenLabs takes. Price: the voice wanders (Oliver 103-168 Hz over six lines).
+- **A direction can miscast a line**: "a short firm instruction" came out at 154 Hz against 168-198 Hz for her other
+  lines and sounded like the sat-nav to the user - who then made it the sat-nav and had the answer rewritten.
+- **Nobody may mouth a voice from off**: the line was cut out of the lip-sync audio and the clip opened with
+  "everybody listens, nobody speaks"; her mouth stayed closed through the whole shot.
+- **Sound first**: the voices changed after V4 and all five dialogue clips had to be rendered again (~45 min). One
+  line was then replaced by splicing at its start - the track before it stayed sample-identical, one clip was redone.
+- **The user's own mix of three versions** (takes page) showed what bothered them: it joined a driving and a standing
+  car. Before more takes, ask what should become consistent.
+- Open after V5: the car at the end drives toward the exit but does not visibly turn off; in one close-up the car
+  behind is only a blur; lip sync was judged on strips, not measured.

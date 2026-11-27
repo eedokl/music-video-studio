@@ -170,6 +170,13 @@ voices-only track as `analysis/vocals_lead.wav`, a background bed as `stems.inst
 shot (shot / reverse shot). Use InfiniteTalk for a figure whose start images smile with closed lips. The worked
 example and its numbers: `references/lessons.md`, "A spoken film instead of a song".
 
+**Two people who talk to each other**: read `references/dialogue.md` first - sound approved before any video, ONE
+master picture of both with the singles cut out of it (ai-video `master_crops.py`), a place where the background may
+stand still, and every exchange as one LTX-2.5 clip that starts on the two-shot:
+`uv run "$S/dialogue_clips.py" <proj> plan` (then `render`, `check`, `select`; project key `"dialogue"`). Single takes
+per speaker did not agree on seats and background. A single person in a calm framing with a still background, whose
+mouth LTX does not move, stays an InfiniteTalk shot.
+
 ### Long takes with movement (option)
 
 `uv run "$S/plan.py" <proj> --takes long` (project.json `"takes": "long"`) plans the film in takes of 6-9 s instead

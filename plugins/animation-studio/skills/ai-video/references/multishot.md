@@ -84,7 +84,14 @@ reasons in `picks.log` and set the shot back to `"engine": "ltx"` if none is goo
 | plugin (jobs.py -> night_run -> pick.py), ferry deck, 4.4 s, one unbroken line, 2 cut wordings x 3 seeds | 6 | 0 of 6 (one soft change of framing) | 0 | too short, no point in the line to cut at; pick.py: "cut missing" on all six |
 | plugin, ferry deck at dawn, 7.7 s ("... still alive? Hey! Hey! ..."), close-up -> frontal medium shot, 3 seeds | 3 | 3 of 3, at "Hey!" | 0 | every take cut a second time about a second later and lost the streak after the cut; pick.py: "unwanted cut" on all three |
 
-So: long enough passages cut, and they cut on the music, but holding the canon across the cut is the weak point.
+| dialogue of two people in a standing car (spoken), start = a two-shot of both, 6.7-8 s, two-shot with speaker 1 -> frontal close-up of speaker 2, 17 clips | 17 | 17 of 17, 0.05-0.5 s before the second speaker (4 as dissolves, one through black) | 17 (4 after `cut_check.py --harden`) | background behind the close-up sometimes only a blur; a slow push-in after the cut; one glance into the camera |
+| the same two-shot without a cut, two speakers one after the other or one speaker after a voice from off, 5.7-6 s | 4 | 0 of 4 (none wanted) | 4 | - |
+
+So: long enough passages cut, and they cut on the music, but holding the canon across the cut is the weak point -
+for ONE person who is not in the start picture's framing after the cut. When the start picture already shows both
+people (a dialogue), the second shot is a closer view of somebody the model has seen, and it held in every clip:
+`claudia-music-video/scripts/dialogue_clips.py`, method in `claudia-music-video/references/dialogue.md`.
+A dissolve instead of the hard cut is the remaining fault - measure every take with `cut_check.py`.
 `MIN_SECONDS` is 6 because of the fourth row; nothing between 4.4 and 7.7 s has been rendered.
 
 ## Not tested

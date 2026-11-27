@@ -53,6 +53,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import zlib
 import wave
 from pathlib import Path
 
@@ -289,6 +290,39 @@ def spoken(text, pronounce=None):
 
 # ------------------------------------------------------------------ main API
 
+TALK = "Natural spontaneous conversation, fluent and connected, not read aloud. "
+
+
+def directed_lines(jobs, language):
+    """jobs: [(item, entry, raw_path, seed)] with item["direction"] -> raw files. VoiceDesign speaks the line itself:
+    the character's description + how to say THIS line. Livelier than a clone of the neutral reference, but the voice
+    is designed anew for every line and wanders a little (speak() reports lines whose pitch falls out)."""
+    items = []
+    for it, e, raw, seed in jobs:
+        if not e.get("design"):
+            raise SystemExit(f"'{it['who']}' has no \"design\" (English voice description) - a directed line needs it")
+        items.append({"text": it["speak"], "language": LANG_NAMES.get(language, language), "out": str(raw), "seed": seed,
+                      "instruct": e["design"].strip() + " " + TALK + it["direction"].strip()})
+    if items:
+        run_worker("design", items)
+
+
+def pitch_outliers(rows, limit=0.15):
+    """rows: [(who, pitch_hz)] -> indices of lines more than `limit` away from their character's median pitch
+    (a line at 154 Hz among 168-198 Hz sounded like another person - the user took it for the sat-nav)."""
+    by = {}
+    for i, (who, hz) in enumerate(rows):
+        if hz:
+            by.setdefault(who, []).append((hz, i))
+    out = []
+    for who, v in by.items():
+        if len(v) < 3:
+            continue
+        med = sorted(h for h, _ in v)[len(v) // 2]
+        out += [i for h, i in v if abs(h - med) / med > limit]
+    return sorted(out)
+
+
 def speak(items, project_dir=None, seed=0, check=True, retakes=2, language="de", engine=None, pronounce=None):
     """items: [{"who", "text", "out"}] -> results (see module doc). Same seed -> same takes."""
     voices = cast(project_dir)
@@ -303,12 +337,14 @@ def speak(items, project_dir=None, seed=0, check=True, retakes=2, language="de",
     todo = list(range(len(res)))
     best = {}
     for take in range(retakes + 1):
-        q = []
+        q, qd = [], []
         for i in todo:
             r = res[i]
             raw = work / f"raw_{i:03d}_{take}.wav"
             r["raw"] = raw
-            if r["engine"] == "qwen":
+            if r["engine"] == "qwen" and r.get("direction"):      # one seed per character: the voice wanders less
+                qd.append((r, r["entry"], raw, seed * 1000 + zlib.crc32(r["who"].encode()) % 997 + 7919 * take))
+            elif r["engine"] == "qwen":
                 q.append((r, r["entry"], raw, r["seed"] + 7919 * take))
             elif r["engine"] == "piper":
                 piper_line(r["speak"], r["entry"], raw)
@@ -317,6 +353,7 @@ def speak(items, project_dir=None, seed=0, check=True, retakes=2, language="de",
             else:
                 system_line(r["speak"], r["entry"], raw, language)
         qwen_lines(q, project_dir, language)
+        directed_lines(qd, language)
         for i in todo:
             r = res[i]
             cand = work / f"take_{i:03d}_{take}.wav"
@@ -344,6 +381,8 @@ def speak(items, project_dir=None, seed=0, check=True, retakes=2, language="de",
                           tail=float(r.get("tail", 0.0)))
             b = {**b, "duration": t["after"], "words": t["words"]}
             extra["tempo"] = {k: v for k, v in t.items() if k != "words"}
+        if r.get("direction") and r["engine"] == "qwen":
+            extra["direction"], extra["pitch_hz"] = r["direction"], pitch_hz(r["out"])
         out.append({"who": r["who"], "text": r["text"], "spoken": r["speak"], "out": str(r["out"]), "engine": r["engine"],
                     "take": b["take"], "score": b["score"], "heard": b["heard"], "words": b["words"],
                     "duration": b["duration"], **extra})
@@ -351,6 +390,12 @@ def speak(items, project_dir=None, seed=0, check=True, retakes=2, language="de",
         print(f"  {r['who']:9s} {r['engine']:6s} {b['duration']:5.2f} s  heard {b['score'] if b['score'] is not None else '-'}"
               f"  {r['speak'][:60]}{flag}", flush=True)
     shutil.rmtree(work, ignore_errors=True)
+    for i in pitch_outliers([(o["who"], o.get("pitch_hz")) for o in out]):
+        o = out[i]
+        o["pitch_outlier"] = True
+        print(f"  NOTE {o['who']}: \"{o['spoken'][:40]}\" at {o['pitch_hz']} Hz is far from this character's other lines - "
+              "it may sound like another person; take it again (other seed / direction) or speak it as one item with "
+              "the sentence before it", flush=True)
     return out
 
 
@@ -427,6 +472,55 @@ def best_candidate(raws, info, design):
 
 # ------------------------------------------------------------------ CLI
 
+# ------------------------------------------------------------------ a whole dialogue as one take (ElevenLabs)
+
+def dialogue(turns, out, project_dir=None, seed=0, language="de", model="eleven_v3", split=None, dry_run=False):
+    """turns: [{"who", "text", "name"?}] -> ONE take in which the cloud model plays the exchange itself (ElevenLabs
+    Text to Dialogue; stage tags in square brackets inside the text, e.g. "[deadpan] ..."). Every speaker's cast entry
+    needs {"engine": "elevenlabs", "voice_id": "..."}. Writes out (mp3) and out.json with the time of every turn;
+    split = folder for one wav per turn (<name>.wav; the pauses stay inside the pieces, so played back to back it is
+    the take as spoken). Cloud: the text leaves the machine and costs credits - ask the user first."""
+    import base64
+    import urllib.error
+    import urllib.request
+    voices = cast(project_dir)
+    inputs = []
+    for t in turns:
+        e = voices.get(t["who"]) or {}
+        if not e.get("voice_id"):
+            raise SystemExit(f"dialogue: '{t['who']}' has no \"voice_id\" in project.json \"voices\"")
+        inputs.append({"text": t["text"], "voice_id": e["voice_id"]})
+    body = {"inputs": inputs, "model_id": model, "language_code": language, "seed": int(seed) % 4294967295}
+    if dry_run:
+        return body
+    key = os.environ.get("ELEVENLABS_API_KEY")
+    if not key:
+        raise SystemExit("dialogue: set the environment variable ELEVENLABS_API_KEY")
+    req = urllib.request.Request("https://api.elevenlabs.io/v1/text-to-dialogue/with-timestamps?output_format=mp3_44100_128",
+                                 data=json.dumps(body).encode("utf-8"),
+                                 headers={"xi-api-key": key, "Content-Type": "application/json"})
+    try:
+        d = json.loads(urllib.request.urlopen(req, timeout=300).read())
+    except urllib.error.HTTPError as err:
+        raise SystemExit(f"elevenlabs: HTTP {err.code} - {err.read()[:300].decode('utf-8', 'replace')}")
+    out = Path(out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_bytes(base64.b64decode(d["audio_base64"]))
+    segs = []
+    for sgm in d.get("voice_segments") or []:
+        t = turns[sgm["dialogue_input_index"]]
+        segs.append({"who": t["who"], "name": t.get("name") or f"{len(segs) + 1:02d}", "text": t["text"],
+                     "from": round(sgm["start_time_seconds"], 3), "to": round(sgm["end_time_seconds"], 3)})
+    out.with_suffix(".json").write_text(json.dumps({"model": model, "seed": seed, "turns": segs}, ensure_ascii=False,
+                                                   indent=1), encoding="utf-8")
+    if split:
+        Path(split).mkdir(parents=True, exist_ok=True)
+        for g in segs:
+            subprocess.run([ffmpeg(), "-y", "-v", "error", "-ss", f"{g['from']:.3f}", "-to", f"{g['to']:.3f}", "-i", str(out),
+                            "-ac", "1", "-ar", str(SR), str(Path(split) / f"{g['name']}.wav")], check=True)
+    return segs
+
+
 def main():
     ap = argparse.ArgumentParser(description="Text-to-speech with a fixed voice per character.")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -441,6 +535,8 @@ def main():
     s.add_argument("--no-check", action="store_true")
     s.add_argument("--slot", type=float, help="fit the line into this many seconds (pitch-neutral, tempo.py)")
     s.add_argument("--tempo", type=float, help="speed factor (>1 faster) instead of --slot")
+    s.add_argument("--direction", help="how to say it, in English (Qwen VoiceDesign speaks the line itself; livelier, "
+                                       "the voice wanders a little)")
     tp = sub.add_parser("tempo", help="pitch-neutral tempo change of a wav to fit a slot (tempo.py)")
     import tempo
     tempo.add_args(tp)
@@ -457,17 +553,36 @@ def main():
     pk.add_argument("--to", choices=["project", "skill"], default="project")
     ls = sub.add_parser("list")
     ls.add_argument("--project")
+    dg = sub.add_parser("dialogue", help="a whole dialogue as ONE ElevenLabs take with several speakers (cloud, opt-in)")
+    dg.add_argument("turns", help='JSON file: [{"who": "oliver", "text": "[cheerful] ...", "name": "s02"}, ...]')
+    dg.add_argument("-o", "--out", required=True, help="the take (mp3); the times go to <out>.json")
+    dg.add_argument("--project")
+    dg.add_argument("--split", help="folder for one wav per turn")
+    dg.add_argument("--language", default="de")
+    dg.add_argument("--seed", type=int, default=0)
+    dg.add_argument("--dry-run", action="store_true", help="print the request, send nothing")
     a = ap.parse_args()
     if a.cmd == "say":
         item = {"who": a.who, "text": a.text, "out": a.out}
         if a.slot or a.tempo:
             item.update({k: v for k, v in (("slot", a.slot), ("tempo", a.tempo)) if v})
+        if a.direction:
+            item["direction"] = a.direction
         r = speak([item], a.project, a.seed, not a.no_check, language=a.language, engine=a.engine)[0]
-        print(json.dumps({k: r[k] for k in ("out", "engine", "duration", "score", "heard", "tempo") if k in r},
+        print(json.dumps({k: r[k] for k in ("out", "engine", "duration", "score", "heard", "tempo", "direction", "pitch_hz") if k in r},
                          ensure_ascii=False))
     elif a.cmd == "tempo":
         import tempo
         tempo.run_args(a)
+    elif a.cmd == "dialogue":
+        turns = json.loads(Path(a.turns).read_text(encoding="utf-8"))
+        r = dialogue(turns, a.out, a.project, a.seed, a.language, split=a.split, dry_run=a.dry_run)
+        if a.dry_run:
+            print(json.dumps(r, ensure_ascii=False, indent=1))
+        else:
+            for g in r:
+                print(f"  {g['name']:6s} {g['who']:9s} {g['from']:6.2f}-{g['to']:6.2f}  {g['text'][:60]}")
+            print("->", a.out)
     elif a.cmd == "design":
         e = cast(a.project).get(a.who)
         if not e:

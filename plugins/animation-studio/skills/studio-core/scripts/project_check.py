@@ -121,6 +121,10 @@ SONG = {**SHARED,                                     # music-video projects (so
         "pick_by": {"type": (STR,), "values": ("lips", "motion")},
         "delivery": {"type": (STR,), "values": ("song", "speech"),       # claudia: a spoken film -> "says the words"
                      "doc": '"speech" = the lip-sync prompts speak instead of sing (a sketch / dialogue film)'},     # claudia pick.py: the automatic take
+        "dialogue": {"type": (DICT,), "doc": 'claudia dialogue_clips.py: {"image", "set", "who": {name: identifiers}, "off": [[from, to]], '
+                                             '"clips": [{"name", "shots": [..], "cut": framing, "how": {shot: text}}]}'},
+        "master": {"type": (DICT,), "doc": 'ai-video master_crops.py: {"image", "size": [w, h], "crops": {name: "w:h:x:y"}, '
+                                           '"edits": {name: {"crop", "change"}}, "keep", "negative"}'},
         "relit_from": {"type": (DICT,), "doc": 'claudia relight.py: {"project", "light", "shots": {shot: {...}}}'},
         "identity": {"type": (STR,)}, "tempo": {"type": (DICT,)}, "word_passes": {"type": (LIST,)},   # lyric-music-video
         "flight": {"type": (STR,), "doc": "folder of the portal flight inside the project (new_flight.py)"},   # portal-music-video
