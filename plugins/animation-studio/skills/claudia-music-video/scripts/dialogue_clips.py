@@ -20,7 +20,8 @@ project.json:
     "off": [[32.9, 34.6]],                        optional: times of a voice nobody in the picture speaks (sat-nav,
                                                   radio, narrator) - left out of the lip-sync audio
     "clips": [{"name": "A", "shots": ["s02", "s03"], "cut": "frontal medium close-up from the chest up",
-               "how": {"s02": "turns to the woman beside him and"}},
+               "how": {"s02": "turns to the woman beside him and"}},     (more than two shots with a "cut": all but
+                                                  the last play in the two-shot, the last one after the cut)
               {"name": "F", "shots": ["s11"], "image": "ai/master/two_crop.png"}]
   }
 A section's speaker is its "who" (the first name of a list), its words are "sing" (or "line").
@@ -91,8 +92,8 @@ def plan(P):
             probs.append(f"clip {name}: unknown or missing shots {c.get('shots')}")
             continue
         cut = c.get("cut")
-        if cut and len(shots) != 2:
-            probs.append(f"clip {name}: a cut joins exactly two shots, got {len(shots)}")
+        if cut and len(shots) < 2:
+            probs.append(f"clip {name}: a cut needs at least two shots (the last one is the shot after the cut)")
             continue
         img = P.path(c.get("image") or d["image"])
         if not img.exists():
@@ -116,16 +117,26 @@ def plan(P):
             continue
         start = min(s["from"] for s in shots)
         heard_off = any(a <= start + 0.5 and b > start for a, b in off)   # the clip opens on the off voice
-        s1, w1, t1, how1 = turns[0]
-        others = [short(v) for k, v in d["who"].items() if k != w1]
-        if cut:
-            s2, w2, t2, how2 = turns[1]
-            listen = ("First everybody sits still with closed mouths and listens to a voice that comes from off screen, "
-                      "nobody in the picture speaks. Then ") if heard_off else ""
-            opening = (f'{d["set"].strip()} {listen + d["who"][w1] if listen else cap(d["who"][w1])} '
-                       f'{how1 or "looks at the other person and"} {say} "{t1}", the '
-                       f'lips form every word, not looking at the camera. '
-                       + " ".join(f"{cap(o)} {d.get('listens', LISTENS)}." for o in others))
+        if cut:                       # the turns before the last one play in the two-shot, the last one after the cut
+            before, (s2, w2, t2, how2) = turns[:-1], turns[-1]
+            if end - t0 < ltx25.MIN_SECONDS:
+                print(f"NOTE clip {name}: {end - t0:.1f} s - clips under {ltx25.MIN_SECONDS:.0f} s did not cut in the tests "
+                      "(4.4 s, one singer); hold the last shot longer if it does not cut")
+            parts = [d["set"].strip()]
+            first = True
+            if heard_off:
+                parts.append("First everybody sits still with closed mouths and listens to a voice that comes from off "
+                             "screen, nobody in the picture speaks.")
+                first = False
+            for k, (s, w, t, how) in enumerate(before):
+                lead = cap(d["who"][w]) if first and len(before) == 1 else f'{"First" if first else "Then"} {d["who"][w]}'
+                parts.append(f'{lead} {how or "looks at the other person and"} {say} "{t}", the lips form every word, not '
+                             "looking at the camera.")
+                first = False
+            if len({w for _, w, _, _ in before}) == 1:
+                w1 = before[0][1]
+                parts += [f"{cap(short(v))} {d.get('listens', LISTENS)}." for k, v in d["who"].items() if k != w1]
+            opening = " ".join(parts)
             cuts = [{"framing": cut, "who": d["who"][w2], "place": c.get("place", ""),
                      "action": f'{how2 or "the person looks straight ahead and"} {say} "{t2}", the lips form every word, the same '
                                "place, nothing else changes, static camera"}]
@@ -149,7 +160,7 @@ def plan(P):
             prompt, cuts = " ".join(parts), []
         out.append({"name": name, "shots": [s["name"] for s in shots], "image": img, "t0": t0, "frames": frames,
                     "seconds": round(frames / ltx25.FPS, 2), "prompt": prompt, "cuts": len(cuts),
-                    "wav": P.dir / "ai" / "ltx25" / f"dlg_{name}.wav", "change": shots[1]["from"] if cut else None})
+                    "wav": P.dir / "ai" / "ltx25" / f"dlg_{name}.wav", "change": shots[-1]["from"] if cut else None})
     return out, probs
 
 
