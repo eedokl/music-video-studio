@@ -12,7 +12,8 @@
          1024x576, int8 pruned model + Turbo LoRA (8 steps), ~42 s GPU per second of video. Lip-sync comparison
          2026-11-12: r 0.64 / 0.49 / 0.37 (fast syllables / plosives / held call) - good lips, but the user found the
          rest of the body robotic -> rescue engine for plosive lines only, next to an LTX seed. Licence of the H3
-         weights unchecked: check it before a published film.
+         weights (read 2026-11-28): the grant excludes the EU, UK, USA and South Korea, outputs included - no local
+         H3 takes in a published film there (references/models.md).
          Files: diffusion_models/minimax_h3_fl2va_pruned_int8_convrot, loras/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16,
          text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq, vae/minimax_h3_video_vae_int8_convrot,
          vae/minimax_h3_audio_vae_fp32 (names from assets/models.json; override: config comfy_models).
