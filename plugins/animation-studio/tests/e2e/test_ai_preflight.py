@@ -118,7 +118,7 @@ from pathlib import Path
 scripts, out = sys.argv[1], sys.argv[2]
 sys.path.insert(0, scripts)
 import numpy as np
-import comfy, comfy_image, comfy_video, ltx, ltx25, s2v, infinitetalk, humo, minimax, qwen_edit, mic_repair, face_pass
+import comfy, comfy_image, comfy_video, ltx, ltx25, s2v, infinitetalk, humo, minimax, qwen_edit, qwen21, mic_repair, face_pass
 R = {
  "face_pass": [face_pass.workflow("c.mp4", "i.png", "a.wav", 169, "p", "n", 7, "x")],
  "flux": [comfy_image.workflow("p", 1280, 720, 5)],
@@ -127,6 +127,7 @@ R = {
  "sdxl_lora_repaint": [comfy_image.workflow("p", 1024, 1024, 6, model="sdxl", lora="USER_LORA", init="i.png", denoise=0.5)],
  "qwen_image": [comfy_image.workflow("p", 1328, 1328, 7, model="qwen")],
  "qwen_edit": [qwen_edit.workflow(["a.png"], "p", 1280, 720, 1)],
+ "qwen21": [qwen21.workflow(["a.png", "b.png"], "p", 1280, 720, 1)],
  "qwen_edit_angles": [qwen_edit.workflow(["a.png", "b.png"], "p", 1280, 720, 1, lora=0.6)],
  "ltx23": [ltx.workflow("i.png", "a.wav", "p", ltx.NEG_LIPSYNC, 97, 31)],
  "ltx25": [ltx25.workflow("i.png", "a.wav", "p", ltx25.NEG, 193, 7)],

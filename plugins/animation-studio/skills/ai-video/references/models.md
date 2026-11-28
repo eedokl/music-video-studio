@@ -5,6 +5,7 @@
 | still / B-roll | FLUX.1 schnell fp8 | ~9 s per 1280x720 image, load ~2.5 min | invents lettering now and then (screens, boards) - check sheets, use variant 2 |
 | lettering in the image | Qwen-Image 2512 fp8 | ~3x FLUX | correct text; reloads ~28 GB per image on machines with 16 GB RAM |
 | character start image | Qwen-Image-Edit 2511 fp8 Lightning (4 steps) | ~20-30 s, load ~9 min cold | two refs (face + identity close-up) hold the canon best; one ref + short identity for wide shots |
+| character start image / picture edit, **test only** | Qwen-Image 2.1 int8 + Turbo LoRA, 8 steps (`qwen21.py`) | ~15-25 s, load ~2 min | Qwen Research License: research and evaluation only. Comparison below |
 | sung shot (default) | LTX-2.3 22B distilled fp8, ia2v, one stage 1280x704 | ~150 s per 97 frames warm, load ~7 min | sharpest; mouth a bit tame; fast syllables good (r 0.92 in a test), plosives weak |
 | held note / climax | Wan2.2-S2V 14B fp8, 20 steps, 832x480 @16 fps | ~11-18 min per 4 s | most expressive mouth; drifts to profile and misses words on runs > 4 s |
 | long sung passage (12 s) | InfiniteTalk (480p, 4 chained parts) | ~19 min per 12 s | most even lip hits over long takes, holds the face (`infinitetalk.py`, chained passes) |
@@ -44,8 +45,19 @@ LTX-2.3 0.92 / -0.03 / -, S2V - / - / 0.53, InfiniteTalk 0.90 / 0.20 / 0.58, HuM
 HuMo 1.7B 0.78 / 0.55 / 0.64, MiniMax H3 0.64 / 0.49 / 0.37.
 No model closes the lips reliably on short p/b/m sounds.
 
-Licences: LTX-2 Community License (free under USD 10M revenue, AI content must be labelled); Wan, Qwen, FLUX
-schnell, Depth Anything Small: Apache-2.0.
+Qwen-Image-Edit 2511 against Qwen-Image 2.1 Turbo (838 pictures, 230 shots from eight films, 2026-11-28): 2.1 keeps
+the person - a stranger's face in 3 of 227 pictures (2511: 32 of 226), one headset on the right cheek in 28 of 29
+(2511: 11 of 28), no stranger in 21 wide shots (2511: 10), three people in one picture all recognisable - and it edits
+a finished picture more exactly (mic on/off, outfit, background, night: only what was asked changes). 2511 has the
+stronger light and colour, more acting and gestures, real profiles and high/low angles, and it really moves the camera
+in a finished picture (2.1 leaves the picture almost as it is; the multiple-angles LoRA moves it most but loses the
+face). 2.1 with four to seven references paints the person several times - one sheet per person, three references at
+most. The bf16 file, the base model with 20-25 steps, cfg 3, 2K, a reference resolution of 1536 and `<image1>` tags
+gave no visible gain.
+
+Licences: Qwen-Image 2.1 (model, Turbo LoRA, Comfy-Org files): Qwen Research License - research and evaluation only,
+commercial use needs a licence from Qwen; do not use it for a film that is published or sold. LTX-2 Community License (free under USD 10M revenue, AI content must be labelled); Wan, Qwen-Image 2512 and
+Qwen-Image-Edit 2511, FLUX schnell, Depth Anything Small: Apache-2.0.
 
 Exact file names, models/ folders and node classes of every workflow: `assets/models.json` (machine override: config
 `comfy_models`); `scripts/preflight.py` checks a running ComfyUI against them.

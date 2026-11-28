@@ -255,7 +255,14 @@ variants (`jobs.py --only <shot> --start 5`) and stage her frontally. The repair
 patches on the cheek in 3 of 6 images); opt in with `jobs.py --repair-mic` or project `"mic_repair": true`, then the
 night-run hook repairs them (`pick.py start --repair-mic`, ai-video `mic_repair.py`: wrong boom
 retouched + FLUX texture, else Qwen-Edit "change only the microphone"; result `ai/start/<shot>_v<k>m.png`,
-re-checked). **The headset added afterwards** (`"mic": "added"` in project.json, or on one shot; opt-in): the start
+re-checked). **Which image model** (`"image_model"` in project.json, or on one shot; test, opt-in): `"2511"`
+(default, Qwen-Image-Edit 2511), `"qwen21"` (every picture with Qwen-Image 2.1) or `"auto"` - per shot after the
+comparison in ai-video `references/models.md`: edits of a finished picture (the added headset, relight, the
+references without headset), wide shots, two people and a painted headset go to 2.1; profiles, camera angles and
+every other close or medium shot stay with 2511 (light, acting). With `"mic": "added"` that is "build the picture
+with 2511, add the headset with 2.1". `prompts.json` says per shot which model and why; the picture phases are then
+`--phases flux,qwen_edit,qwen21`. **Qwen-Image 2.1 is under the Qwen Research License - research and evaluation
+only: do not use `"auto"` / `"qwen21"` for a film that is published or sold.** **The headset added afterwards** (`"mic": "added"` in project.json, or on one shot; opt-in): the start
 image is made WITHOUT a microphone (`ai/start_bare/`, from references whose headset was edited away once,
 `ai/refs_bare/`), then a second edit adds only a small beige headset - limited to her face (ai-video
 `face_edit.py`), so the rest of the picture stays as it is. Each picture gets `"mic_tries"` (default 2) tries

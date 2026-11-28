@@ -18,7 +18,8 @@ jobs.json (written by a user skill, e.g. claudia-music-video jobs.py; paths rela
                       "audio": {"src": "analysis/vocals_lead.wav", "from": 9.48, "dur": 4.3},
                       "prompt": "...", "frames": 97, "seed": 41, "strength": 1.0,
                       "meta": {"song_start": 9.48, "lead_in": 0.25, "shot": "s02"}}}]}
-Kinds: flux (comfy_image), qwen_edit (args "face": true = edit only the face of refs[0] and paste it back,
+Kinds: flux (comfy_image), qwen21 (TEST MODEL Qwen-Image 2.1, research licence: same args as qwen_edit, own phase
+"qwen21", at most 3 refs), qwen_edit (args "face": true = edit only the face of refs[0] and paste it back,
 face_edit.py), depth (estimate_depth, one subprocess for the phase), ltx_lipsync, ltx_moving,
 s2v, infinitetalk, humo, minimax_h3 (local MiniMax H3), ltx25_multishot (LTX-2.5: a cut inside one sung clip,
 experimental), wan (comfy_video).  An image argument may be {"pick": group, "key": shot, "candidates": [...]}: the chosen file
@@ -68,13 +69,13 @@ import comfy  # noqa: E402
 import preflight  # noqa: E402
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[3]       # <plugin>/skills/ai-video/scripts/night_run.py (at run time)
-MODEL = {"flux": "comfy:flux", "qwen_edit": "comfy:qwen_edit", "depth": "depth:small", "ltx": "comfy:ltx23",
+MODEL = {"flux": "comfy:flux", "qwen_edit": "comfy:qwen_edit", "qwen21": "comfy:qwen21", "depth": "depth:small", "ltx": "comfy:ltx23",
          "s2v": "comfy:wan_s2v", "infinitetalk": "comfy:infinitetalk", "humo": "comfy:humo1.7B", "minimax_h3": "comfy:minimax_h3",
          "ltx25": "comfy:ltx25", "wan": "comfy:wan"}
-PHASE_OF = {"flux": "flux", "qwen_edit": "qwen_edit", "depth": "depth", "ltx_lipsync": "ltx", "ltx_moving": "ltx",
+PHASE_OF = {"flux": "flux", "qwen_edit": "qwen_edit", "qwen21": "qwen21", "depth": "depth", "ltx_lipsync": "ltx", "ltx_moving": "ltx",
             "s2v": "s2v", "infinitetalk": "infinitetalk", "humo": "humo", "minimax_h3": "minimax_h3", "ltx25_multishot": "ltx25",
             "wan": "wan"}
-LOAD = {"flux": 150, "qwen_edit": 540, "depth": 60, "ltx": 420, "s2v": 360, "infinitetalk": 300, "humo": 300, "minimax_h3": 600,
+LOAD = {"flux": 150, "qwen_edit": 540, "qwen21": 120, "depth": 60, "ltx": 420, "s2v": 360, "infinitetalk": 300, "humo": 300, "minimax_h3": 600,
         "ltx25": 120, "wan": 600}   # s cold model load (measured)
 
 
@@ -94,7 +95,7 @@ def estimate(job):
         return 42 * a.get("frames", 124) / 24
     if k == "wan":
         return 100 * a.get("seconds", 4)
-    return {"flux": 9, "qwen_edit": 30, "depth": 2}.get(k, 60)
+    return {"flux": 9, "qwen_edit": 30, "qwen21": 22, "depth": 2}.get(k, 60)
 
 
 class Run:
@@ -273,11 +274,11 @@ class Run:
             from comfy_image import generate
             generate(a["prompt"], out, a.get("w", 1280), a.get("h", 720), a.get("seed", 1), a.get("steps"),
                      a.get("model", "flux"), a.get("neg"))
-        elif k == "qwen_edit" and a.get("face"):
+        elif k in ("qwen_edit", "qwen21") and a.get("face"):
             # edit only the face of ONE picture (refs[0]) and paste it back: the rest stays pixel-identical and
             # nothing can be invented outside the head (face_edit.py; its two CPU steps run as helper processes
             # because they need MediaPipe - the image model runs here, under this run's GPU lock)
-            import qwen_edit
+            qwen_edit = __import__(k)          # qwen21 = the test model (research licence), same call
             src, out = self.p(a["refs"][0]), Path(out)
             fe = ["uv", "run", str(Path(__file__).resolve().parent / "face_edit.py")]
             crop, box, ed = (out.with_name(f"{out.stem}_face{x}") for x in ("_crop.png", "_box.json", "_edit.png"))
@@ -287,13 +288,13 @@ class Run:
                     n = int(a.get("face_size", 1024))
                     qwen_edit.edit([crop], a["prompt"], ed, n, n, a.get("seed", 1), a.get("neg", qwen_edit.NEG))
                 else:
-                    self.log(f"qwen_edit {job['id']}: no face found in {src.name} - copied unchanged")
+                    self.log(f"{k} {job['id']}: no face found in {src.name} - copied unchanged")
                 subprocess.run(fe + ["paste", str(src), str(ed), str(box), str(out)], check=True)
             finally:
                 for x in (crop, box, ed):
                     x.unlink(missing_ok=True)
-        elif k == "qwen_edit":
-            import qwen_edit
+        elif k in ("qwen_edit", "qwen21"):
+            qwen_edit = __import__(k)
             qwen_edit.edit([self.p(r) for r in a["refs"]], a["prompt"], out, a.get("w", 1280), a.get("h", 720),
                            a.get("seed", 1), a.get("neg", qwen_edit.NEG))
         elif k in ("ltx_lipsync", "ltx_moving", "s2v", "infinitetalk", "humo", "minimax_h3", "ltx25_multishot"):

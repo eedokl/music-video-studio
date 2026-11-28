@@ -179,6 +179,38 @@ def merged(path, new, shots, key):
     return dict(new, **{key: keep + new[key]})
 
 
+ANGLES = ("profile", "side", "behind", "over-the-shoulder", "over the shoulder", "low-angle", "low angle", "high-angle",
+          "high angle", "from below", "from above")
+
+
+def image_kind(P, s, task="start"):
+    """night-run kind of one picture job: "qwen_edit" (Qwen-Image-Edit 2511, the default) or "qwen21" (Qwen-Image 2.1,
+    TEST MODEL under the Qwen Research License). project.json "image_model": "2511" | "qwen21" | "auto"; a shot may
+    say it itself. "auto" follows the comparison of 2026-11-28 (ai-video references/models.md): edits of a finished
+    picture (task "edit": headset added, relight, reference without headset), wide shots, two people and a painted
+    headset -> 2.1; profiles and camera angles, and every other close or medium shot (light, acting) -> 2511.
+    -> (kind, reason)"""
+    m = str((s or {}).get("image_model") or P.get("image_model") or "2511").lower()
+    if m in ("2511", "qwen_edit"):
+        return "qwen_edit", "2511"
+    if m in ("2.1", "21", "qwen21"):
+        return "qwen21", "2.1 asked for"
+    if m != "auto":
+        raise SystemExit(f'"image_model": "{m}" - use "2511", "qwen21" or "auto"')
+    if task == "edit":
+        return "qwen21", "auto: edit of a finished picture"
+    fr = ((s or {}).get("framing") or "").lower()
+    if any(w in fr for w in ANGLES):
+        return "qwen_edit", "auto: profile / camera angle"
+    if claudia.is_wide(fr):
+        return "qwen21", "auto: wide shot"
+    if len(claudia.cast_of(s) or [0]) > 1:
+        return "qwen21", "auto: two people"
+    if claudia.has_canon(s) and not claudia.mic_added(s) and str(s.get("mic", "")).lower() not in ("false", "none", "off"):
+        return "qwen21", "auto: headset painted in the picture"
+    return "qwen_edit", "auto: close / medium shot (light, acting)"
+
+
 def rel(P, p):
     p = Path(p)
     try:
@@ -267,7 +299,7 @@ def main():
         """The job that edits the headset out of one reference image (made once) -> its output path."""
         if ref not in bare_refs:
             out = f"ai/refs_bare/{Path(ref).stem}.png"
-            add("qwen_edit", f"refs/bare_{len(bare_refs) + 1}", out, refs=[ref], prompt=claudia.MIC_REF_BARE,
+            add(image_kind(P, None, "edit")[0], f"refs/bare_{len(bare_refs) + 1}", out, refs=[ref], prompt=claudia.MIC_REF_BARE,
                 neg=claudia.NEG_BARE, seed=4101 + len(bare_refs))
             bare_refs[ref] = out
         return bare_refs[ref]
@@ -284,7 +316,7 @@ def main():
         for k, sd in enumerate(rl.get("seeds") or [11, 23], 1):
             o = f"ai/{folder}/{s['name']}_v{k}.png"
             out.append(o)
-            add("qwen_edit", f"{s['name']}/relight_v{k}", o, refs=[rel(P, P.path(src))], prompt=prompt, seed=int(sd), **wh)
+            add(image_kind(P, s, "edit")[0], f"{s['name']}/relight_v{k}", o, refs=[rel(P, P.path(src))], prompt=prompt, seed=int(sd), **wh)
         return out
 
     mic_tries = max(1, min(3, int(P.get("mic_tries", 2))))
@@ -329,19 +361,22 @@ def main():
                 pr["mic_add"] = claudia.MIC_ADD
                 problems += [f"{name} bare start image: {e}" for e in claudia.check(bp, "image_bare", s)]
                 refs_b = [bare_ref(r) for r in use_refs]
+            kind, why = image_kind(P, s)
+            if not s.get("start_image"):
+                pr["image_model"] = ("2.1 for the headset, " if added and image_kind(P, s, "edit")[0] == "qwen21" else "") + why
             for k in range(1, (0 if cands else nst) + 1):
                 if added:
                     bare = f"ai/start_bare/{name}_v{k}.png"
-                    add("qwen_edit", f"{name}/bare_v{k}", bare, refs=refs_b, prompt=bp, neg=claudia.NEG_BARE, seed=base + k)
+                    add(kind, f"{name}/bare_v{k}", bare, refs=refs_b, prompt=bp, neg=claudia.NEG_BARE, seed=base + k)
                     for t in range(mic_tries):        # tries of one picture: v1, v1b, v1c
                         out = f"ai/start/{name}_v{k}{'bc'[t - 1] if t else ''}.png"
                         cands.append(out)
-                        add("qwen_edit", f"{name}/start_v{k}{'bc'[t - 1] if t else ''}", out, refs=[bare], face=True,
+                        add(image_kind(P, s, "edit")[0], f"{name}/start_v{k}{'bc'[t - 1] if t else ''}", out, refs=[bare], face=True,
                             prompt=claudia.MIC_ADD, neg=claudia.MIC_ADD_NEG, seed=base + 50 + 10 * k + t)
                     continue
                 out = f"ai/start/{name}_v{k}.png"
                 cands.append(out)
-                add("qwen_edit", f"{name}/start_v{k}", out, refs=use_refs, prompt=sp, neg=claudia.neg_image(s), seed=base + k)
+                add(kind, f"{name}/start_v{k}", out, refs=use_refs, prompt=sp, neg=claudia.neg_image(s), seed=base + k)
             chosen = (sel_start.get(name) if not s.get("start_image") else None)
             if chosen and P.path(chosen).exists() and chosen not in cands:
                 cands.append(chosen)                  # the start image picked before (test: a hand-made v4 was missing)
@@ -529,6 +564,9 @@ def main():
     d = {"phases": ["flux", "qwen_edit", "depth", "ltx", "s2v", "infinitetalk", "humo", "minimax_h3", "ltx25", "wan"],
          "selection": "selection.json",
          "hooks": {"after:flux": hook, "after:qwen_edit": hook + (["--repair-mic"] if repair else [])}, "jobs": jobs}
+    if any(j["kind"] == "qwen21" for j in jobs):      # test model: its own phase after 2511 (the headset edit needs the
+        d["phases"].insert(2, "qwen21")               # 2511 picture); the pick runs once, after the last picture phase
+        d["hooks"]["after:qwen21"] = d["hooks"].pop("after:qwen_edit")
     n_new = len(jobs)
     d = merged(P.dir / "jobs.json", d, only, "jobs")
     jobs = d["jobs"]
@@ -539,6 +577,10 @@ def main():
     for j in jobs:
         kinds[j["kind"]] = kinds.get(j["kind"], 0) + 1
     print(f"-> jobs.json: {len(jobs)} jobs {kinds}; prompts.json; wardrobe: {wardrobe}")
+    if kinds.get("qwen21"):
+        print(f'"image_model": {kinds["qwen21"]} picture(s) with Qwen-Image 2.1 - TEST MODEL under the Qwen Research License '
+              "(research and evaluation only, not for a film that is published or sold); which model per shot and why: "
+              'prompts.json "image_model". Picture phases: night_run.py jobs.json --phases flux,qwen_edit,qwen21')
     if n_added:
         print(f'"mic": "added": {n_added} shot(s) get a start image without a headset and {mic_tries} tries of the added '
               "one per picture - run the image phases first (night_run.py jobs.json --phases flux,qwen_edit) and look "

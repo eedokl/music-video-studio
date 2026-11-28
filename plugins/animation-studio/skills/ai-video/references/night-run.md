@@ -20,6 +20,7 @@ A user skill writes `<project>/jobs.json`; `night_run.py` computes it. Paths are
 |---|---|---|
 | `flux` | comfy:flux | prompt, seed, w, h, model (flux/sdxl/qwen), neg |
 | `qwen_edit` | comfy:qwen_edit | refs, prompt, neg, seed, w, h |
+| `qwen21` | comfy:qwen21 | as `qwen_edit` (also `"face": true`), at most 3 refs, own phase `qwen21` - **test model, research licence** (`models.md`) |
 | `depth` | depth:small | image (path or pick) - one subprocess per phase |
 | `ltx_lipsync` / `ltx_moving` | comfy:ltx23 | image, audio {src, from, dur}, prompt, neg, frames (8n+1), seed, strength, meta |
 | `s2v` | comfy:wan_s2v | image, audio, prompt, frames (4n+1 @16 fps), steps, seed, light, meta |

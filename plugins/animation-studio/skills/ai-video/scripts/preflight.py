@@ -29,7 +29,7 @@ _studio.use()
 import comfy_models  # noqa: E402
 import config  # noqa: E402
 
-KIND_DEFAULT = {"qwen_edit": "qwen_edit", "ltx_lipsync": "ltx23", "ltx_moving": "ltx23", "ltx": "ltx23",
+KIND_DEFAULT = {"qwen_edit": "qwen_edit", "qwen21": "qwen21", "ltx_lipsync": "ltx23", "ltx_moving": "ltx23", "ltx": "ltx23",
                 "s2v": "s2v", "infinitetalk": "infinitetalk", "humo": "humo1.7B", "minimax_h3": "minimax_h3",
                 "ltx25_multishot": "ltx25", "ltx25": "ltx25", "wan": "wan", "flux": "flux", "depth": None}       # job kinds and night-run phases -> workflow
 FLUX_MODEL = {"flux": "flux", "sdxl": "sdxl", "qwen": "qwen_image"}
