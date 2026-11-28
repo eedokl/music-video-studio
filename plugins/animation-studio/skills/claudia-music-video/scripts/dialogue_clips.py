@@ -117,7 +117,9 @@ def plan(P):
             continue
         start = min(s["from"] for s in shots)
         heard_off = any(a <= start + 0.5 and b > start for a, b in off)   # the clip opens on the off voice
-        if cut:                       # the turns before the last one play in the two-shot, the last one after the cut
+        if c.get("prompt"):           # a clip of its own kind (a single from its own start image): the prompt as written
+            prompt, cuts, cut = c["prompt"].strip(), [], None
+        elif cut:                     # the turns before the last one play in the two-shot, the last one after the cut
             before, (s2, w2, t2, how2) = turns[:-1], turns[-1]
             if end - t0 < ltx25.MIN_SECONDS:
                 print(f"NOTE clip {name}: {end - t0:.1f} s - clips under {ltx25.MIN_SECONDS:.0f} s did not cut in the tests "
